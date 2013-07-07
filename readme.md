@@ -1,7 +1,7 @@
 VoteFlow
 -------
 
-VoteFlow is comprised as 
+VoteFlow is comprised of the following independant components: 
 
 Identity Server
   - Primarily composed of a voter database and a mechanism for voters to supply public key(s).
