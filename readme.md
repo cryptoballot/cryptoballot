@@ -98,7 +98,7 @@ base64 rsa-test-2048.pub.der -w0 > public.der.base64
 sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
 
 #Generate request text (the -n switch makes sure we don't pad a newline character, which is echo's default behavior)
-echo -n "PUT/12345/<ballot-id-from-public.der.base64.sha512>" > request.txt
+echo -n "PUT /vote/12345/<ballot-id-from-public.der.base64.sha512>" > request.txt
 
 #Sign the request. This is your <request-signature>
 openssl sha -sha512 -sign rsa-test-2048.key < request.txt | base64 -w0 > request.txt.signed
