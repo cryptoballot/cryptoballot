@@ -72,7 +72,7 @@ X-Voteflow-Signature: <request-signature>
 
 `<public-key>` is the voter's rsa public key for this vote. It is base64 encoded and contains no line breaks.
 
-`<request-signature>` is the base64 encoded signature for the request (but not the ballot). Using their RSA private-key and SHA512, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where <METHOD> is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd5856150b4e1ec26` would result in the signature `fhn8oPeINjq+5QbW5O4ZUcILBlQxzboqKhAtlY0yqxEq8u5lGQ3YeqgX7A6fVnWdAYmjcljTdBG9ZP9Tqsh8b/Lhcsqs7s6OR6ZdVUFFTlCrrEDFiVD/x9mchcTrb89stXX12yeLLxDs7oH37pKK7ZRch5yCuyfDB4vsyaIPb7Ggzi3vH5o3KmI3D3ewag/Y2d0naLyzGv8YywD5UHV5uCvEvXuXt3470qx0jB+p1f1H9yq/gOi2oY4CUhTCjutKbvH3A68M7XBAJI/b49JYOsRHfyWzlTges+tLrZ9eOKQH0qU0lczuh10ODnAWNY9sn3GDDUtp2HYNbzQCx1elFQ==`.
+`<request-signature>` is the base64 encoded signature for the request (but not the ballot). Using their RSA private-key and SHA512, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where `<METHOD>` is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd5856150b4e1ec26` would result in the signature `fhn8oPeINjq+5QbW5O4ZUcILBlQxzboqKhAtlY0yqxEq8u5lGQ3YeqgX7A6fVnWdAYmjcljTdBG9ZP9Tqsh8b/Lhcsqs7s6OR6ZdVUFFTlCrrEDFiVD/x9mchcTrb89stXX12yeLLxDs7oH37pKK7ZRch5yCuyfDB4vsyaIPb7Ggzi3vH5o3KmI3D3ewag/Y2d0naLyzGv8YywD5UHV5uCvEvXuXt3470qx0jB+p1f1H9yq/gOi2oY4CUhTCjutKbvH3A68M7XBAJI/b49JYOsRHfyWzlTges+tLrZ9eOKQH0qU0lczuh10ODnAWNY9sn3GDDUtp2HYNbzQCx1elFQ==`.
 
 `<votes>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
 
