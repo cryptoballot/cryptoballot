@@ -42,3 +42,42 @@ User-interface / client software
  - May be server based or a local binary application.
  - Reference implementation here will be an ember.js app.
 
+API
+---
+
+The voting server is a RESTful service (Supporting GET, PUT and DELETE verbs) with a few additions to cryptographically guarantee that the request is coming from a trusted voter.
+
+Casting a ballot takes an HTTP request of the following form
+`
+PUT /vote/<election-id>/<ballot-id>
+X-Voteflow-Public-Key: <public-key>
+X-Voteflow-Signature: <request-signature>
+
+<public-key>
+
+<election-id>
+
+<ballot-id>
+
+<votes>
+
+<tags>
+
+<ballot-signature>
+`
+
+`<election-id>` is the unique identifier for this election / decition.
+
+`<ballot-id>` is the unqiue ID of this ballot. It is the (hex-encoded) SHA512 hash of this voter's public key for this vote.
+
+`<public-key>` is voter's public key for this vote. It is base64 encoded and contains no line breaks.
+
+`<request-signature>` is the base4 encoded signature for the request (but not the ballot). Using their private-key, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where <METHOD> is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd5856150b4e1ec26` would result in the signature `fhn8oPeINjq+5QbW5O4ZUcILBlQxzboqKhAtlY0yqxEq8u5lGQ3YeqgX7A6fVnWdAYmjcljTdBG9ZP9Tqsh8b/Lhcsqs7s6OR6ZdVUFFTlCrrEDFiVD/x9mchcTrb89stXX12yeLLxDs7oH37pKK7ZRch5yCuyfDB4vsyaIPb7Ggzi3vH5o3KmI3D3ewag/Y2d0naLyzGv8YywD5UHV5uCvEvXuXt3470qx0jB+p1f1H9yq/gOi2oY4CUhTCjutKbvH3A68M7XBAJI/b49JYOsRHfyWzlTges+tLrZ9eOKQH0qU0lczuh10ODnAWNY9sn3GDDUtp2HYNbzQCx1elFQ==`.
+
+`<votes>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
+
+`<tags>` is additional information a voter may wish to attach to the vote in the format of `key="value"`. Each key-value pair goes on a new line. Standardization around commonly understood keys forthcoming. Examples might include the voter's name if they wish to publically forclose their vote.
+
+`<request-signature>` is the base64 encoded signature of the entire message body up to this point (excluding headers and the linebreak immidiately preceding the signature). 
+
+
