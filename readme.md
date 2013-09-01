@@ -48,8 +48,8 @@ API
 The voting server is a RESTful service (Supporting GET, PUT and DELETE verbs) with a few additions to cryptographically guarantee that the request is coming from a trusted voter.
 
 Casting a ballot takes an HTTP request of the following form
-`
-PUT /vote/<election-id>/<ballot-id>
+```http
+PUT /vote/<election-id>/<ballot-id> HTTP/1.1
 X-Voteflow-Public-Key: <public-key>
 X-Voteflow-Signature: <request-signature>
 
@@ -64,7 +64,7 @@ X-Voteflow-Signature: <request-signature>
 <tags>
 
 <ballot-signature>
-`
+```
 
 `<election-id>` is the unique identifier for this election / decition.
 
