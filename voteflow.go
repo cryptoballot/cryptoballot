@@ -6,7 +6,7 @@ package main
 import (
 	"crypto"
 	"crypto/rsa"
-	"crypto/sha256" //@@TODO: Move both ID and encryption to SHA512
+	"crypto/sha512" //@@TODO: Move both ID and encryption to SHA512
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
@@ -27,7 +27,7 @@ import (
 
 type Ballot struct {
 	PublicKey string // base64 encoded PEM formatted public-key
-	ID        string // SHA256 of base64 encoded public-key
+	ID        string // SHA512 (hex) of base64 encoded public-key
 	Raw       string // Signed, ordered, and line seperated list git addresses
 	Vote      Vote   // Ordered list of choices
 }
@@ -261,12 +261,12 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID string, err 
 		return
 	}
 
-	// Get the ballotID (hex encoded SHA256 of base64 encoded public-key)
+	// Get the ballotID (hex encoded SHA512 of base64 encoded public-key)
 	ballotID = urlparts[3]
 
-	// SHA256 is 64 characters long and is a valid hex
-	if len(ballotID) != 64 {
-		err = parseError{"Invalid Ballot ID. A ballot ID is a hex encoded SHA256 of the base64 encoded public-key.", http.StatusBadRequest}
+	// SHA512 is 128 characters long and is a valid hex
+	if len(ballotID) != 128 {
+		err = parseError{"Invalid Ballot ID. A ballot ID is a hex encoded SHA512 of the base64 encoded public-key.", http.StatusBadRequest}
 		return
 	}
 	if _, suberr := hex.DecodeString(ballotID); suberr != nil {
@@ -277,9 +277,9 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID string, err 
 	// If the user has provided a public key in the header (as an authentication), verify it
 	pk := r.Header.Get("X-Voteflow-Public-Key")
 	if pk != "" {
-		// First check to make sure the ballotID and the public-key match (BallotID is SHA256 of public-key)
+		// First check to make sure the ballotID and the public-key match (BallotID is SHA512 of public-key)
 		// @@TODO this can be more direct in Go 1.2
-		h := sha256.New()
+		h := sha512.New()
 		h.Write([]byte(pk))
 		pkHash := hex.EncodeToString(h.Sum(nil))
 		if pkHash != ballotID {
@@ -326,9 +326,9 @@ func verifySignatureHeaders(r *http.Request) error {
 
 // Given a public key a message and a signature, verify that the message has been signed with the signature
 func VerifySignature(pubkey *rsa.PublicKey, message []byte, sig []byte) error {
-	hash := sha256.New()
+	hash := sha512.New()
 	hash.Write(message)
-	return rsa.VerifyPKCS1v15(pubkey, crypto.SHA256, hash.Sum(nil), sig)
+	return rsa.VerifyPKCS1v15(pubkey, crypto.SHA512, hash.Sum(nil), sig)
 }
 
 // Parses a DER encoded public key. These values are typically found in PEM blocks with "BEGIN PUBLIC KEY".
