@@ -1,6 +1,8 @@
 VoteFlow
 ========
 
+WARNING: WORK IN PROGRESS!
+
 VoteFlow is comprised of the following independant components: 
 
 Identity Server
@@ -89,7 +91,7 @@ openssl genrsa -out private.key 1024
 #Generate public-key der file
 openssl rsa -in private.pem -out public.der -outform DER -pubout
 
-#Gernate base64 encoded public key - this is the <public-key> you will pass to the server
+#Gerenate base64 encoded public key - this is the <public-key> you will pass to the server
 base64 rsa-test-2048.pub.der -w0 > public.der.base64
 
 #Generate SHA512 ballot-id from public key. This is your <ballot-id>
