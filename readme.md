@@ -66,13 +66,13 @@ X-Voteflow-Signature: <request-signature>
 <ballot-signature>
 ```
 
-`<election-id>` is the unique identifier for this election / decition.
+`<election-id>` is the unique identifier for this election / decision.
 
 `<ballot-id>` is the unqiue ID of this ballot. It is the (hex-encoded) SHA512 hash of this voter's public key for this vote.
 
-`<public-key>` is voter's public key for this vote. It is base64 encoded and contains no line breaks.
+`<public-key>` is the voter's rsa public key for this vote. It is base64 encoded and contains no line breaks.
 
-`<request-signature>` is the base4 encoded signature for the request (but not the ballot). Using their private-key, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where <METHOD> is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd5856150b4e1ec26` would result in the signature `fhn8oPeINjq+5QbW5O4ZUcILBlQxzboqKhAtlY0yqxEq8u5lGQ3YeqgX7A6fVnWdAYmjcljTdBG9ZP9Tqsh8b/Lhcsqs7s6OR6ZdVUFFTlCrrEDFiVD/x9mchcTrb89stXX12yeLLxDs7oH37pKK7ZRch5yCuyfDB4vsyaIPb7Ggzi3vH5o3KmI3D3ewag/Y2d0naLyzGv8YywD5UHV5uCvEvXuXt3470qx0jB+p1f1H9yq/gOi2oY4CUhTCjutKbvH3A68M7XBAJI/b49JYOsRHfyWzlTges+tLrZ9eOKQH0qU0lczuh10ODnAWNY9sn3GDDUtp2HYNbzQCx1elFQ==`.
+`<request-signature>` is the base64 encoded signature for the request (but not the ballot). Using their RSA private-key and SHA512, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where <METHOD> is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd5856150b4e1ec26` would result in the signature `fhn8oPeINjq+5QbW5O4ZUcILBlQxzboqKhAtlY0yqxEq8u5lGQ3YeqgX7A6fVnWdAYmjcljTdBG9ZP9Tqsh8b/Lhcsqs7s6OR6ZdVUFFTlCrrEDFiVD/x9mchcTrb89stXX12yeLLxDs7oH37pKK7ZRch5yCuyfDB4vsyaIPb7Ggzi3vH5o3KmI3D3ewag/Y2d0naLyzGv8YywD5UHV5uCvEvXuXt3470qx0jB+p1f1H9yq/gOi2oY4CUhTCjutKbvH3A68M7XBAJI/b49JYOsRHfyWzlTges+tLrZ9eOKQH0qU0lczuh10ODnAWNY9sn3GDDUtp2HYNbzQCx1elFQ==`.
 
 `<votes>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
 
@@ -80,4 +80,24 @@ X-Voteflow-Signature: <request-signature>
 
 `<request-signature>` is the base64 encoded signature of the entire message body up to this point (excluding headers and the linebreak immidiately preceding the signature). 
 
+Generating Crypto Keys
+----------------------
+```bash
+#Generate private-key. This is your private key. Keep it secret, keep it safe.
+openssl genrsa -out private.key 1024
 
+#Generate public-key der file:
+openssl rsa -in private.pem -out public.der -outform DER -pubout
+
+#Gernate base64 encoded public key - this is the <public-key> you will pass to the server
+base64 rsa-test-2048.pub.der -w0 > public.der.base64
+
+#Generate SHA512 ballot-id from public key. This is your <ballot-id>
+sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
+
+#Generate request text (the -n switch makes sure we don't pad a newline character, which is echo's default behavior)
+echo -n "PUT/12345/<hash-from-public.der.base64.sha512-file-generated-above>" > request.txt
+
+#Sign the request. This is your <request-signature>
+openssl sha -sha512 -sign rsa-test-2048.key < request.txt | base64 -w0 > request.txt.signed
+```
