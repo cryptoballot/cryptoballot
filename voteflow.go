@@ -61,6 +61,7 @@ type Config struct {
 	}
 }
 
+//@@TEST: loading known good config from file
 func (config *Config) loadFromFile(filepath string) (err error) {
 	config.configFile = filepath
 
@@ -309,16 +310,16 @@ func verifySignatureHeaders(r *http.Request) error {
 
 	publicKey, err := PublicKeyFromString(pk)
 	if err != nil {
-		return err
+		return errors.New("Error parsing public key in header. " + err.Error())
 	}
 
 	decodedSig, err := base64.StdEncoding.DecodeString(sig)
 	if err != nil {
-		return err
+		return errors.New("Error parsing request-signature in header. " + err.Error())
 	}
 	err = VerifySignature(publicKey, []byte(r.Method+" "+r.RequestURI), []byte(decodedSig))
 	if err != nil {
-		return err
+		return errors.New("Error verifying signature. " + err.Error())
 	}
 
 	return nil
