@@ -89,17 +89,17 @@ Generating Crypto Keys
 openssl genrsa -out private.key 1024
 
 #Generate public-key der file
-openssl rsa -in private.pem -out public.der -outform DER -pubout
+openssl rsa -in private.key -out public.der -outform DER -pubout
 
 #Gerenate base64 encoded public key - this is the <public-key> you will pass to the server
-base64 rsa-test-2048.pub.der -w0 > public.der.base64
+base64 public.der -w0 > public.der.base64
 
 #Generate SHA512 ballot-id from public key. This is your <ballot-id>
 sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
 
 #Generate request text (the -n switch makes sure we don't pad a newline character, which is echo's default behavior)
-echo -n "PUT /vote/12345/<ballot-id-from-public.der.base64.sha512>" > request.txt
+echo -n PUT /12345/`cat public.der.base64.sha512` > request.txt
 
 #Sign the request. This is your <request-signature>
-openssl sha -sha512 -sign rsa-test-2048.key < request.txt | base64 -w0 > request.txt.signed
+openssl sha -sha512 -sign private.key < request.txt | base64 -w0 > request.txt.signed
 ```
