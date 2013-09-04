@@ -6,7 +6,7 @@ package main
 import (
 	"crypto"
 	"crypto/rsa"
-	"crypto/sha512" //@@TODO: Move both ID and encryption to SHA512
+	"crypto/sha512"
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
