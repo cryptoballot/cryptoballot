@@ -61,7 +61,7 @@ X-Voteflow-Signature: <request-signature>
 
 <public-key>
 
-<votes>
+<vote>
 
 <tags>
 
@@ -76,7 +76,7 @@ X-Voteflow-Signature: <request-signature>
 
 `<request-signature>` is the base64 encoded signature for the request (but not the ballot). Using their RSA private-key and SHA512, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where `<METHOD>` is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd58561...`.
 
-`<votes>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
+`<vote>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
 
 `<tags>` is additional information a voter may wish to attach to the vote in the format of `key="value"`. Each key-value pair goes on a new line. Standardization around commonly understood keys forthcoming. Examples might include the voter's name if they wish to publically forclose their vote.
 
