@@ -4,19 +4,12 @@ package main
 // See https://bitbucket.org/bumble/bumble-golang-common/src/master/key/publickey.go
 
 import (
-	"crypto"
-	"crypto/rsa"
-	"crypto/sha512"
-	"crypto/x509"
 	"database/sql"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/bmizerany/pq"
 	//"github.com/davecgh/go-spew/spew"
-	"github.com/dlintw/goconf"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -24,15 +17,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-type Ballot struct {
-	PublicKey string // base64 encoded PEM formatted public-key
-	ID        string // SHA512 (hex) of base64 encoded public-key
-	Raw       string // Signed, ordered, and line seperated list git addresses
-	Vote      Vote   // Ordered list of choices
-}
-
-type Vote []string // Ordered list of choices represented by git addresses
 
 var (
 	db   *sql.DB
@@ -46,93 +30,6 @@ type parseError struct {
 
 func (err parseError) Error() string {
 	return err.Err
-}
-
-type Config struct {
-	configFile string
-	voteDB     struct {
-		host               string
-		port               int
-		user               string
-		password           string
-		dbname             string
-		sslmode            string
-		maxIdleConnections int
-	}
-}
-
-//@@TEST: loading known good config from file
-func (config *Config) loadFromFile(filepath string) (err error) {
-	config.configFile = filepath
-
-	c, err := goconf.ReadConfigFile(filepath)
-	if err != nil {
-		return
-	}
-
-	config.voteDB.host, err = c.GetString("vote-db", "host")
-	if err != nil {
-		return
-	}
-
-	config.voteDB.port, err = c.GetInt("vote-db", "port")
-	if err != nil {
-		return
-	}
-
-	config.voteDB.user, err = c.GetString("vote-db", "user")
-	if err != nil {
-		return
-	}
-
-	config.voteDB.password, err = c.GetString("vote-db", "password")
-	if err != nil {
-		return
-	}
-
-	config.voteDB.dbname, err = c.GetString("vote-db", "dbname")
-	if err != nil {
-		return
-	}
-
-	config.voteDB.sslmode, err = c.GetString("vote-db", "sslmode")
-	if err != nil {
-		return
-	}
-
-	// For max_idle_connections missing should translates to -1
-	if c.HasOption("vote-db", "max_idle_connections") {
-		config.voteDB.maxIdleConnections, err = c.GetInt("vote-db", "max_idle_connections")
-		if err != nil {
-			return
-		}
-	} else {
-		config.voteDB.maxIdleConnections = -1
-	}
-
-	return
-}
-
-func (config *Config) voteDBConnectionString() (connection string) {
-	if config.voteDB.host != "" {
-		connection = fmt.Sprint(connection, "host=", config.voteDB.host, " ")
-	}
-	if config.voteDB.port != 0 {
-		connection = fmt.Sprint(connection, "port=", config.voteDB.port, " ")
-	}
-	if config.voteDB.user != "" {
-		connection = fmt.Sprint(connection, "user=", config.voteDB.user, " ")
-	}
-	if config.voteDB.password != "" {
-		connection = fmt.Sprint(connection, "password=", config.voteDB.password, " ")
-	}
-	if config.voteDB.dbname != "" {
-		connection = fmt.Sprint(connection, "dbname=", config.voteDB.dbname, " ")
-	}
-	if config.voteDB.sslmode != "" {
-		connection = fmt.Sprint(connection, "sslmode=", config.voteDB.sslmode)
-	}
-	return
 }
 
 func bootstrap() {
@@ -213,11 +110,11 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGETVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID string) {
+func handleGETVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
 	w.Write([]byte("OK, let's GET a vote!"))
 }
 
-func handlePUTVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID string) {
+func handlePUTVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
 	// If X-Voteflow-Public-Key was passed, it's already been verified, so we just need to check that it exists
 	pk := r.Header.Get("X-Voteflow-Public-Key")
 	if pk == "" {
@@ -227,11 +124,11 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ba
 	w.Write([]byte("OK, let's PUT a vote!"))
 }
 
-func handleDELETEVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID string) {
+func handleDELETEVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
 	w.Write([]byte("OK, let's DELETE a vote!"))
 }
 
-func handleHEADVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID string) {
+func handleHEADVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
 	w.Write([]byte("OK, let's DELETE a vote!"))
 }
 
@@ -240,7 +137,7 @@ func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, voteBatchID int6
 }
 
 // returns voteBatchID, BallotID, publicKey (base64 encoded) and an error
-func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID string, err error) {
+func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID BallotID, err error) {
 	// Parse URL and route
 	urlparts := strings.Split(r.RequestURI, "/")
 
@@ -263,28 +160,22 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID string, err 
 	}
 
 	// Get the ballotID (hex encoded SHA512 of base64 encoded public-key)
-	ballotID = urlparts[3]
-
-	// SHA512 is 128 characters long and is a valid hex
-	if len(ballotID) != 128 {
-		err = parseError{"Invalid Ballot ID. A ballot ID is a hex encoded SHA512 of the base64 encoded public-key.", http.StatusBadRequest}
-		return
-	}
-	if _, suberr := hex.DecodeString(ballotID); suberr != nil {
-		err = parseError{"Invalid Ballot ID. " + suberr.Error(), http.StatusBadRequest}
+	ballotID, err = NewBallotID(urlparts[3])
+	if err != nil {
+		err = parseError{"Invalid Ballot ID. " + err.Error(), http.StatusBadRequest}
 		return
 	}
 
 	// If the user has provided a public key in the header (as an authentication), verify it
-	pk := r.Header.Get("X-Voteflow-Public-Key")
-	if pk != "" {
-		// First check to make sure the ballotID and the public-key match (BallotID is SHA512 of public-key)
-		// @@TODO this can be more direct in Go 1.2
-		h := sha512.New()
-		h.Write([]byte(pk))
-		pkHash := hex.EncodeToString(h.Sum(nil))
-		if pkHash != ballotID {
+	if r.Header.Get("X-Voteflow-Public-Key") != "" {
+		pk, suberr := NewPublicKey(r.Header.Get("X-Voteflow-Public-Key"))
+		if suberr != nil {
+			err = parseError{"Invalid Public Key. " + suberr.Error(), http.StatusBadRequest}
+		}
+		// Check to make sure the passed ballotID in the url matches the public key's BallotID
+		if pk.GetBallotID() != ballotID {
 			err = parseError{"The signature and public key provided in the header does not match the Ballot ID in the URL", http.StatusBadRequest}
+			return
 		}
 
 		// Verify the signature headers, do a cryptographic check to make sure the header and Method / URL request is signed
@@ -300,50 +191,23 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID string, err 
 }
 
 func verifySignatureHeaders(r *http.Request) error {
-	pk := r.Header.Get("X-Voteflow-Public-Key")
-	sig := r.Header.Get("X-Voteflow-Signature")
-
-	// If we are verifying a signature, we must have both a public key and a signature in the format of "GET /url/path/requested"
-	if pk == "" || sig == "" {
-		return errors.New("public key or signature header missing")
-	}
-
-	publicKey, err := PublicKeyFromString(pk)
+	pk, err := NewPublicKey(r.Header.Get("X-Voteflow-Public-Key"))
 	if err != nil {
-		return errors.New("Error parsing public key in header. " + err.Error())
+		return errors.New("Error parsing X-Voteflow-Public-Key header. " + err.Error())
 	}
 
-	decodedSig, err := base64.StdEncoding.DecodeString(sig)
+	sig, err := NewSignature(r.Header.Get("X-Voteflow-Signature"))
 	if err != nil {
-		return errors.New("Error parsing request-signature in header. " + err.Error())
+		return errors.New("Error parsing X-Voteflow-Signature header. " + err.Error())
 	}
-	err = VerifySignature(publicKey, []byte(r.Method+" "+r.RequestURI), []byte(decodedSig))
+
+	// Verify the signature against the request string. For example PUT /vote/1234/939fhdsjkksdkl0903f...
+	err = sig.VerifySignature(pk, []byte(r.Method+" "+r.RequestURI))
 	if err != nil {
 		return errors.New("Error verifying signature. " + err.Error())
 	}
 
 	return nil
-}
-
-// Given a public key a message and a signature, verify that the message has been signed with the signature
-func VerifySignature(pubkey *rsa.PublicKey, message []byte, sig []byte) error {
-	hash := sha512.New()
-	hash.Write(message)
-	return rsa.VerifyPKCS1v15(pubkey, crypto.SHA512, hash.Sum(nil), sig)
-}
-
-// Parses a DER encoded public key. These values are typically found in PEM blocks with "BEGIN PUBLIC KEY".
-func PublicKeyFromString(pk string) (*rsa.PublicKey, error) {
-	rawpk, err := base64.StdEncoding.DecodeString(pk)
-	if err != nil {
-		return nil, err
-	}
-
-	pubkey, err := x509.ParsePKIXPublicKey(rawpk)
-	if err != nil {
-		return nil, err
-	}
-	return pubkey.(*rsa.PublicKey), nil
 }
 
 func main() {
