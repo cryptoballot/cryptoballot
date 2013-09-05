@@ -55,11 +55,11 @@ PUT /vote/<election-id>/<ballot-id> HTTP/1.1
 X-Voteflow-Public-Key: <public-key>
 X-Voteflow-Signature: <request-signature>
 
-<public-key>
-
 <election-id>
 
 <ballot-id>
+
+<public-key>
 
 <votes>
 
