@@ -5,7 +5,7 @@ WARNING: WORK IN PROGRESS!
 
 VoteFlow is comprised of the following independant components: 
 
-Identity Server
+Identity Server (Voter registry)
 ---------------
   - Primarily composed of a voter database and a mechanism for voters to supply public key(s).
   - A voter may supply any number of public keys (one key per vote for maximum anonymity)
@@ -26,7 +26,7 @@ Git Server
   - Risks include:
      - If push access to a respotiroy is comprimised, clumsy client software may acidentally encourage users to update their vote to point to the "tip" of the repository, even though that tip content may be significantly different in intent that what they originally voted for. This is low risk since such tampering is likely to be quickly discovered and rectified.
 
-Voting Server
+Voting Server (Ballot Box)
 -------------
  - Recives votes signed with pulic key and checks the validity of the vote against the identity server.
  - All votes are identified using a Public Key - no furthur identifying information is provided. 
@@ -37,6 +37,7 @@ Voting Server
  - When votes are ready to be counted all votes are "unsealed" in their entirety and published. Any 3rd party may then count the votes and tally the results.
  - Risks include:
     - Voter identity discovery through data-mining / analysis of unsealed votes.
+    - An attack exists whereby if a voter has cast a ballot then subsequently changed or deleted their ballot and an attacker has comprimised either the ballot-box server or the TLS/SSL between the ballot-box server and the client, an attacker could "reset" the voter's vote back to their previous ballot. The attacker would gain early access to the public-key signed vote, then "replay" this vote-casting after the client has changed their vote. After the voting ends and the votes are unsealed, the attacker would then have to perform a man-in-the-middle attack against the client verifying their vote to make it appear that the clients latest vote was counted, whereas in reality their previous vote (the was replayed by the attacker) is the one that was counted. This attack can be prevented by having the ballot-box sever publish the SHA512 of the entire ballot-box when voting ends and the votes are revealed, and having the client verify both their vote with the ballot-box server AND the SHA512 of the entire ballot-box with other peer clients.
 
 User-interface / client software
 --------------------------------
