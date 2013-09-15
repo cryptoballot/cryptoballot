@@ -138,7 +138,7 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 		return
 	}
 
-	w.Write(body)
+	w.Write([]byte(ballot.String()))
 }
 
 func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
