@@ -37,6 +37,7 @@ Voting Server (Ballot Box)
  - When votes are ready to be counted all votes are "unsealed" in their entirety and published. Any 3rd party may then count the votes and tally the results.
  - Risks include:
     - Voter identity discovery through data-mining / analysis of unsealed votes.
+    - Voter identity discovery via ip address if either ballot-box server or ssl/tls comprimise. A tor hidden service should be provided in order to mitigate this attack.
     - An attack exists whereby if a voter has cast a ballot then subsequently changed or deleted their ballot and an attacker has comprimised either the ballot-box server or the TLS/SSL between the ballot-box server and the client, an attacker could "reset" the voter's vote back to their previous ballot. The attacker would gain early access to the public-key signed vote, then "replay" this vote-casting after the client has changed their vote. After the voting ends and the votes are unsealed, the attacker would then have to perform a man-in-the-middle attack against the client verifying their vote to make it appear that the clients latest vote was counted, whereas in reality their previous vote (the was replayed by the attacker) is the one that was counted. This attack can be prevented by having the ballot-box sever publish the SHA512 of the entire ballot-box when voting ends and the votes are revealed, and having the client verify both their vote with the ballot-box server AND the SHA512 of the entire ballot-box with other peer clients.
 
 User-interface / client software
