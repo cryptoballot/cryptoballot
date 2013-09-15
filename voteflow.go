@@ -10,17 +10,21 @@ import (
 	"fmt"
 	"github.com/bmizerany/pq"
 	//"github.com/davecgh/go-spew/spew"
+	"bytes"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 )
 
 var (
 	db   *sql.DB
 	conf Config
+)
+
+const (
+	minPublicKeyBits = 1024
 )
 
 type parseError struct {
@@ -79,16 +83,16 @@ func bootstrap() {
 func voteHandler(w http.ResponseWriter, r *http.Request) {
 	//@@TODO: Check r.TLS
 
-	voteBatchID, ballotID, err := parseVoteRequest(r)
+	electionID, ballotID, err := parseVoteRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), err.(parseError).Code)
 		return
 	}
 
-	// If there is no ballotID and we are GETing, just return the full-list of votes for the voteBatchID
-	if ballotID == "" {
+	// If there is no ballotID and we are GETing, just return the full-list of votes for the electionID
+	if ballotID == nil {
 		if r.Method == "GET" {
-			handleGETVoteBatch(w, r, voteBatchID)
+			handleGETVoteBatch(w, r, electionID)
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -97,24 +101,24 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// We are dealing with an individual vote
 	if r.Method == "GET" {
-		handleGETVote(w, r, voteBatchID, ballotID)
+		handleGETVote(w, r, electionID, ballotID)
 	} else if r.Method == "PUT" {
-		handlePUTVote(w, r, voteBatchID, ballotID)
+		handlePUTVote(w, r, electionID, ballotID)
 	} else if r.Method == "DELETE" {
-		handleDELETEVote(w, r, voteBatchID, ballotID)
+		handleDELETEVote(w, r, electionID, ballotID)
 	} else if r.Method == "HEAD" {
-		handleHEADVote(w, r, voteBatchID, ballotID)
+		handleHEADVote(w, r, electionID, ballotID)
 	} else {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 }
 
-func handleGETVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
+func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
 	w.Write([]byte("OK, let's GET a vote!"))
 }
 
-func handlePUTVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
+func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
 	// If X-Voteflow-Public-Key was passed, it's already been verified, so we just need to check that it exists
 	pk := r.Header.Get("X-Voteflow-Public-Key")
 	if pk == "" {
@@ -124,20 +128,20 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ba
 	w.Write([]byte("OK, let's PUT a vote!"))
 }
 
-func handleDELETEVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
+func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
 	w.Write([]byte("OK, let's DELETE a vote!"))
 }
 
-func handleHEADVote(w http.ResponseWriter, r *http.Request, voteBatchID int64, ballotID BallotID) {
+func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
 	w.Write([]byte("OK, let's DELETE a vote!"))
 }
 
-func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, voteBatchID int64) {
+func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID string) {
 	w.Write([]byte("Full vote batch response to go here"))
 }
 
-// returns voteBatchID, BallotID, publicKey (base64 encoded) and an error
-func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID BallotID, err error) {
+// returns electionID, BallotID, publicKey (base64 encoded) and an error
+func parseVoteRequest(r *http.Request) (electionID string, ballotID BallotID, err error) {
 	// Parse URL and route
 	urlparts := strings.Split(r.RequestURI, "/")
 
@@ -147,20 +151,16 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID BallotID, er
 		return
 	}
 
-	// Get the voteBatchID
-	voteBatchID, suberr := strconv.ParseInt(urlparts[2], 10, 64)
-	if suberr != nil {
-		err = parseError{"Vote Batch ID must be numeric. : " + suberr.Error(), http.StatusBadRequest}
-		return
-	}
+	// Get the electionID
+	electionID = urlparts[2]
 
-	// If we are only length 3, that's it, we are only asking for a voteBatch
+	// If we are only length 3, that's it, we are asking for a full report / ballot roll for an election
 	if len(urlparts) == 3 {
 		return
 	}
 
 	// Get the ballotID (hex encoded SHA512 of base64 encoded public-key)
-	ballotID, err = NewBallotID(urlparts[3])
+	ballotID, err = NewBallotID([]byte(urlparts[3]))
 	if err != nil {
 		err = parseError{"Invalid Ballot ID. " + err.Error(), http.StatusBadRequest}
 		return
@@ -168,12 +168,12 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID BallotID, er
 
 	// If the user has provided a public key in the header (as an authentication), verify it
 	if r.Header.Get("X-Voteflow-Public-Key") != "" {
-		pk, suberr := NewPublicKey(r.Header.Get("X-Voteflow-Public-Key"))
+		pk, suberr := NewPublicKey([]byte(r.Header.Get("X-Voteflow-Public-Key")))
 		if suberr != nil {
 			err = parseError{"Invalid Public Key. " + suberr.Error(), http.StatusBadRequest}
 		}
 		// Check to make sure the passed ballotID in the url matches the public key's BallotID
-		if pk.GetBallotID() != ballotID {
+		if !bytes.Equal(pk.GetBallotID(), ballotID) {
 			err = parseError{"The signature and public key provided in the header does not match the Ballot ID in the URL", http.StatusBadRequest}
 			return
 		}
@@ -191,12 +191,12 @@ func parseVoteRequest(r *http.Request) (voteBatchID int64, ballotID BallotID, er
 }
 
 func verifySignatureHeaders(r *http.Request) error {
-	pk, err := NewPublicKey(r.Header.Get("X-Voteflow-Public-Key"))
+	pk, err := NewPublicKey([]byte(r.Header.Get("X-Voteflow-Public-Key")))
 	if err != nil {
 		return errors.New("Error parsing X-Voteflow-Public-Key header. " + err.Error())
 	}
 
-	sig, err := NewSignature(r.Header.Get("X-Voteflow-Signature"))
+	sig, err := NewSignature([]byte(r.Header.Get("X-Voteflow-Signature")))
 	if err != nil {
 		return errors.New("Error parsing X-Voteflow-Signature header. " + err.Error())
 	}

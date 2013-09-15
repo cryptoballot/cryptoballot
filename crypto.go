@@ -10,28 +10,37 @@ import (
 	"errors"
 )
 
-type PublicKey string
+type PublicKey []byte
 
 // Given a string, return a new PublicKey object.
 // This function also performs error checking to make sure the key is valid.
-// @@TODO: Reject keys that are under 4096 bits in size
-func NewPublicKey(pkstr string) (PublicKey, error) {
-	if pkstr == "" {
-		return "", errors.New("No public key provided")
+func NewPublicKey(pkRaw []byte) (PublicKey, error) {
+	if len(pkRaw) < base64.StdEncoding.EncodedLen(minPublicKeyBits/8) {
+		return nil, errors.New("Public Key too short. Try using more bits.")
 	}
 
-	pk := PublicKey(pkstr)
+	pk := PublicKey(pkRaw)
 
 	if _, err := pk.getCryptoKey(); err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return pk, nil
 }
 
+// Implements Stringer
+func (pk PublicKey) String() string {
+	return string(pk)
+}
+
 // Extract the raw bytes out of the base64 encoded public key
 func (pk PublicKey) GetBytes() ([]byte, error) {
-	return base64.StdEncoding.DecodeString(string(pk))
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(pk)))
+	n, err := base64.StdEncoding.Decode(dbuf, pk)
+	if err != nil {
+		return nil, err
+	}
+	return dbuf[:n], nil
 }
 
 // Parse the PublicKey (which is stored as a base64 string) into a rsa.PublicKey object, ready to be used for crypto functions
@@ -48,29 +57,41 @@ func (pk PublicKey) getCryptoKey() (*rsa.PublicKey, error) {
 }
 
 // Get the corresponding BallotID, which is the (hex encoded) SHA512 of the (base64 encoded) public key.
+// @@TODO this can be more direct in Go 1.2
 func (pk PublicKey) GetBallotID() BallotID {
-	// @@TODO this can be more direct in Go 1.2
 	h := sha512.New()
 	h.Write([]byte(pk))
-	return BallotID(hex.EncodeToString(h.Sum(nil)))
+	sha512hex := make([]byte, 128)
+	hex.Encode(sha512hex, h.Sum(nil))
+	return BallotID(sha512hex)
 }
 
-type Signature string
+type Signature []byte
 
-func NewSignature(sigstr string) (Signature, error) {
-	if sigstr == "" {
-		return "", errors.New("Signature not provided")
+func NewSignature(rawSignature []byte) (Signature, error) {
+	if len(rawSignature) < base64.StdEncoding.EncodedLen(128) {
+		return nil, errors.New("Signature too short")
 	}
-	sig := Signature(sigstr)
+	sig := Signature(rawSignature)
 	if _, err := sig.GetBytes(); err != nil {
-		return "", err
+		return nil, err
 	}
 	return sig, nil
 }
 
+// Implements Stringer
+func (sig Signature) String() string {
+	return string(sig)
+}
+
 // Extract the raw bytes out of the base64 encoded signature
 func (sig Signature) GetBytes() ([]byte, error) {
-	return base64.StdEncoding.DecodeString(string(sig))
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(sig)))
+	n, err := base64.StdEncoding.Decode(dbuf, sig)
+	if err != nil {
+		return nil, err
+	}
+	return dbuf[:n], nil
 }
 
 func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
