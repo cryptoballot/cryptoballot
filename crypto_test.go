@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
-	"github.com/davecgh/go-spew/spew"
 	"testing"
 )
 
@@ -46,7 +45,7 @@ func TestBadPublicKey(t *testing.T) {
 		t.Errorf("Invalid public key did not return error")
 	}
 	if string(pk) != "" {
-		t.Errorf("Invalid public should return empty string")
+		t.Errorf("Invalid public should return empty")
 	}
 }
 
@@ -63,8 +62,6 @@ func TestGoodSignature(t *testing.T) {
 
 	gooddecode, _ := base64.StdEncoding.DecodeString(string(goodSig))
 	if !bytes.Equal(sigbytes, gooddecode) {
-		spew.Dump(gooddecode)
-		spew.Dump(sigbytes)
 		t.Errorf("bas64 decoding for signature is wrong")
 	}
 
