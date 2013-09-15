@@ -4,13 +4,13 @@ package main
 // See https://bitbucket.org/bumble/bumble-golang-common/src/master/key/publickey.go
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/bmizerany/pq"
 	//"github.com/davecgh/go-spew/spew"
-	"bytes"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -125,15 +125,35 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 		http.Error(w, "X-Voteflow-Public-Key header required for PUT operations", http.StatusBadRequest)
 		return
 	}
-	w.Write([]byte("OK, let's PUT a vote!"))
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ballot, err := NewBallot(body)
+	if err != nil {
+		http.Error(w, "Error reading ballot. "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Write(body)
 }
 
 func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
+	// If X-Voteflow-Public-Key was passed, it's already been verified, so we just need to check that it exists
+	pk := r.Header.Get("X-Voteflow-Public-Key")
+	if pk == "" {
+		http.Error(w, "X-Voteflow-Public-Key header required for DELETE operations", http.StatusBadRequest)
+		return
+	}
+
 	w.Write([]byte("OK, let's DELETE a vote!"))
 }
 
 func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
-	w.Write([]byte("OK, let's DELETE a vote!"))
+	w.Write([]byte("OK, let's HEAD a vote!"))
 }
 
 func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID string) {

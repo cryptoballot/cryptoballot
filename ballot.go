@@ -80,16 +80,34 @@ func NewBallot(rawBallot []byte) (Ballot, error) {
 		return Ballot{}, err
 	}
 
-	// @@TODO - Verify signature
-
-	return Ballot{
+	ballot := Ballot{
 		electionID,
 		ballotID,
 		publicKey,
 		vote,
 		tagSet,
 		signature,
-	}, nil
+	}
+
+	// Verify the signature
+	if err = ballot.VerifySignature(); err != nil {
+		return Ballot{}, err
+	}
+
+	// All checks pass
+	return ballot, nil
+}
+
+func (ballot Ballot) VerifySignature() error {
+	s := []string{
+		ballot.ElectionID,
+		ballot.BallotID.String(),
+		ballot.PublicKey.String(),
+		ballot.Vote.String(),
+		ballot.TagSet.String(),
+	}
+
+	return ballot.Signature.VerifySignature(ballot.PublicKey, []byte(strings.Join(s, "\n\n")))
 }
 
 func (ballot Ballot) String() string {
@@ -133,7 +151,7 @@ func (vote Vote) String() string {
 	var output string
 	for i, voteItem := range vote {
 		output += string(voteItem)
-		if i != len(vote) {
+		if i != len(vote)-1 {
 			output += "\n"
 		}
 	}
@@ -186,7 +204,7 @@ func (tagSet TagSet) String() string {
 	var output string
 	for i, tag := range tagSet {
 		output += tag.String()
-		if i != len(tagSet) {
+		if i != len(tagSet)-1 {
 			output += "\n"
 		}
 	}
