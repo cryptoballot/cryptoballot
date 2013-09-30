@@ -15,17 +15,6 @@ Identity Server (Voter registry)
      - Account highjacking. This can be mitigated by user-management best practices including 2 factor authentication and email-notifications.
      - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity.
 
-Git Server
-----------
-  - Plain old git server.
-  - Each "proposal" is merely a git repository that users may collaboratively edit (through pull requests, forking and the usual means).
-  - Public keys may or may not match those stored in Identity server. Users may choose to seperate these concerns for additional security and anonymity.
-  - Updating git is entirely independant from voting (although they may optionally be tied together by end-client UI software).
-  - Client software may want to have an alert be sent to the user to "update their vote" if their vote no longer points to the "tip" of the repository.
-  - Using git ensures that the text-content of proposals are tamper resistant.
-  - Risks include:
-     - If push access to a respotiroy is comprimised, clumsy client software may acidentally encourage users to update their vote to point to the "tip" of the repository, even though that tip content may be significantly different in intent that what they originally voted for. This is low risk since such tampering is likely to be quickly discovered and rectified.
-
 Voting Server (Ballot Box)
 -------------
  - Recives votes signed with pulic key and checks the validity of the vote against the identity server.
@@ -39,6 +28,18 @@ Voting Server (Ballot Box)
     - Voter identity discovery through data-mining / analysis of unsealed votes.
     - Voter identity discovery via ip address if either ballot-box server or ssl/tls comprimise. A tor hidden service should be provided in order to mitigate this attack.
     - An attack exists whereby if a voter has cast a ballot then subsequently changed or deleted their ballot and an attacker has comprimised either the ballot-box server or the TLS/SSL between the ballot-box server and the client, an attacker could "reset" the voter's vote back to their previous ballot. The attacker would gain early access to the public-key signed vote, then "replay" this vote-casting after the client has changed their vote. After the voting ends and the votes are unsealed, the attacker would then have to perform a man-in-the-middle attack against the client verifying their vote to make it appear that the clients latest vote was counted, whereas in reality their previous vote (the was replayed by the attacker) is the one that was counted. This attack can be prevented by having the ballot-box sever publish the SHA512 of the entire ballot-box when voting ends and the votes are revealed, and having the client verify both their vote with the ballot-box server AND the SHA512 of the entire ballot-box with other peer clients.
+
+Git Server (Initiative / ballot creation)
+----------------------------
+  - Plain old git server.
+  - Each "proposal" is merely a git repository that users may collaboratively edit (through pull requests, forking and the usual means).
+  - Public keys may or may not match those stored in Identity server. Users may choose to seperate these concerns for additional security and anonymity.
+  - Updating git is entirely independant from voting (although they may optionally be tied together by end-client UI software).
+  - Client software may want to have an alert be sent to the user to "update their vote" if their vote no longer points to the "tip" of the repository.
+  - Using git ensures that the text-content of proposals are tamper resistant.
+  - Risks include:
+     - If push access to a respotiroy is comprimised, clumsy client software may acidentally encourage users to update their vote to point to the "tip" of the repository, even though that tip content may be significantly different in intent that what they originally voted for. This is low risk since such tampering is likely to be quickly discovered and rectified.
+
 
 User-interface / client software
 --------------------------------
