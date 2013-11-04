@@ -17,7 +17,8 @@ CrytoBallot is comprised of the following independant components:
 VoterList Server (Voter registry)
 ---------------------------------
   - Primarily composed of a voter database and a mechanism for voters to supply public key(s).
-  - Access to the VoterList should be limited to a verified list of Auditors who can verify the integrity of the VoterList database. Optionally the entire VoterList could be made public.
+  - Access to the VoterList should be limited to a verified list of Auditors who can verify the integrity of the VoterList database. Optionally the entire VoterList could be made public if so desired.
+  - VoterList should allow anyone to verify that a public-key is active and valid, but should not disclose the identity of the voter with that public key.
   - Risks include:
      - Account highjacking. This can be mitigated by user-management best practices including 2 factor authentication and email-notifications.
      - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity. 
@@ -29,6 +30,7 @@ BallotClerk Server (Ballot signing)
   - The ballot may be blinded before it is submitted, guaranteeing that the ballot is fully anonymous once it is cast
   - Each client will create and sign a Signature Request with their public-key on file with the VoterList.
   - The BallotClerk will verify the request and provide the voter with a signed ballot. The user will then unblind this ballot and submit it to the BallotBox.
+  - The BallotClerk publishes the full list of Signature Requests once an election is ended. This allows voters to verify that the total number of signed ballots matches the number of ballots tallied by the BalltoBox.
 
 BallotBox Server
 ----------------
