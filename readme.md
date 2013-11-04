@@ -1,33 +1,47 @@
-VoteFlow
-========
+CryptoBallot
+===========
 
 WARNING: WORK IN PROGRESS!
 
-VoteFlow is comprised of the following independant components: 
+Features
+--------
+ - All votes are anoymous with an option for the voter to mark their ballot as public.
+ - All voters can verify that their vote has been counted
+ - All voters can verify that all the votes have been tallied correctly
+ - All voters can verify that the total number of signed ballots matches the number of votes cast.
+ - Auditors with access to the Voters List can verify the identities of all voters who cast a ballot, but cannot match which ballot belongs to which voter. 
 
-Identity Server (Voter registry)
----------------
+
+CrytoBallot is comprised of the following independant components: 
+
+VoterList Server (Voter registry)
+---------------------------------
   - Primarily composed of a voter database and a mechanism for voters to supply public key(s).
-  - A voter may supply any number of public keys (one key per vote for maximum anonymity)
-  - When vote is over and the results finalized, stored public keys can be purged (so all old votes become irreversably anonymized).
-  - Any client may check any public-key to verify it is allowed to vote (and what the vote-weight is if being used).
+  - Access to the VoterList should be limited to a verified list of Auditors who can verify the integrity of the VoterList database. Optionally the entire VoterList could be made public.
   - Risks include:
      - Account highjacking. This can be mitigated by user-management best practices including 2 factor authentication and email-notifications.
-     - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity.
+     - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity. 
 
-Voting Server (Ballot Box)
--------------
- - Recives votes signed with pulic key and checks the validity of the vote against the identity server.
- - All votes are identified using a Public Key - no furthur identifying information is provided. 
+
+BallotClerk Server (Ballot signing)
+----------------------------
+  - Each client, before submitting their ballot to the BallotBox must first have it signed by the BallotClerk.
+  - The ballot may be blinded before it is submitted, guaranteeing that the ballot is fully anonymous once it is cast
+  - Each client will create and sign a Signature Request with their public-key on file with the VoterList.
+  - The BallotClerk will verify the request and provide the voter with a signed ballot. The user will then unblind this ballot and submit it to the BallotBox.
+
+BallotBox Server
+----------------
+ - Recives votes signed with BallotClerk key and checks the validity of the submitted ballot.
+ - All ballots are identified using a randomly user generated ID and not two ballots may share this ID. This is to prevent signed ballot copying / stuffing. 
  - All votes are an ordered list of git urls and commits (/path/to/repo:commit-hash)
- - Any client may request to see their "vote on file", provided such a request is signed with their key.
- - Existing votes may be updated at any time (before counting / tallying takes place).
- - All votes are "sealed" until the votes are ready to be counted. Some clients may choose to make their vote "public".
- - When votes are ready to be counted all votes are "unsealed" in their entirety and published. Any 3rd party may then count the votes and tally the results.
+ - Any client may request to see their "ballot on file". Since all ballots are keyed by a random string, the ballots are essentially private until revealed.
+ - Existing ballot may be updated at any time (before counting / tallying takes place). This is accomplished by getting a new ballot signed that includes an revokation of the previous ballot.
+ - All ballots are "sealed" until the votes are ready to be counted. Some clients may choose to make their vote "public" by tagging it as such. 
+ - When ballots are ready to be counted all votes are "unsealed" in their entirety and published. Any 3rd party may then count the votes and tally the results.
  - Risks include:
-    - Voter identity discovery through data-mining / analysis of unsealed votes.
     - Voter identity discovery via ip address if either ballot-box server or ssl/tls comprimise. A tor hidden service should be provided in order to mitigate this attack.
-    - An attack exists whereby if a voter has cast a ballot then subsequently changed or deleted their ballot and an attacker has comprimised either the ballot-box server or the TLS/SSL between the ballot-box server and the client, an attacker could "reset" the voter's vote back to their previous ballot. The attacker would gain early access to the public-key signed vote, then "replay" this vote-casting after the client has changed their vote. After the voting ends and the votes are unsealed, the attacker would then have to perform a man-in-the-middle attack against the client verifying their vote to make it appear that the clients latest vote was counted, whereas in reality their previous vote (the was replayed by the attacker) is the one that was counted. This attack can be prevented by having the ballot-box sever publish the SHA512 of the entire ballot-box when voting ends and the votes are revealed, and having the client verify both their vote with the ballot-box server AND the SHA512 of the entire ballot-box with other peer clients.
+
 
 Git Server (Initiative / ballot creation)
 ----------------------------
