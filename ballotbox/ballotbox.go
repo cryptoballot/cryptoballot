@@ -9,7 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/bmizerany/pq"
+	"github.com/lib/pq"
 	//"github.com/davecgh/go-spew/spew"
 	"io/ioutil"
 	"log"
@@ -135,6 +135,11 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	ballot, err := NewBallot(body)
 	if err != nil {
 		http.Error(w, "Error reading ballot. "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := ballot.SaveToDB(); err != nil {
+		http.Error(w, "Error saving ballot. "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 

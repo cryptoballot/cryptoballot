@@ -10,31 +10,29 @@ import (
 	"strings"
 )
 
-var (
-	// election-id (max 128 bytes) + base64-of-a-8096-bit-public-key + SHA512-BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
-	maxTagKeySize   = 64
-	maxTagValueSize = 256
-	maxBallotSize   = (128) + (1352) + (128) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + (128 + (172)) + (18 + 64 + 64)
-)
-
-type Ballot struct {
+type SignatureRequest struct {
 	ElectionID string
-	BallotID   // SHA512 (hex) of base64 encoded public-key
-	PublicKey  // base64 encoded PEM formatted public-key
-	Vote       // Ordered list of choices
-	TagSet
-	Signature // Crypto signature for the ballot
+	RequestID         // SHA512 (hex) of base64 encoded public-key
+	PublicKey         // base64 encoded PEM formatted public-key
+	Ballot     []byte // base64 encoded ballot blob, it could be either blinded or unblinded.
+	Signature         // Voter signature for the ballot request
 }
+
+type RequestID []byte
+
+type PublicKey []byte
+
+type Signature []byte
 
 // Given a raw ballot-string (as a []byte) (see documentation for format), return a new Ballot.
 // Generally the ballot-string is coming from a client in a PUT body.
 // This will also verify the signature on the ballot and return an error if the ballot does not pass crypto verification
-func NewBallot(rawBallot []byte) (Ballot, error) {
+func NewSignatureRequest(rawSignatureRequest []byte) (SignatureRequest, error) {
 	var (
 		hasTags    bool
 		err        error
 		electionID string
-		ballotID   BallotID
+		requestID  RequestID
 		publicKey  PublicKey
 		vote       Vote
 		tagSet     TagSet
@@ -104,11 +102,6 @@ func NewBallot(rawBallot []byte) (Ballot, error) {
 	return ballot, nil
 }
 
-// Load a ballot from the backend postgres database - returns a pointer to a ballot.
-func LoadBallotFromDB(ElectionID string, BallotID BallotID) (*Ballot, error) {
-	
-}
-
 func (ballot *Ballot) VerifySignature() error {
 	s := []string{
 		ballot.ElectionID,
@@ -170,106 +163,4 @@ func NewBallotID(rawBallotID []byte) (BallotID, error) {
 
 func (ballotID BallotID) String() string {
 	return string(ballotID)
-}
-
-type Vote [][]byte // Ordered list of choices represented by git addresses
-
-func NewVote(rawVote []byte) (Vote, error) {
-	return Vote(bytes.Split(rawVote, []byte("\n"))), nil
-}
-
-func (vote *Vote) String() string {
-	var output string
-	for i, voteItem := range *vote {
-		output += string(voteItem)
-		if i != len(*vote)-1 {
-			output += "\n"
-		}
-	}
-	return output
-}
-
-type Tag struct {
-	Key   []byte
-	Value []byte
-}
-
-func NewTag(rawTag []byte) (Tag, error) {
-	parts := bytes.SplitN(rawTag, []byte("="), 2)
-	if len(parts) != 2 {
-		return Tag{}, errors.New("Malformed tag")
-	}
-	if len(parts[0]) > maxTagKeySize {
-		return Tag{}, errors.New("Tag key too long")
-	}
-	if len(parts[1]) > maxTagValueSize {
-		return Tag{}, errors.New("Tag value too long")
-	}
-
-	return Tag{
-		parts[0],
-		parts[1],
-	}, nil
-}
-
-func (tag *Tag) String() string {
-	return string(tag.Key) + "=" + string(tag.Value)
-}
-
-type TagSet []Tag
-
-func NewTagSet(rawTagSet []byte) (TagSet, error) {
-	parts := bytes.Split(rawTagSet, []byte("\n"))
-	tagSet := TagSet(make([]Tag, len(parts)))
-	for i, rawTag := range parts {
-		tag, err := NewTag(rawTag)
-		if err != nil {
-			return TagSet{}, err
-		}
-		tagSet[i] = tag
-	}
-	return tagSet, nil
-}
-
-func (tagSet *TagSet) Keys() [][]byte {
-	output := make([][]byte, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = tag.Key
-	}
-	return output
-}
-
-func (tagSet *TagSet) KeyStrings() []string {
-	output := make([]string, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = string(tag.Key)
-	}
-	return output
-}
-
-func (tagSet *TagSet) Values() [][]byte {
-	output := make([][]byte, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = tag.Value
-	}
-	return output
-}
-
-func (tagSet *TagSet) ValueStrings() []string {
-	output := make([]string, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = string(tag.Value)
-	}
-	return output
-}
-
-func (tagSet *TagSet) String() string {
-	var output string
-	for i, tag := range *tagSet {
-		output += tag.String()
-		if i != len(*tagSet)-1 {
-			output += "\n"
-		}
-	}
-	return output
 }
