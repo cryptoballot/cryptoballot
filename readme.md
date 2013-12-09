@@ -21,7 +21,9 @@ VoterList Server (Voter registry)
   - VoterList should allow anyone to verify that a public-key is active and valid, but should not disclose the identity of the voter with that public key.
   - Risks include:
      - Account highjacking. This can be mitigated by user-management best practices including 2 factor authentication and email-notifications.
-     - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity. 
+     - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity.
+
+
 
 
 BallotClerk Server (Ballot signing)
@@ -32,17 +34,89 @@ BallotClerk Server (Ballot signing)
   - The BallotClerk will verify the request and provide the voter with a signed ballot. The user will then unblind this ballot and submit it to the BallotBox.
   - The BallotClerk publishes the full list of Signature Requests once an election is ended. This allows voters to verify that the total number of signed ballots matches the number of ballots tallied by the BalltoBox.
 
+
+POSTing a Signature Request takes the following form:
+```http
+POST /sign/<election-id>
+
+<election-id>
+
+<request-id>
+
+<voter-public-key>
+
+<unsigned-ballot> (Could be blinded or unblinded)
+
+<voter-signature>
+```
+
+The server will respond with a Fufilled Signature Request, which takes the following form:
+
+```
+<signature-request>
+
+<ballot-signature>
+```
+
+`<election-id>` is the unique identifier for this election / decision.
+
+`<request-id>` is the unique identifier for this Signature Request. It is the (hex encoded) SHA-512 of the voter-public-key.
+
+`<voter-public-key>` is the voter's rsa public key for this vote. It is base64 encoded and contains no line breaks.
+
+`<unsigned-ballot>` is the ballot to be signed. It is encoded as a base64 binary blob and contains no line breaks. Generally it is blinded, but if a voter does not desire anonimity, they may choose just to base64 encode an unblinded ballot. See below under "BallotBox Server" for the ballot specification.
+
+`<voter-signature>` is the base64 encoded signature of the entire body up to this point (excluding headers and the linebreak immidiately preceding the signature). 
+
+
+The BallotClerk Server also exposes the following service points
+
+`GET /sigs/<election-id>` provides the full list of all Fufilled Signature Requests for the election. This service point is only available to the public after the election is over.
+
+`GET /sigs/<election-id>/<request-id>` provides access to a single Fufilled Signature Request. A user may use this to regain a lost ballot-signature. They will have to attach a X-CryptoBallot-Signature header which signs the string `GET /sigs/<election-id>/<request-id>` with their public key. 
+
+
+
 BallotBox Server
 ----------------
  - Recives votes signed with BallotClerk key and checks the validity of the submitted ballot.
  - All ballots are identified using a randomly user generated ID and not two ballots may share this ID. This is to prevent signed ballot copying / stuffing. 
  - All votes are an ordered list of git urls and commits (/path/to/repo:commit-hash)
- - Any client may request to see their "ballot on file". Since all ballots are keyed by a random string, the ballots are essentially private until revealed.
+ - Any client may request to see their "ballot on file". 
  - Existing ballot may be updated at any time (before counting / tallying takes place). This is accomplished by getting a new ballot signed that includes an revokation of the previous ballot.
  - All ballots are "sealed" until the votes are ready to be counted. Some clients may choose to make their vote "public" by tagging it as such. 
  - When ballots are ready to be counted all votes are "unsealed" in their entirety and published. Any 3rd party may then count the votes and tally the results.
  - Risks include:
     - Voter identity discovery via ip address if either ballot-box server or ssl/tls comprimise. A tor hidden service should be provided in order to mitigate this attack.
+    - Voter identity discovery though a timing attack if the user immidiately submits their ballot after having it signed by the Ballot Clerk. To mitigate this attack the voter should randomly stagger this interval.
+
+
+Casting a ballot takes an HTTP request of the following form
+
+```http
+PUT /vote/<election-id>/<ballot-id> HTTP/1.1
+
+<election-id>
+
+<ballot-id>
+
+<vote>
+
+<tags>
+
+<ballot-signature>
+```
+
+`<election-id>` is the unique identifier for this election / decision.
+
+`<ballot-id>` is the unqiue ID of this ballot. It is the (hex-encoded) SHA512 hash of randomly generated bits. This is to prevent signed ballot copying / stuffing. If two ballots are discovered with the same ballot-id, they are invalid.
+
+`<vote>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
+
+`<tags>` is additional information a voter may wish to attach to the vote in the format of `key="value"`. Each key-value pair goes on a new line. Standardization around commonly understood keys forthcoming. Examples might include the voter's name if they wish to publically forclose their vote.
+
+`<ballot-signature>` is the base64 encoded BallotClerk signature of the ballot. This is the entire body up to this point (excluding headers and the linebreak immidiately preceding the signature). This signature is provided by the BallotClerk Server in a Fufilled Signature Request.
+
 
 
 Git Server (Initiative / ballot creation)
@@ -63,44 +137,6 @@ User-interface / client software
  - May be server based or a local binary application.
  - Reference implementation here will be an ember.js app.
 
-API
----
-
-The voting server is a RESTful service (Supporting GET, PUT and DELETE verbs) with a few additions to cryptographically guarantee that the request is coming from a trusted voter.
-
-Casting a ballot takes an HTTP request of the following form
-```http
-PUT /vote/<election-id>/<ballot-id> HTTP/1.1
-X-Voteflow-Public-Key: <public-key>
-X-Voteflow-Signature: <request-signature>
-
-<election-id>
-
-<ballot-id>
-
-<public-key>
-
-<vote>
-
-<tags>
-
-<ballot-signature>
-```
-
-`<election-id>` is the unique identifier for this election / decision.
-
-`<ballot-id>` is the unqiue ID of this ballot. It is the (hex-encoded) SHA512 hash of this voter's public key for this vote.
-
-`<public-key>` is the voter's rsa public key for this vote. It is base64 encoded and contains no line breaks.
-
-`<request-signature>` is the base64 encoded signature for the request (but not the ballot). Using their RSA private-key and SHA512, the voter signs a string in the following format `<METHOD> /vote/<election-id>/<ballot-id>`, where `<METHOD>` is the HTTP Method / Verb. For example `PUT /vote/12345/183fd27b0e7292b54090519510b99253aa1228f8795003ebd58561...`.
-
-`<vote>` is an ordered, line-seperated list of git addresses and commit hashes that represent the vote
-
-`<tags>` is additional information a voter may wish to attach to the vote in the format of `key="value"`. Each key-value pair goes on a new line. Standardization around commonly understood keys forthcoming. Examples might include the voter's name if they wish to publically forclose their vote.
-
-`<ballot-signature>` is the base64 encoded signature of the entire body up to this point (excluding headers and the linebreak immidiately preceding the signature). 
-
 Generating Crypto Keys
 ----------------------
 ```bash
@@ -110,15 +146,9 @@ openssl genrsa -out private.key 1024
 #Generate public-key der file
 openssl rsa -in private.key -out public.der -outform DER -pubout
 
-#Gerenate base64 encoded public key - this is the <public-key> you will pass to the server
+#Gerenate base64 encoded public key - this is the <public-key> you will pass to the BallotClerk server for ballot signing
 base64 public.der -w0 > public.der.base64
 
-#Generate SHA512 ballot-id from public key. This is your <ballot-id>
+#Generate SHA512 request-id from public key. This is your <request-id> for creating a Signature Request
 sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
-
-#Generate request text (the -n switch makes sure we don't pad a newline character, which is echo's default behavior)
-echo -n PUT /vote/12345/`cat public.der.base64.sha512` > request.txt
-
-#Sign the request. This is your <request-signature>
-openssl sha -sha512 -sign private.key < request.txt | base64 -w0 > request.txt.signed
 ```
