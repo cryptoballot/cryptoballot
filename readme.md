@@ -137,6 +137,19 @@ User-interface / client software
  - May be server based or a local binary application.
  - Reference implementation here will be an ember.js app.
 
+Verifying an election
+---------------------
+The following steps can be taken to do an end-to-end verification of an election
+ 1. Retrieve the full ballot box for an election from the Ballot Box server and verify the SHA512 signature of the result set with other clients.
+ 2. Retrieve the BallotClerk's public key and verify that all ballots have been properly signed by the BallotClerk.
+ 3. Verify that no two ballots share the same ID.
+ 4. Tally the ballots and verify that other clients have tallied the same result.
+ 5. Retrieve the full set of Fufilled Signature Requests from the Ballot Clerk and verify the SHA512 signature of the set with other clients.
+ 6. Verify the the number of ballots is not more than the number of Fufilled Signature Requests.
+ 7. Verify the voter signature on all Signature Requests against the voters' public keys.
+ 8. Contact the VoterList server and verify that all public keys belong to verified voters.
+
+
 Generating Crypto Keys
 ----------------------
 ```bash
