@@ -1,5 +1,5 @@
 CryptoBallot
-===========
+============
 
 WARNING: WORK IN PROGRESS!
 
@@ -12,7 +12,6 @@ Features
  - Auditors with access to the Voters List can verify the identities of all voters who cast a ballot, but cannot match which ballot belongs to which voter. 
 
 
-CrytoBallot is comprised of the following independant components: 
 
 VoterList Server (Voter registry)
 ---------------------------------
@@ -131,11 +130,14 @@ Git Server (Initiative / ballot creation)
      - If push access to a respotiroy is comprimised, clumsy client software may acidentally encourage users to update their vote to point to the "tip" of the repository, even though that tip content may be significantly different in intent that what they originally voted for. This is low risk since such tampering is likely to be quickly discovered and rectified.
 
 
+
 User-interface / client software
 --------------------------------
  - Multiple versions may be built by 3rd parties and others.
  - May be server based or a local binary application.
  - Reference implementation here will be an ember.js app.
+
+
 
 Verifying an election
 ---------------------
@@ -148,6 +150,7 @@ The following steps can be taken to do an end-to-end verification of an election
  6. Verify the the number of ballots is not more than the number of Fufilled Signature Requests.
  7. Verify the voter signature on all Signature Requests against the voters' public keys.
  8. Contact the VoterList server and verify that all public keys belong to verified voters.
+
 
 
 Generating Crypto Keys
