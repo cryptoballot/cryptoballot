@@ -37,7 +37,7 @@ BallotClerk Server (Ballot signing)
 
 POSTing a Signature Request takes the following form:
 ```http
-POST /sign/<election-id>
+POST /sign/<election-id> HTTP/1.1
 
 <election-id>
 
