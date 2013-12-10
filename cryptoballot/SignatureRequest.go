@@ -3,7 +3,11 @@ package cryptoballot
 import (
 	"bytes"
 	"errors"
-	//"github.com/davecgh/go-spew/spew"
+	//"github.com/davecgh/go-spew/spew"]
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha512"
 	"encoding/base64"
 	"strings"
 )
@@ -94,4 +98,24 @@ func (sigReq *SignatureRequest) String() string {
 		sigReq.Signature.String(),
 	}
 	return strings.Join(s, "\n\n")
+}
+
+func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, error) {
+	rawBytes := make([]byte, base64.StdEncoding.DecodedLen(len(sigReq.Ballot)))
+	_, err := base64.StdEncoding.Decode(rawBytes, sigReq.Ballot)
+	if err != nil {
+		return Signature{}, err
+	}
+
+	hash := sha512.New()
+	hash.Write(rawBytes)
+
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA512, hash.Sum(nil))
+	if err != nil {
+		return Signature{}, err
+	}
+
+	signature := Signature{}
+	base64.StdEncoding.Encode(signature, rawSignature)
+	return signature, nil
 }
