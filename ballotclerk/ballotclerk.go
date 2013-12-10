@@ -1,8 +1,5 @@
 package main
 
-// NOTES
-// See https://bitbucket.org/bumble/bumble-golang-common/src/master/key/publickey.go
-
 import (
 	"bytes"
 	"database/sql"
@@ -41,6 +38,7 @@ func bootstrap() {
 	set_up_opt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
 	flag.Parse()
 
+	// Populate the global configuration object with settings from the config file.
 	//@@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
 	err := conf.loadFromFile(*config_path_opt)
 	if err != nil {
@@ -243,9 +241,7 @@ func main() {
 	//@@TODO BEAST AND CRIME protection
 	//@@TODO SSL only
 
-	http.HandleFunc("/vote/", voteHandler)
-
-	//@@TODO /admin/ adminHandler
+	http.HandleFunc("/sign", signHandler)
 
 	log.Println("Listning on port 8000")
 
