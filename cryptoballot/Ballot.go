@@ -1,4 +1,4 @@
-package main
+package cryptoballot
 
 import (
 	"bytes"
@@ -22,8 +22,8 @@ type Ballot struct {
 	BallotID   // SHA512 (hex) of base64 encoded public-key
 	PublicKey  // base64 encoded PEM formatted public-key
 	Vote       // Ordered list of choices
-	TagSet
-	Signature // Crypto signature for the ballot
+	TagSet     // Arbitrary key-value store
+	Signature  // Crypto signature for the ballot
 }
 
 // Given a raw ballot-string (as a []byte) (see documentation for format), return a new Ballot.
@@ -106,7 +106,7 @@ func NewBallot(rawBallot []byte) (Ballot, error) {
 
 // Load a ballot from the backend postgres database - returns a pointer to a ballot.
 func LoadBallotFromDB(ElectionID string, BallotID BallotID) (*Ballot, error) {
-	
+
 }
 
 func (ballot *Ballot) VerifySignature() error {
