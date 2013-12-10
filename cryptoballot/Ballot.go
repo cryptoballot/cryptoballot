@@ -5,8 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	//"github.com/davecgh/go-spew/spew"
-	_ "github.com/lib/pq"
-	"strconv"
 	"strings"
 )
 
@@ -104,11 +102,6 @@ func NewBallot(rawBallot []byte) (Ballot, error) {
 	return ballot, nil
 }
 
-// Load a ballot from the backend postgres database - returns a pointer to a ballot.
-func LoadBallotFromDB(ElectionID string, BallotID BallotID) (*Ballot, error) {
-
-}
-
 func (ballot *Ballot) VerifySignature() error {
 	s := []string{
 		ballot.ElectionID,
@@ -131,26 +124,6 @@ func (ballot *Ballot) String() string {
 		ballot.Signature.String(),
 	}
 	return strings.Join(s, "\n\n")
-}
-
-func (ballot *Ballot) SaveToDB() error {
-	// The most complicated thing about this query is dealing with the tagSet, which needs to be inserted into an hstore column
-	var tagKeyHolders, tagValHolders []string
-	for i := 4; i < len(ballot.TagSet)+4; i++ {
-		tagKeyHolders = append(tagKeyHolders, "$"+strconv.Itoa(i))
-		tagValHolders = append(tagValHolders, "$"+strconv.Itoa(i+len(ballot.TagSet)))
-	}
-	query := "INSERT INTO ballots (ballot_id, public_key, ballot, tags) VALUES ($1, $2, $3, hstore(ARRAY[" + strings.Join(tagKeyHolders, ", ") + "], ARRAY[" + strings.Join(tagValHolders, ", ") + "]))"
-	// golang's use of variadics is entirely too stringent, so you get crap like this
-	values := append([]string{ballot.BallotID.String(), ballot.PublicKey.String(), ballot.String()}, append(ballot.TagSet.KeyStrings(), ballot.TagSet.ValueStrings()...)...)
-	// Convert []string to []interface{}
-	insertValues := make([]interface{}, len(values))
-	for i, v := range values {
-		insertValues[i] = interface{}(v)
-	}
-
-	_, err := db.Exec(query, insertValues...)
-	return err
 }
 
 type BallotID []byte

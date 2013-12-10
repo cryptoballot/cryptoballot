@@ -24,6 +24,7 @@ func TestGoodBallot(t *testing.T) {
 	ballot, err := NewBallot(goodBallot)
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	if err = ballot.VerifySignature(); err != nil {

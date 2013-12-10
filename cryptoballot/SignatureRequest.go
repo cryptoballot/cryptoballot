@@ -48,7 +48,7 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	}
 
 	ballot = parts[3]
-	if _, err := base64.Decode(make([]byte, base64.DecodedLen(len(ballot))), ballot); err != nil {
+	if _, err := base64.StdEncoding.Decode(make([]byte, base64.StdEncoding.DecodedLen(len(ballot))), ballot); err != nil {
 		return &SignatureRequest{}, errors.New("Ballot must be base64 encoded.")
 	}
 
@@ -66,7 +66,7 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	}
 
 	// Verify the signature
-	if err = signatureRequest.VerifySignature(); err != nil {
+	if err = sigReq.VerifySignature(); err != nil {
 		return &SignatureRequest{}, err
 	}
 
@@ -77,9 +77,9 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 func (sigReq *SignatureRequest) VerifySignature() error {
 	s := []string{
 		sigReq.ElectionID,
-		sigReq.RequestID,
+		string(sigReq.RequestID),
 		sigReq.PublicKey.String(),
-		sigReq.ballot,
+		string(sigReq.Ballot),
 	}
 
 	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(strings.Join(s, "\n\n")))
@@ -88,10 +88,10 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 func (sigReq *SignatureRequest) String() string {
 	s := []string{
 		sigReq.ElectionID,
-		sigReq.RequestID,
-		ballot.PublicKey.String(),
-		ballot.ballot,
-		ballot.Signature.String(),
+		string(sigReq.RequestID),
+		sigReq.PublicKey.String(),
+		string(sigReq.Ballot),
+		sigReq.Signature.String(),
 	}
 	return strings.Join(s, "\n\n")
 }

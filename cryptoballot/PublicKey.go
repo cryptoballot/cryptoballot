@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	MinPublicKeyBits = 2048
+	MinPublicKeyBits = 1024
 )
 
 type PublicKey []byte
