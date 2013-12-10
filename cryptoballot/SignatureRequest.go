@@ -1,9 +1,8 @@
-package main
+package cryptoballot
 
 import (
 	"bytes"
 	"errors"
-	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	//"github.com/davecgh/go-spew/spew"
 	"encoding/base64"
 	"strings"
