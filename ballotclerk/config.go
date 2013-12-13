@@ -1,8 +1,9 @@
 package main
 
 import (
+	"crypto/rsa"
 	"github.com/dlintw/goconf"
-	"rsa"
+	"strconv"
 )
 
 type Config struct {
@@ -79,22 +80,22 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 
 func (config *Config) databaseConnectionString() (connection string) {
 	if config.database.host != "" {
-		connection += "host=" + config.voteDB.host + " "
+		connection += "host=" + config.database.host + " "
 	}
-	if config.voteDB.port != 0 {
-		connection += "port=" + " "
+	if config.database.port != 0 {
+		connection += "port=" + strconv.Itoa(config.database.port) + " "
 	}
-	if config.voteDB.user != "" {
-		connection += "user=" + config.voteDB.user + " "
+	if config.database.user != "" {
+		connection += "user=" + config.database.user + " "
 	}
-	if config.voteDB.password != "" {
-		connection += "password=" + config.voteDB.password + " "
+	if config.database.password != "" {
+		connection += "password=" + config.database.password + " "
 	}
-	if config.voteDB.dbname != "" {
-		connection += "dbname=" + config.voteDB.dbname + " "
+	if config.database.dbname != "" {
+		connection += "dbname=" + config.database.dbname + " "
 	}
-	if config.voteDB.sslmode != "" {
-		connection += "sslmode=" + config.voteDB.sslmode
+	if config.database.sslmode != "" {
+		connection += "sslmode=" + config.database.sslmode
 	}
 	return
 }

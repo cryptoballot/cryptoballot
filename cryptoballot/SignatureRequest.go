@@ -3,13 +3,13 @@ package cryptoballot
 import (
 	"bytes"
 	"errors"
-	//"github.com/davecgh/go-spew/spew"]
+	"strings"
+	//"github.com/davecgh/go-spew/spew"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"encoding/base64"
-	"strings"
 )
 
 type SignatureRequest struct {
@@ -20,8 +20,8 @@ type SignatureRequest struct {
 	Signature         // Voter signature for the ballot request
 }
 
-// Given a raw SignatureRequest-string (as a []byte) (see documentation for format), return a new SignatureRequest.
-// Generally the SignatureRequest-string is coming from a client in a POST body.
+// Given a raw Signature Request string (as a []byte -- see documentation for format), return a new SignatureRequest object.
+// Generally the Signature Request string is coming from a voter in a POST body.
 // This will also verify the signature on the SignatureRequest and return an error if the request does not pass crypto verification
 func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) {
 	var (
@@ -71,13 +71,14 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 
 	// Verify the signature
 	if err = sigReq.VerifySignature(); err != nil {
-		return &SignatureRequest{}, err
+		return &SignatureRequest{}, errors.New("Invalid signature. The signature provided does not cryptographically sign this Signature Request or does not match the public-key provided. " + err.Error())
 	}
 
 	// All checks pass
 	return &sigReq, nil
 }
 
+// Verify the voter's signature attached to the SignatureRequest
 func (sigReq *SignatureRequest) VerifySignature() error {
 	s := []string{
 		sigReq.ElectionID,
@@ -89,6 +90,7 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(strings.Join(s, "\n\n")))
 }
 
+// Implements Stringer. Outputs the same text representation we are expecting the voter to POST in their Signature Request.
 func (sigReq *SignatureRequest) String() string {
 	s := []string{
 		sigReq.ElectionID,
@@ -100,6 +102,7 @@ func (sigReq *SignatureRequest) String() string {
 	return strings.Join(s, "\n\n")
 }
 
+// Sign the blinded ballot attached to the Signature Request. The ballot should be base64 encoded.
 func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, error) {
 	rawBytes := make([]byte, base64.StdEncoding.DecodedLen(len(sigReq.Ballot)))
 	_, err := base64.StdEncoding.Decode(rawBytes, sigReq.Ballot)
