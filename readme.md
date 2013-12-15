@@ -44,7 +44,7 @@ POST /sign/<election-id> HTTP/1.1
 
 <voter-public-key>
 
-<unsigned-ballot> (Could be blinded or unblinded)
+<unsigned-ballot-hash> (Could be blinded or unblinded)
 
 <voter-signature>
 ```
@@ -63,7 +63,7 @@ The server will respond with a Fufilled Signature Request, which takes the follo
 
 `<voter-public-key>` is the voter's rsa public key for this vote. It is base64 encoded and contains no line breaks.
 
-`<unsigned-ballot>` is the ballot to be signed. It is encoded as a base64 binary blob and contains no line breaks. Generally it is blinded, but if a voter does not desire anonimity, they may choose just to base64 encode an unblinded ballot. See below under "BallotBox Server" for the ballot specification.
+`<unsigned-ballot-hash>` is the SHA512 hash of the ballot to be signed. It is encoded in hex. Generally it is blinded, but if a voter does not desire anonimity, they may choose just to use the raw hex-encoded SHA512 of an unblinded ballot. See below under "BallotBox Server" for the ballot specification.
 
 `<voter-signature>` is the base64 encoded signature of the entire body up to this point (excluding headers and the linebreak immidiately preceding the signature). 
 
