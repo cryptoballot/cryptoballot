@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
