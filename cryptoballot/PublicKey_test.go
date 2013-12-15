@@ -23,7 +23,7 @@ func TestGoodPublicKey(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = pk.getCryptoKey()
+	_, err = pk.GetCryptoKey()
 	if err != nil {
 		t.Error(err)
 	}

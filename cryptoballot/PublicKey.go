@@ -24,7 +24,7 @@ func NewPublicKey(pkRaw []byte) (PublicKey, error) {
 
 	pk := PublicKey(pkRaw)
 
-	if _, err := pk.getCryptoKey(); err != nil {
+	if _, err := pk.GetCryptoKey(); err != nil {
 		return nil, err
 	}
 
@@ -47,7 +47,7 @@ func (pk *PublicKey) GetBytes() ([]byte, error) {
 }
 
 // Parse the PublicKey (which is stored as a base64 string) into a rsa.PublicKey object, ready to be used for crypto functions
-func (pk *PublicKey) getCryptoKey() (*rsa.PublicKey, error) {
+func (pk *PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 	rawpk, err := pk.GetBytes()
 	if err != nil {
 		return nil, err

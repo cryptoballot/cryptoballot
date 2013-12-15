@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"crypto/x509"
 	"database/sql"
+	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/knieriem/markdown"
 	"github.com/lib/pq"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
@@ -25,7 +30,14 @@ func main() {
 	//@@TODO BEAST AND CRIME protection
 	//@@TODO SSL only
 
+	// Displays the readme.md
+	http.HandleFunc("/", rootHandler)
+
+	// Provides the ability to POST new Signature Requests
 	http.HandleFunc("/sign", signHandler)
+
+	// Reports this servers public key
+	http.HandleFunc("/publickey", publicKeyHandler)
 
 	log.Println("Listning on port 8000")
 
@@ -82,6 +94,15 @@ func bootstrap() {
 	}
 }
 
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+	//@@TODO: Check r.TLS
+	p := markdown.NewParser(&markdown.Extensions{Smart: true})
+	out := bufio.NewWriter(w)
+	p.Markdown(bytes.NewReader(conf.readme), markdown.ToHTML(out))
+	out.Flush()
+	return
+}
+
 func signHandler(w http.ResponseWriter, r *http.Request) {
 	//@@TODO: Check r.TLS
 
@@ -117,5 +138,28 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 	//@@TODO: store the fulfilledsignatureReqest in the database
 
 	fmt.Fprint(w, fulfilledsignatureReqest)
+	return
+}
+
+func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
+	//@@TODO: Check r.TLS -- make this a middleware?
+
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
+		return
+	}
+
+	derEncodedPublicKey, err := x509.MarshalPKIXPublicKey(&conf.signingPrivateKey.PublicKey)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	pemBlock := pem.Block{
+		Type:    "RSA PUBLIC KEY",
+		Headers: map[string]string{"role": "ballot-signing", "owner": "ballot-clerk"},
+		Bytes:   derEncodedPublicKey,
+	}
+	pem.Encode(w, &pemBlock)
 	return
 }

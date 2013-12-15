@@ -51,7 +51,7 @@ func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
 		return err
 	}
 
-	pubkey, err := pk.getCryptoKey()
+	pubkey, err := pk.GetCryptoKey()
 	if err != nil {
 		return err
 	}

@@ -21,6 +21,7 @@ type Config struct {
 		sslmode            string
 		maxIdleConnections int
 	}
+	readme            []byte         // Static content for serving to the root readme (at "/")
 	signingPrivateKey rsa.PrivateKey // For now we have a single key -- eventually there should be one key per election
 	voterlistURL      string
 	auditorPrivateKey rsa.PrivateKey // For accessing the voter-list server, which is only open to auditors
@@ -38,39 +39,39 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 		return
 	}
 
-	config.database.host, err = c.GetString("clerk-db", "host")
+	config.database.host, err = c.GetString("ballot-clerk-db", "host")
 	if err != nil {
 		return
 	}
 
-	config.database.port, err = c.GetInt("clerk-db", "port")
+	config.database.port, err = c.GetInt("ballot-clerk-db", "port")
 	if err != nil {
 		return
 	}
 
-	config.database.user, err = c.GetString("clerk-db", "user")
+	config.database.user, err = c.GetString("ballot-clerk-db", "user")
 	if err != nil {
 		return
 	}
 
-	config.database.password, err = c.GetString("clerk-db", "password")
+	config.database.password, err = c.GetString("ballot-clerk-db", "password")
 	if err != nil {
 		return
 	}
 
-	config.database.dbname, err = c.GetString("clerk-db", "dbname")
+	config.database.dbname, err = c.GetString("ballot-clerk-db", "dbname")
 	if err != nil {
 		return
 	}
 
-	config.database.sslmode, err = c.GetString("clerk-db", "sslmode")
+	config.database.sslmode, err = c.GetString("ballot-clerk-db", "sslmode")
 	if err != nil {
 		return
 	}
 
 	// For max_idle_connections missing should translates to -1
-	if c.HasOption("clerk-db", "max_idle_connections") {
-		config.database.maxIdleConnections, err = c.GetInt("clerk-db", "max_idle_connections")
+	if c.HasOption("ballot-clerk-db", "max_idle_connections") {
+		config.database.maxIdleConnections, err = c.GetInt("ballot-clerk-db", "max_idle_connections")
 		if err != nil {
 			return
 		}
@@ -79,7 +80,7 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 	}
 
 	// Ingest the private key into the global config object
-	privateKeyLocation, err := c.GetString("clerk-crypto", "clerk-private-key")
+	privateKeyLocation, err := c.GetString("ballot-clerk", "private-key")
 	if err != nil {
 		return
 	}
@@ -97,6 +98,16 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 		return
 	}
 	config.signingPrivateKey = *signingPrivateKey
+
+	// Ingest the readme
+	readmeLocation, err := c.GetString("ballot-clerk", "readme")
+	if err != nil {
+		return
+	}
+	config.readme, err = ioutil.ReadFile(readmeLocation)
+	if err != nil {
+		return
+	}
 
 	return
 }
