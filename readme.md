@@ -168,3 +168,4 @@ base64 public.der -w0 > public.der.base64
 #Generate SHA512 request-id from public key. This is your <request-id> for creating a Signature Request
 sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
 ```
+

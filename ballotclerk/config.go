@@ -2,7 +2,11 @@ package main
 
 import (
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"github.com/dlintw/goconf"
+	"io/ioutil"
 	"strconv"
 )
 
@@ -18,7 +22,6 @@ type Config struct {
 		maxIdleConnections int
 	}
 	signingPrivateKey rsa.PrivateKey // For now we have a single key -- eventually there should be one key per election
-	signingPublicKey  rsa.PublicKey
 	voterlistURL      string
 	auditorPrivateKey rsa.PrivateKey // For accessing the voter-list server, which is only open to auditors
 	auditorPublicKey  rsa.PublicKey  // For accessing the voter-list server, which is only open to auditors
@@ -74,6 +77,26 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 	} else {
 		config.database.maxIdleConnections = -1
 	}
+
+	// Ingest the private key into the global config object
+	privateKeyLocation, err := c.GetString("clerk-crypto", "clerk-private-key")
+	if err != nil {
+		return
+	}
+	rawPEM, err := ioutil.ReadFile(privateKeyLocation)
+	if err != nil {
+		return
+	}
+	PEMBlock, _ := pem.Decode(rawPEM)
+	if PEMBlock.Type != "RSA PRIVATE KEY" {
+		err = errors.New("Could not find an RSA PRIVATE KEY block in " + privateKeyLocation)
+		return
+	}
+	signingPrivateKey, err := x509.ParsePKCS1PrivateKey(PEMBlock.Bytes)
+	if err != nil {
+		return
+	}
+	config.signingPrivateKey = *signingPrivateKey
 
 	return
 }

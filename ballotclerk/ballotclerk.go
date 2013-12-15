@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
+	//"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
-	//"github.com/davecgh/go-spew/spew"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,9 +18,25 @@ var (
 	conf Config  // Global config object
 )
 
-const (
-	minPublicKeyBits = 1024
-)
+func main() {
+	// Bootstrap parses flags and config files, and set's up the database connection.
+	bootstrap()
+
+	// Bootstrap is complete, let's serve some REST
+	//@@TODO BEAST AND CRIME protection
+	//@@TODO SSL only
+
+	http.HandleFunc("/sign", signHandler)
+
+	log.Println("Listning on port 8000")
+
+	err := http.ListenAndServe(":8000", nil)
+
+	if err != nil {
+		log.Fatal("Error starting http server: ", err)
+	}
+
+}
 
 func bootstrap() {
 	config_path_opt := flag.String("config", "./test.conf", "Path to config file. The config file must be owned by and only readable by this user.")
@@ -99,26 +115,8 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 
 	fulfilledsignatureReqest := NewFulfilledSignatureRequest(*signatureReqest, ballotSig)
 
+	//@@TODO: store the fulfilledsignatureReqest in the database
+
 	fmt.Fprint(w, fulfilledsignatureReqest)
 	return
-}
-
-func main() {
-	// Bootstrap parses flags and config files, and set's up the database connection.
-	bootstrap()
-
-	// Bootstrap is complete, let's serve some REST
-	//@@TODO BEAST AND CRIME protection
-	//@@TODO SSL only
-
-	http.HandleFunc("/sign", signHandler)
-
-	log.Println("Listning on port 8000")
-
-	err := http.ListenAndServe(":8000", nil)
-
-	if err != nil {
-		log.Fatal("Error starting http server: ", err)
-	}
-
 }

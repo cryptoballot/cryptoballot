@@ -10,6 +10,8 @@ import (
 
 type Signature []byte
 
+// Create a new signature from a base64 encoded item, as we would get in a PUT or POST request
+//@@TODO: Make sure "Signature too short" is working as expected
 func NewSignature(rawSignature []byte) (Signature, error) {
 	if len(rawSignature) < base64.StdEncoding.EncodedLen(128) {
 		return nil, errors.New("Signature too short")
@@ -19,6 +21,13 @@ func NewSignature(rawSignature []byte) (Signature, error) {
 		return nil, err
 	}
 	return sig, nil
+}
+
+// Create a new signature from unencoded raw bytes
+func NewSignatureFromBytes(rawSignature []byte) (Signature, error) {
+	encodedSignature := make([]byte, base64.StdEncoding.EncodedLen(len(rawSignature)))
+	base64.StdEncoding.Encode(encodedSignature, rawSignature)
+	return NewSignature(encodedSignature)
 }
 
 // Implements Stringer

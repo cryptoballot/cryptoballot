@@ -2,14 +2,13 @@ package cryptoballot
 
 import (
 	"bytes"
-	"errors"
-	"strings"
-	//"github.com/davecgh/go-spew/spew"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"encoding/base64"
+	"errors"
+	"strings"
 )
 
 type SignatureRequest struct {
@@ -118,7 +117,9 @@ func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, erro
 		return Signature{}, err
 	}
 
-	signature := Signature{}
-	base64.StdEncoding.Encode(signature, rawSignature)
+	signature, err := NewSignatureFromBytes(rawSignature)
+	if err != nil {
+		return Signature{}, err
+	}
 	return signature, nil
 }
