@@ -44,10 +44,9 @@ func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 }
 
 // Get the corresponding ID, which is the (hex encoded) SHA512 of the (base64 encoded) public key.
-// @@TODO this can be more direct in Go 1.2
 func (pk PublicKey) GetSHA512() []byte {
 	h := sha512.New()
-	h.Write(pk.Bytes())
+	h.Write([]byte(pk.String()))
 	sha512hex := make([]byte, 128)
 	hex.Encode(sha512hex, h.Sum(nil))
 	return sha512hex

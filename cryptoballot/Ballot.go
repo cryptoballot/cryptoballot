@@ -13,7 +13,7 @@ var (
 	maxTagKeySize   = 64
 	maxTagValueSize = 256
 	maxBallotSize   = (128) + (1352) + (128) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + (128 + (172)) + (18 + 64 + 64)
-	validBallotID   = regexp.MustCompile(`^[!#$&-;=?-[]_a-z~]+$`)
+	validBallotID   = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`)
 )
 
 type Ballot struct {
@@ -58,13 +58,13 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 		return &Ballot{}, errors.New("Ballot ID contains illigal characters. Valid characters are as per RFC 3986, sec 2: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=")
 	}
 
-	vote, err = NewVote(parts[3])
+	vote, err = NewVote(parts[2])
 	if err != nil {
 		return &Ballot{}, err
 	}
 
 	if hasTags {
-		tagSet, err = NewTagSet(parts[4])
+		tagSet, err = NewTagSet(parts[3])
 		if err != nil {
 			return &Ballot{}, err
 		}
@@ -73,9 +73,9 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	}
 
 	if hasTags {
-		signature, err = NewSignature(parts[5])
-	} else {
 		signature, err = NewSignature(parts[4])
+	} else {
+		signature, err = NewSignature(parts[3])
 	}
 	if err != nil {
 		return &Ballot{}, err
@@ -94,24 +94,48 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 }
 
 func (ballot *Ballot) VerifySignature(pk PublicKey) error {
-	s := []string{
-		ballot.ElectionID,
-		ballot.BallotID,
-		ballot.Vote.String(),
-		ballot.TagSet.String(),
+	var s []string
+	if ballot.HasTagSet() {
+		s = []string{
+			ballot.ElectionID,
+			ballot.BallotID,
+			ballot.Vote.String(),
+			ballot.TagSet.String(),
+		}
+	} else {
+		s = []string{
+			ballot.ElectionID,
+			ballot.BallotID,
+			ballot.Vote.String(),
+		}
 	}
-
 	return ballot.Signature.VerifySignature(pk, []byte(strings.Join(s, "\n\n")))
 }
 
 func (ballot *Ballot) String() string {
-	s := []string{
-		ballot.ElectionID,
-		ballot.BallotID,
-		ballot.Vote.String(),
-		ballot.Signature.String(),
+	var s []string
+	if ballot.HasTagSet() {
+		s = []string{
+			ballot.ElectionID,
+			ballot.BallotID,
+			ballot.Vote.String(),
+			ballot.TagSet.String(),
+			ballot.Signature.String(),
+		}
+	} else {
+		s = []string{
+			ballot.ElectionID,
+			ballot.BallotID,
+			ballot.Vote.String(),
+			ballot.Signature.String(),
+		}
 	}
+
 	return strings.Join(s, "\n\n")
+}
+
+func (ballot *Ballot) HasTagSet() bool {
+	return ballot.TagSet != nil
 }
 
 type Tag struct {
