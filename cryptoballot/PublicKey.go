@@ -6,53 +6,37 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 )
 
-var (
-	MinPublicKeyBits = 1024
-)
-
+// A DER encoded public key
 type PublicKey []byte
 
-// Given a string, return a new PublicKey object.
+// Create a new PublicKey from a base64 encoded item, as we would get in a PUT or POST request
 // This function also performs error checking to make sure the key is valid.
-func NewPublicKey(pkRaw []byte) (PublicKey, error) {
-	if len(pkRaw) < base64.StdEncoding.EncodedLen(MinPublicKeyBits/8) {
-		return nil, errors.New("Public Key too short. Try using more bits.")
-	}
-
-	pk := PublicKey(pkRaw)
-
-	if _, err := pk.GetCryptoKey(); err != nil {
+func NewPublicKey(base64PublicKey []byte) (PublicKey, error) {
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(base64PublicKey)))
+	n, err := base64.StdEncoding.Decode(dbuf, base64PublicKey)
+	if err != nil {
 		return nil, err
 	}
+	pk := dbuf[:n]
 
-	return pk, nil
+	return PublicKey(pk), nil
 }
 
 // Implements Stringer
-func (pk *PublicKey) String() string {
-	return string(*pk)
+func (pk PublicKey) String() string {
+	return base64.StdEncoding.EncodeToString(pk)
 }
 
-// Extract the raw bytes out of the base64 encoded public key
-func (pk *PublicKey) GetBytes() ([]byte, error) {
-	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(*pk)))
-	n, err := base64.StdEncoding.Decode(dbuf, *pk)
-	if err != nil {
-		return nil, err
-	}
-	return dbuf[:n], nil
+// Extract the bytes out of the public key
+func (pk PublicKey) Bytes() []byte {
+	return []byte(pk)
 }
 
-// Parse the PublicKey (which is stored as a base64 string) into a rsa.PublicKey object, ready to be used for crypto functions
-func (pk *PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
-	rawpk, err := pk.GetBytes()
-	if err != nil {
-		return nil, err
-	}
-	pubkey, err := x509.ParsePKIXPublicKey(rawpk)
+// Parse the PublicKey (which is stored as a der encoded key) into a rsa.PublicKey object, ready to be used for crypto functions
+func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
+	pubkey, err := x509.ParsePKIXPublicKey(pk.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -61,10 +45,18 @@ func (pk *PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 
 // Get the corresponding ID, which is the (hex encoded) SHA512 of the (base64 encoded) public key.
 // @@TODO this can be more direct in Go 1.2
-func (pk *PublicKey) GetSHA512() []byte {
+func (pk PublicKey) GetSHA512() []byte {
 	h := sha512.New()
-	h.Write([]byte(*pk))
+	h.Write(pk.Bytes())
 	sha512hex := make([]byte, 128)
 	hex.Encode(sha512hex, h.Sum(nil))
 	return sha512hex
+}
+
+func (pk PublicKey) IsEmpty() bool {
+	if len(pk) == 0 {
+		return true
+	} else {
+		return false
+	}
 }

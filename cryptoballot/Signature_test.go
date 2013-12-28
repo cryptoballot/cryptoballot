@@ -20,11 +20,7 @@ func TestGoodSignature(t *testing.T) {
 		return
 	}
 
-	sigbytes, err := sig.GetBytes()
-	if err != nil {
-		t.Error(err)
-	}
-
+	sigbytes := sig.Bytes()
 	gooddecode, _ := base64.StdEncoding.DecodeString(string(goodSig))
 	if !bytes.Equal(sigbytes, gooddecode) {
 		t.Errorf("bas64 decoding for signature is wrong")

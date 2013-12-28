@@ -25,7 +25,6 @@ type Config struct {
 	signingPrivateKey rsa.PrivateKey // For now we have a single key -- eventually there should be one key per election
 	voterlistURL      string
 	auditorPrivateKey rsa.PrivateKey // For accessing the voter-list server, which is only open to auditors
-	auditorPublicKey  rsa.PublicKey  // For accessing the voter-list server, which is only open to auditors
 }
 
 //@@TEST: loading known good config from file

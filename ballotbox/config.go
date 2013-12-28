@@ -6,6 +6,7 @@ package main
 import (
 	"fmt" // @@TODO: Remove this dependacy, just use + operator
 	"github.com/dlintw/goconf"
+	"net/url"
 )
 
 type Config struct {
@@ -19,6 +20,8 @@ type Config struct {
 		sslmode            string
 		maxIdleConnections int
 	}
+	readme         []byte // Static content for serving to the root readme (at "/")
+	ballotclerkURL string
 }
 
 //@@TEST: loading known good config from file
@@ -30,44 +33,53 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 		return
 	}
 
-	config.voteDB.host, err = c.GetString("vote-db", "host")
+	config.voteDB.host, err = c.GetString("ballot-box-db", "host")
 	if err != nil {
 		return
 	}
 
-	config.voteDB.port, err = c.GetInt("vote-db", "port")
+	config.voteDB.port, err = c.GetInt("ballot-box-db", "port")
 	if err != nil {
 		return
 	}
 
-	config.voteDB.user, err = c.GetString("vote-db", "user")
+	config.voteDB.user, err = c.GetString("ballot-box-db", "user")
 	if err != nil {
 		return
 	}
 
-	config.voteDB.password, err = c.GetString("vote-db", "password")
+	config.voteDB.password, err = c.GetString("ballot-box-db", "password")
 	if err != nil {
 		return
 	}
 
-	config.voteDB.dbname, err = c.GetString("vote-db", "dbname")
+	config.voteDB.dbname, err = c.GetString("ballot-box-db", "dbname")
 	if err != nil {
 		return
 	}
 
-	config.voteDB.sslmode, err = c.GetString("vote-db", "sslmode")
+	config.voteDB.sslmode, err = c.GetString("ballot-box-db", "sslmode")
 	if err != nil {
 		return
 	}
 
 	// For max_idle_connections missing should translates to -1
-	if c.HasOption("vote-db", "max_idle_connections") {
-		config.voteDB.maxIdleConnections, err = c.GetInt("vote-db", "max_idle_connections")
+	if c.HasOption("ballot-box-db", "max_idle_connections") {
+		config.voteDB.maxIdleConnections, err = c.GetInt("ballot-box-db", "max_idle_connections")
 		if err != nil {
 			return
 		}
 	} else {
 		config.voteDB.maxIdleConnections = -1
+	}
+
+	config.ballotclerkURL, err = c.GetString("ballot-box", "ballot-clerk")
+	if err != nil {
+		return
+	}
+	_, err = url.Parse(config.ballotclerkURL)
+	if err != nil {
+		return
 	}
 
 	return

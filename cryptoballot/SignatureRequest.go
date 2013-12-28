@@ -118,9 +118,6 @@ func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, erro
 		return Signature{}, err
 	}
 
-	signature, err := NewSignatureFromBytes(rawSignature)
-	if err != nil {
-		return Signature{}, err
-	}
+	signature := Signature(rawSignature)
 	return signature, nil
 }

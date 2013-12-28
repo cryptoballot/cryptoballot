@@ -95,7 +95,6 @@ func bootstrap() {
 }
 
 func rootHandler(w http.ResponseWriter, r *http.Request) {
-	//@@TODO: Check r.TLS
 	p := markdown.NewParser(&markdown.Extensions{Smart: true})
 	out := bufio.NewWriter(w)
 	p.Markdown(bytes.NewReader(conf.readme), markdown.ToHTML(out))
@@ -104,8 +103,6 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func signHandler(w http.ResponseWriter, r *http.Request) {
-	//@@TODO: Check r.TLS
-
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed. Only POST is allowed here.", http.StatusMethodNotAllowed)
 		return
@@ -142,8 +139,6 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
-	//@@TODO: Check r.TLS -- make this a middleware?
-
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
 		return

@@ -18,18 +18,13 @@ func TestGoodPublicKey(t *testing.T) {
 		return
 	}
 
-	_, err = pk.GetBytes()
-	if err != nil {
-		t.Error(err)
-	}
-
 	_, err = pk.GetCryptoKey()
 	if err != nil {
 		t.Error(err)
 	}
 
-	ballotID := pk.GetSHA512()
-	if !bytes.Equal(ballotID, goodSHA) {
+	SHA512 := pk.GetSHA512()
+	if !bytes.Equal(SHA512, goodSHA) {
 		t.Errorf("BallotID does not match SHA512")
 	}
 }

@@ -4,13 +4,15 @@ package main
 // See https://bitbucket.org/bumble/bumble-golang-common/src/master/key/publickey.go
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
 	"github.com/lib/pq"
 	//"github.com/davecgh/go-spew/spew"
+	"encoding/base64"
+	"encoding/pem"
+	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -20,12 +22,9 @@ import (
 )
 
 var (
-	db   *sql.DB
-	conf Config
-)
-
-const (
-	minPublicKeyBits = 1024
+	db             *sql.DB
+	ballotClerkKey PublicKey // Used to verify signatures on ballots
+	conf           Config
 )
 
 type parseError struct {
@@ -35,6 +34,27 @@ type parseError struct {
 
 func (err parseError) Error() string {
 	return err.Err
+}
+
+func main() {
+	// Bootstrap parses flags and config files, and set's up the database connection.
+	bootstrap()
+
+	// Bootstrap is complete, let's serve some REST
+	//@@TODO BEAST AND CRIME protection
+	//@@TODO SSL only
+
+	http.HandleFunc("/vote/", voteHandler)
+
+	//@@TODO /admin/ adminHandler
+
+	log.Println("Listning on port 8002")
+
+	err := http.ListenAndServe(":8002", nil)
+
+	if err != nil {
+		log.Fatal("Error starting http server: ", err)
+	}
 }
 
 func bootstrap() {
@@ -82,8 +102,6 @@ func bootstrap() {
 }
 
 func voteHandler(w http.ResponseWriter, r *http.Request) {
-	//@@TODO: Check r.TLS
-
 	electionID, ballotID, err := parseVoteRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), err.(parseError).Code)
@@ -120,13 +138,6 @@ func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 }
 
 func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
-	// If X-Voteflow-Public-Key was passed, it's already been verified, so we just need to check that it exists
-	pk := r.Header.Get("X-Voteflow-Public-Key")
-	if pk == "" {
-		http.Error(w, "X-Voteflow-Public-Key header required for PUT operations", http.StatusBadRequest)
-		return
-	}
-
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -139,10 +150,13 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 		return
 	}
 
-	if err := ballot.SaveToDB(); err != nil {
-		http.Error(w, "Error saving ballot. "+err.Error(), http.StatusInternalServerError)
-		return
+	// Verify the signature
+	err = verifyBallotSignature(ballot)
+	if err != nil {
+		http.Error(w, "Error verifying ballot signature. "+err.Error(), http.StatusInternalServerError)
 	}
+
+	//@@TODO save to database
 
 	w.Write([]byte(ballot.String()))
 }
@@ -192,24 +206,13 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID BallotID, er
 		return
 	}
 
-	// If the user has provided a public key in the header (as an authentication), verify it
-	if r.Header.Get("X-Voteflow-Public-Key") != "" {
-		pk, suberr := NewPublicKey([]byte(r.Header.Get("X-Voteflow-Public-Key")))
-		if suberr != nil {
-			err = parseError{"Invalid Public Key. " + suberr.Error(), http.StatusBadRequest}
-		}
-		// Check to make sure the passed ballotID in the url matches the public key's BallotID
-		if !bytes.Equal(pk.GetBallotID(), ballotID) {
-			err = parseError{"The signature and public key provided in the header does not match the Ballot ID in the URL", http.StatusBadRequest}
-			return
-		}
-
+	// If the user has provided a signature of the request in the headers, verify it
+	if r.Header.Get("X-Voteflow-Signature") != "" {
 		// Verify the signature headers, do a cryptographic check to make sure the header and Method / URL request is signed
 		if suberr := verifySignatureHeaders(r); suberr != nil {
 			err = parseError{suberr.Error(), http.StatusBadRequest}
 			return
 		}
-
 	}
 
 	// All checks pass
@@ -236,9 +239,39 @@ func verifySignatureHeaders(r *http.Request) error {
 	return nil
 }
 
+func verifyBallotSignature(ballot *Ballot) error {
+	// First we need to get the public key we will be using the verify the ballot.
+	//@@TODO: One public key per election
+
+	// First we need to load the public key from the ballotClerk server if this value has not already been set
+	if ballotClerkKey.IsEmpty() {
+		resp, err := http.Get(conf.ballotclerkURL)
+		if err != nil {
+			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
+		}
+		PEMBlock, _ := pem.Decode(body)
+		if PEMBlock.Type != "RSA PUBLIC KEY" {
+			return errors.New("Error fetching public key from Ballot Clerk Server. Could not find an RSA PUBLIC KEY block")
+		}
+		publicKey, err := NewPublicKey([]byte(base64.StdEncoding.EncodeToString(PEMBlock.Bytes)))
+		if err != nil {
+			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
+		}
+		ballotClerkKey = publicKey
+	}
+
+	// Verify the ballot
+	return ballot.VerifySignature(ballotClerkKey)
+}
+
 // Load a ballot from the backend postgres database - returns a pointer to a ballot.
 func loadBallotFromDB(ElectionID string, BallotID BallotID) (*Ballot, error) {
-
+	return nil, errors.New("Not implemented")
 }
 
 func saveBallotToDB(ballot *Ballot) error {
@@ -248,9 +281,9 @@ func saveBallotToDB(ballot *Ballot) error {
 		tagKeyHolders = append(tagKeyHolders, "$"+strconv.Itoa(i))
 		tagValHolders = append(tagValHolders, "$"+strconv.Itoa(i+len(ballot.TagSet)))
 	}
-	query := "INSERT INTO ballots (ballot_id, public_key, ballot, tags) VALUES ($1, $2, $3, hstore(ARRAY[" + strings.Join(tagKeyHolders, ", ") + "], ARRAY[" + strings.Join(tagValHolders, ", ") + "]))"
+	query := "INSERT INTO ballots (ballot_id, ballot, tags) VALUES ($1, $2, $3, hstore(ARRAY[" + strings.Join(tagKeyHolders, ", ") + "], ARRAY[" + strings.Join(tagValHolders, ", ") + "]))"
 	// golang's use of variadics is entirely too stringent, so you get crap like this
-	values := append([]string{ballot.BallotID.String(), ballot.PublicKey.String(), ballot.String()}, append(ballot.TagSet.KeyStrings(), ballot.TagSet.ValueStrings()...)...)
+	values := append([]string{ballot.BallotID.String(), ballot.String()}, append(ballot.TagSet.KeyStrings(), ballot.TagSet.ValueStrings()...)...)
 	// Convert []string to []interface{}
 	insertValues := make([]interface{}, len(values))
 	for i, v := range values {
@@ -259,26 +292,4 @@ func saveBallotToDB(ballot *Ballot) error {
 
 	_, err := db.Exec(query, insertValues...)
 	return err
-}
-
-func main() {
-	// Bootstrap parses flags and config files, and set's up the database connection.
-	bootstrap()
-
-	// Bootstrap is complete, let's serve some REST
-	//@@TODO BEAST AND CRIME protection
-	//@@TODO SSL only
-
-	http.HandleFunc("/vote/", voteHandler)
-
-	//@@TODO /admin/ adminHandler
-
-	log.Println("Listning on port 8000")
-
-	err := http.ListenAndServe(":8000", nil)
-
-	if err != nil {
-		log.Fatal("Error starting http server: ", err)
-	}
-
 }
