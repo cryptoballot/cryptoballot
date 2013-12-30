@@ -1,19 +1,19 @@
 package cryptoballot
 
 import (
-	"bytes"
+	"strings"
 )
 
-type Vote [][]byte // Ordered list of choices represented by git addresses
+type Vote []string // Ordered list of choices represented by git addresses
 
 func NewVote(rawVote []byte) (Vote, error) {
-	return Vote(bytes.Split(rawVote, []byte("\n"))), nil
+	return Vote(strings.Split(string(rawVote), "\n")), nil
 }
 
 func (vote *Vote) String() string {
 	var output string
 	for i, voteItem := range *vote {
-		output += string(voteItem)
+		output += voteItem
 		if i != len(*vote)-1 {
 			output += "\n"
 		}

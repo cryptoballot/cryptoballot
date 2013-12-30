@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	goodSig = []byte("Nz2xr8Ibn3CPwUrV2Ptr2iCtdtBEzrQ/10vTPlb8KfLF6R4JRryj7g1AlP75l1DwRjuSm90j2MTaNXgFceIQAUOPDvkOubyY7tyvTLY9LxRqw2iynoVZB79KJ2mZ9a2K9811mfQPpCqW0kxXMoFX3svza5arqAvFrwHNjM/K5YE=")
-	goodMes = "PUT /vote/12345/1d6d8c6965c4a72c35c6bf9ac66483405168578ee503bf4b4a2248b3cd0e2415d9fa2436eab027635819fdc4d458551081b8e0039ab242b08ba7c664633fe923"
+	goodMes = "DELETE /vote/12345/1d6d8c6965c4a72c35c6bf9ac66483405168578ee503bf4b4a2248b3cd0e2415d9fa2436eab027635819fdc4d458551081b8e0039ab242b08ba7c664633fe923"
+	badMes  = "BAD"
+	goodSig = []byte("iGa4SQCbwCsxGd4w8MX/YliQxjdZtlAsArV0ldEiIEb7d0oqGfRnxaVnPZY/jasaPUrBCjt94k924JXcCVJeT2r1JfOpxx6XKDCWXjrKXQcj5y+rFcKNeQe/rQkkprmskdXCGgqzFwMZ4R3RZ3GM/sC4LzlLdlKT9418WFPdWqJVGZRZFqR+cyvMmRjVFgHyQCkyvevyNb0Pw1jryF/bbttwr61WlFdW6FUTytguTmN7R3Wf0K3Zi9Pt8Co/TAIj+s9+VGQKeoRT3c8h3igGd0fD591fdx4tXnF2PAzWzsWlf763UG5CKWpbKKkpGW5JegqdTL90ScmvEe5sNsVj6w==")
 	badSig  = []byte("IAMNOTAVALIDSIGNATURE")
-	badMes  = "GET /bad/message"
 )
 
 func TestGoodSignature(t *testing.T) {

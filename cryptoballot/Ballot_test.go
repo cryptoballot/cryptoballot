@@ -1,6 +1,8 @@
 package cryptoballot
 
 import (
+	//"crypto/rand"
+	//"crypto/rsa"
 	"testing"
 )
 
@@ -20,26 +22,35 @@ NDu0+HUo4WjBnnmw0H5CGc31UEx5Z4bdUHRLiPrABkwT/QsQtbI0m58CAy0yXlShTQtqpx7yYfb88h0/
 	goodSigningKey = []byte(`MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwacgxmSwqRtsZaMtxc6O7hSl6Y1vwCwqaRnm3N5LMy52X1FiEW+jbZf3ngC/M9EC1LKz0Sctur0UXA038bJJHY8tHvV6qVjdb60GPK41CupbyhWaiYWps3DGRiUSRhAxROnekOsaThE+4HYWd/QzOeajLja06episY92lnGJ6I37uAhSqNm5GwEgufCtNVu9I8DIIOcV6YpEbmc21ZHMGgOautSfZ/dlw5qkpCWNqxW7WH7XQayuNE/mTKZ615HqIqjSh/+OjTj3jkvPvX32SzzhDmWHrYWOv1c6Qo3z8fNYjYFQMffLoy1QJ9G/KmuDw2rmkLXOc/sClv9Z/gZVW07Wg2Xsgp3y/1cH9J3uOqmb3WOukJGOCK4+E0oAb/qsLkOzIeiUoVEeNg/h8XPVO0cJjblEVnwhQe3jUKBXem7kDC0t9wSBsPOE/6BaXzwVPd8em5Tpuw07nSjiiZvvCUMMuoXvUG5UyTmJh9rEw3ehJACC1AJLfX/HJw+wB/p+TfEhmuNpvtUVegbCPkYTh1wQzFMAbIPjrWog2xWVshLb+L7GJm8CQPDlAkwXG676PcTlYdEIL0rReCVN+S6tr8nVPrQrUFePv7EM5sgyQ9XgfVglf+38wDHnrhFZxyEmaMzfMVDUhqt6NSgpceMo8KCNL0oaH+IdJsn7zXjKqQkCAwEAAQ==`)
 )
 
-func TestGoodBallot(t *testing.T) {
+// Basic test of parsing a good ballot
+func TestBallotParsing(t *testing.T) {
 	ballot, err := NewBallot(goodBallot)
 	if err != nil {
 		t.Error(err)
-		return
 	}
 
 	signingKey, err := NewPublicKey(goodSigningKey)
 	if err != nil {
 		t.Error(err)
-		return
 	}
 
 	if err = ballot.VerifySignature(signingKey); err != nil {
 		t.Error(err)
-		return
 	}
 
 	if string(goodBallot) != ballot.String() {
 		t.Errorf("Ballot round-trip from string and back again failed.")
-		return
+	}
+
+	// Test tags
+	keys := ballot.TagSet.Keys()
+	keyStrings := ballot.TagSet.KeyStrings()
+	if keyStrings[0] != "voter" || string(keys[0]) != "voter" || keyStrings[1] != "unsealed" || string(keys[1]) != "unsealed" {
+		t.Errorf("Failed to extract proper key value from tagset")
+	}
+	values := ballot.TagSet.Values()
+	valueStrings := ballot.TagSet.ValueStrings()
+	if valueStrings[0] != "Patrick Hayes" || string(values[0]) != "Patrick Hayes" || valueStrings[1] != "true" || string(values[1]) != "true" {
+		t.Errorf("Failed to extract proper value value from tagset")
 	}
 }

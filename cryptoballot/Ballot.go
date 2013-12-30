@@ -8,12 +8,15 @@ import (
 	"strings"
 )
 
-var (
-	// election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
+const (
 	maxTagKeySize   = 64
 	maxTagValueSize = 256
-	maxBallotSize   = (128) + (1352) + (128) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + (128 + (172)) + (18 + 64 + 64)
-	validBallotID   = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`)
+)
+
+var (
+	// election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
+	maxBallotSize = (128) + (1352) + (128) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + (128 + (172)) + (18 + 64 + 64)
+	validBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`)
 )
 
 type Ballot struct {
@@ -29,7 +32,8 @@ type Ballot struct {
 // This will also verify the signature on the ballot and return an error if the ballot does not pass crypto verification
 func NewBallot(rawBallot []byte) (*Ballot, error) {
 	var (
-		hasTags    bool
+		hasTags bool
+		//hasSign    bool
 		err        error
 		electionID string
 		ballotID   string
@@ -40,11 +44,19 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 
 	parts := bytes.Split(rawBallot, []byte("\n\n"))
 
-	if len(parts) == 4 {
+	// Determine what components exist
+	numParts := len(parts)
+	switch {
+	case numParts == 3:
+		//hasSign = false
 		hasTags = false
-	} else if len(parts) == 5 {
+	case numParts == 4:
+		hasTags = false
+		// We need to determine if it's a tag or a signature
+	case numParts == 5:
 		hasTags = true
-	} else {
+		//hasSign = true
+	default:
 		return &Ballot{}, errors.New("Cannot read ballot. Invalid ballot format")
 	}
 
@@ -136,6 +148,10 @@ func (ballot *Ballot) String() string {
 
 func (ballot *Ballot) HasTagSet() bool {
 	return ballot.TagSet != nil
+}
+
+func (ballot *Ballot) HasSignature() bool {
+	return ballot.Signature != nil
 }
 
 type Tag struct {

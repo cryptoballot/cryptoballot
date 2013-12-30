@@ -6,6 +6,17 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
+	//"github.com/davecgh/go-spew/spew"
+	"strconv"
+)
+
+const (
+	absoluteMinPublicKeySize = 2048 // We cannot go lower than this since it would hinder our ability to differentiate between public keys and tagsets on ballots
+)
+
+var (
+	MinPublicKeySize = 4096 // Recommended minimum public key size -- this can be changed
 )
 
 // A DER encoded public key
@@ -14,14 +25,36 @@ type PublicKey []byte
 // Create a new PublicKey from a base64 encoded item, as we would get in a PUT or POST request
 // This function also performs error checking to make sure the key is valid.
 func NewPublicKey(base64PublicKey []byte) (PublicKey, error) {
-	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(base64PublicKey)))
+	decodedLen := base64.StdEncoding.DecodedLen(len(base64PublicKey))
+	dbuf := make([]byte, decodedLen)
 	n, err := base64.StdEncoding.Decode(dbuf, base64PublicKey)
 	if err != nil {
 		return nil, err
 	}
-	pk := dbuf[:n]
+	pk := PublicKey(dbuf[:n])
 
-	return PublicKey(pk), nil
+	// Check the key length
+	keylen, err := pk.KeyLength()
+	if err != nil {
+		return nil, err
+	}
+	if MinPublicKeySize < absoluteMinPublicKeySize {
+		panic("MinPublicKeySize has been set less than the allowed absoluteMinPublicKeySize of 2048")
+	}
+	if keylen < MinPublicKeySize {
+		return nil, errors.New("Invalid public key - too short. Please use at least " + strconv.Itoa(MinPublicKeySize) + " bits")
+	}
+
+	return pk, nil
+}
+
+// Create a new PublicKey from an rsa.PublicKey struct
+func NewPublicKeyFromCryptoKey(pub *rsa.PublicKey) (PublicKey, error) {
+	derBytes, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
+	return PublicKey(derBytes), nil
 }
 
 // Implements Stringer
@@ -47,11 +80,21 @@ func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 func (pk PublicKey) GetSHA512() []byte {
 	h := sha512.New()
 	h.Write([]byte(pk.String()))
-	sha512hex := make([]byte, 128)
+	sha512hex := make([]byte, hex.EncodedLen(sha512.Size))
 	hex.Encode(sha512hex, h.Sum(nil))
 	return sha512hex
 }
 
+// Get the number of bits in the key
+func (pk PublicKey) KeyLength() (int, error) {
+	pubkey, err := pk.GetCryptoKey()
+	if err != nil {
+		return 0, nil
+	}
+	return pubkey.N.BitLen(), nil
+}
+
+// Check if the public key is empty of any bytes
 func (pk PublicKey) IsEmpty() bool {
 	if len(pk) == 0 {
 		return true
