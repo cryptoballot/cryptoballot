@@ -5,13 +5,13 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/lib/pq"
 	//"github.com/davecgh/go-spew/spew"
-	"encoding/base64"
-	"encoding/pem"
+	"github.com/lib/pq"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"log"
@@ -109,7 +109,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If there is no ballotID and we are GETing, just return the full-list of votes for the electionID
-	if ballotID == nil {
+	if ballotID == "" {
 		if r.Method == "GET" {
 			handleGETVoteBatch(w, r, electionID)
 		} else {
@@ -133,11 +133,11 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
+func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
 	w.Write([]byte("OK, let's GET a vote!"))
 }
 
-func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
+func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -154,6 +154,7 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	err = verifyBallotSignature(ballot)
 	if err != nil {
 		http.Error(w, "Error verifying ballot signature. "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	//@@TODO save to database
@@ -161,7 +162,7 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	w.Write([]byte(ballot.String()))
 }
 
-func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
+func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
 	// If X-Voteflow-Public-Key was passed, it's already been verified, so we just need to check that it exists
 	pk := r.Header.Get("X-Voteflow-Public-Key")
 	if pk == "" {
@@ -172,7 +173,7 @@ func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string,
 	w.Write([]byte("OK, let's DELETE a vote!"))
 }
 
-func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID BallotID) {
+func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
 	w.Write([]byte("OK, let's HEAD a vote!"))
 }
 
@@ -181,7 +182,7 @@ func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID strin
 }
 
 // returns electionID, BallotID, publicKey (base64 encoded) and an error
-func parseVoteRequest(r *http.Request) (electionID string, ballotID BallotID, err error) {
+func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err error) {
 	// Parse URL and route
 	urlparts := strings.Split(r.RequestURI, "/")
 
@@ -193,6 +194,10 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID BallotID, er
 
 	// Get the electionID
 	electionID = urlparts[2]
+	if len(electionID) > MaxElectionIDSize {
+		err = parseError{"Invalid Election ID. 404 Not Found.", http.StatusNotFound}
+		return
+	}
 
 	// If we are only length 3, that's it, we are asking for a full report / ballot roll for an election
 	if len(urlparts) == 3 {
@@ -200,10 +205,9 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID BallotID, er
 	}
 
 	// Get the ballotID (hex encoded SHA512 of base64 encoded public-key)
-	ballotID, err = NewBallotID([]byte(urlparts[3]))
-	if err != nil {
-		err = parseError{"Invalid Ballot ID. " + err.Error(), http.StatusBadRequest}
-		return
+	ballotID = urlparts[3]
+	if len(ballotID) > MaxBallotIDSize || !ValidBallotID.MatchString(ballotID) {
+		err = parseError{"Invalid Ballot ID. 404 Not Found.", http.StatusNotFound}
 	}
 
 	// If the user has provided a signature of the request in the headers, verify it
@@ -245,7 +249,7 @@ func verifyBallotSignature(ballot *Ballot) error {
 
 	// First we need to load the public key from the ballotClerk server if this value has not already been set
 	if ballotClerkKey.IsEmpty() {
-		resp, err := http.Get(conf.ballotclerkURL)
+		resp, err := http.Get(conf.ballotclerkURL + "/publickey")
 		if err != nil {
 			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
 		}
@@ -254,8 +258,9 @@ func verifyBallotSignature(ballot *Ballot) error {
 		if err != nil {
 			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
 		}
+
 		PEMBlock, _ := pem.Decode(body)
-		if PEMBlock.Type != "RSA PUBLIC KEY" {
+		if PEMBlock == nil || PEMBlock.Type != "RSA PUBLIC KEY" {
 			return errors.New("Error fetching public key from Ballot Clerk Server. Could not find an RSA PUBLIC KEY block")
 		}
 		publicKey, err := NewPublicKey([]byte(base64.StdEncoding.EncodeToString(PEMBlock.Bytes)))
@@ -270,7 +275,7 @@ func verifyBallotSignature(ballot *Ballot) error {
 }
 
 // Load a ballot from the backend postgres database - returns a pointer to a ballot.
-func loadBallotFromDB(ElectionID string, BallotID BallotID) (*Ballot, error) {
+func loadBallotFromDB(ElectionID string, ballotID string) (*Ballot, error) {
 	return nil, errors.New("Not implemented")
 }
 
@@ -282,8 +287,9 @@ func saveBallotToDB(ballot *Ballot) error {
 		tagValHolders = append(tagValHolders, "$"+strconv.Itoa(i+len(ballot.TagSet)))
 	}
 	query := "INSERT INTO ballots (ballot_id, ballot, tags) VALUES ($1, $2, $3, hstore(ARRAY[" + strings.Join(tagKeyHolders, ", ") + "], ARRAY[" + strings.Join(tagValHolders, ", ") + "]))"
+
 	// golang's use of variadics is entirely too stringent, so you get crap like this
-	values := append([]string{ballot.BallotID.String(), ballot.String()}, append(ballot.TagSet.KeyStrings(), ballot.TagSet.ValueStrings()...)...)
+	values := append([]string{ballot.BallotID, ballot.String()}, append(ballot.TagSet.KeyStrings(), ballot.TagSet.ValueStrings()...)...)
 	// Convert []string to []interface{}
 	insertValues := make([]interface{}, len(values))
 	for i, v := range values {

@@ -10,14 +10,16 @@ import (
 )
 
 const (
-	maxTagKeySize   = 64
-	maxTagValueSize = 256
+	MaxTagKeySize     = 64
+	MaxTagValueSize   = 256
+	MaxBallotIDSize   = 128
+	MaxElectionIDSize = 128
 )
 
 var (
 	// maxBallotSize: election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
-	maxBallotSize = (128) + (1024) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
-	validBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
+	MaxBallotSize = MaxElectionIDSize + MaxBallotIDSize + (64 * 256 * 2) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
+	ValidBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
 )
 
 type Ballot struct {
@@ -44,7 +46,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	)
 
 	// Check it's size
-	if len(rawBallot) > maxBallotSize {
+	if len(rawBallot) > MaxBallotSize {
 		return nil, errors.New("Invalid ballot. This ballot is too big.")
 	}
 
@@ -65,7 +67,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 			signSec = 0
 		} else {
 			// We need to test by looking at length. The maximum tagset size is smaller than the smallest signature
-			if len(parts[3]) > (maxTagKeySize + maxTagValueSize + 1) {
+			if len(parts[3]) > (MaxTagKeySize + MaxTagValueSize + 1) {
 				tagsSec = 0
 				signSec = 3
 			} else {
@@ -86,7 +88,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	if len(ballotID) > 512 {
 		return &Ballot{}, errors.New("Ballot ID is too large. Maximumber 512 characters")
 	}
-	if !validBallotID.MatchString(ballotID) {
+	if !ValidBallotID.MatchString(ballotID) {
 		return &Ballot{}, errors.New("Ballot ID contains illigal characters. Valid characters are as per RFC 3986, sec 2: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=")
 	}
 
@@ -181,10 +183,10 @@ func NewTag(rawTag []byte) (Tag, error) {
 	if len(parts) != 2 {
 		return Tag{}, errors.New("Malformed tag")
 	}
-	if len(parts[0]) > maxTagKeySize {
+	if len(parts[0]) > MaxTagKeySize {
 		return Tag{}, errors.New("Tag key too long")
 	}
-	if len(parts[1]) > maxTagValueSize {
+	if len(parts[1]) > MaxTagValueSize {
 		return Tag{}, errors.New("Tag value too long")
 	}
 

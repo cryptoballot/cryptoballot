@@ -94,6 +94,7 @@ func bootstrap() {
 	}
 }
 
+// When a user accesses "/" display the readme
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	p := markdown.NewParser(&markdown.Extensions{Smart: true})
 	out := bufio.NewWriter(w)
@@ -120,6 +121,11 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = signatureReqest.VerifySignature(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// @@TODO: Check the validity of the voter with the voter-list server.
 	// @@TODO: Check that this voter has not already retreived a fulfilled signature request.
 
@@ -138,6 +144,7 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// Display the public key used to sign ballots when a user asks for "/publickey"
 func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
@@ -151,9 +158,8 @@ func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pemBlock := pem.Block{
-		Type:    "RSA PUBLIC KEY",
-		Headers: map[string]string{"role": "ballot-signing", "owner": "ballot-clerk"},
-		Bytes:   derEncodedPublicKey,
+		Type:  "RSA PUBLIC KEY",
+		Bytes: derEncodedPublicKey,
 	}
 	pem.Encode(w, &pemBlock)
 	return
