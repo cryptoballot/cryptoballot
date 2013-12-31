@@ -2,10 +2,11 @@ package cryptoballot
 
 import (
 	"bytes"
+	"crypto/sha512"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
-	//"github.com/davecgh/go-spew/spew"
 	"regexp"
-	"strings"
 )
 
 const (
@@ -14,9 +15,9 @@ const (
 )
 
 var (
-	// election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
-	maxBallotSize = (128) + (1352) + (128) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + (128 + (172)) + (18 + 64 + 64)
-	validBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`)
+	// maxBallotSize: election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
+	maxBallotSize = (128) + (1024) + (64 * 256 * 2) + (64 * (maxTagKeySize + maxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
+	validBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
 )
 
 type Ballot struct {
@@ -32,8 +33,8 @@ type Ballot struct {
 // This will also verify the signature on the ballot and return an error if the ballot does not pass crypto verification
 func NewBallot(rawBallot []byte) (*Ballot, error) {
 	var (
-		hasTags bool
-		//hasSign    bool
+		tagsSec    int
+		signSec    int
 		err        error
 		electionID string
 		ballotID   string
@@ -42,20 +43,39 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 		signature  Signature
 	)
 
+	// Check it's size
+	if len(rawBallot) > maxBallotSize {
+		return nil, errors.New("Invalid ballot. This ballot is too big.")
+	}
+
+	// Split the ballot into parts seperated by a double linebreak
 	parts := bytes.Split(rawBallot, []byte("\n\n"))
 
 	// Determine what components exist
 	numParts := len(parts)
 	switch {
 	case numParts == 3:
-		//hasSign = false
-		hasTags = false
+		tagsSec = 0
+		signSec = 0
 	case numParts == 4:
-		hasTags = false
-		// We need to determine if it's a tag or a signature
+		// We need to determine if the last element in the ballot is a tag or a signature
+		if bytes.Contains(parts[3], []byte{'\n'}) {
+			// If it contains a linebreak, it's a tagset
+			tagsSec = 3
+			signSec = 0
+		} else {
+			// We need to test by looking at length. The maximum tagset size is smaller than the smallest signature
+			if len(parts[3]) > (maxTagKeySize + maxTagValueSize + 1) {
+				tagsSec = 0
+				signSec = 3
+			} else {
+				tagsSec = 3
+				signSec = 0
+			}
+		}
 	case numParts == 5:
-		hasTags = true
-		//hasSign = true
+		tagsSec = 3
+		signSec = 4
 	default:
 		return &Ballot{}, errors.New("Cannot read ballot. Invalid ballot format")
 	}
@@ -75,8 +95,8 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 		return &Ballot{}, err
 	}
 
-	if hasTags {
-		tagSet, err = NewTagSet(parts[3])
+	if tagsSec != 0 {
+		tagSet, err = NewTagSet(parts[tagsSec])
 		if err != nil {
 			return &Ballot{}, err
 		}
@@ -84,15 +104,16 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 		tagSet = nil
 	}
 
-	if hasTags {
-		signature, err = NewSignature(parts[4])
+	if signSec != 0 {
+		signature, err = NewSignature(parts[signSec])
+		if err != nil {
+			return &Ballot{}, err
+		}
 	} else {
-		signature, err = NewSignature(parts[3])
-	}
-	if err != nil {
-		return &Ballot{}, err
+		signature = nil
 	}
 
+	// All checks pass, create and return the ballot
 	ballot := Ballot{
 		electionID,
 		ballotID,
@@ -100,56 +121,52 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 		tagSet,
 		signature,
 	}
-
-	// All checks pass
 	return &ballot, nil
 }
 
+// Verify that the ballot has been property cryptographically signed
 func (ballot *Ballot) VerifySignature(pk PublicKey) error {
-	var s []string
-	if ballot.HasTagSet() {
-		s = []string{
-			ballot.ElectionID,
-			ballot.BallotID,
-			ballot.Vote.String(),
-			ballot.TagSet.String(),
-		}
-	} else {
-		s = []string{
-			ballot.ElectionID,
-			ballot.BallotID,
-			ballot.Vote.String(),
-		}
+	if !ballot.HasSignature() {
+		return errors.New("Could not verify ballot signature: Signature does not exist")
 	}
-	return ballot.Signature.VerifySignature(pk, []byte(strings.Join(s, "\n\n")))
+	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
+	if ballot.HasTagSet() {
+		s += "\n\n" + ballot.TagSet.String()
+	}
+	return ballot.Signature.VerifySignature(pk, []byte(s))
 }
 
+// Implements Stringer. Returns the String that would be expected in a PUT request to create the ballot
+// The returned string is the same format as expected by NewBallot
 func (ballot *Ballot) String() string {
-	var s []string
+	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
+
 	if ballot.HasTagSet() {
-		s = []string{
-			ballot.ElectionID,
-			ballot.BallotID,
-			ballot.Vote.String(),
-			ballot.TagSet.String(),
-			ballot.Signature.String(),
-		}
-	} else {
-		s = []string{
-			ballot.ElectionID,
-			ballot.BallotID,
-			ballot.Vote.String(),
-			ballot.Signature.String(),
-		}
+		s += "\n\n" + ballot.TagSet.String()
+	}
+	if ballot.HasSignature() {
+		s += "\n\n" + ballot.Signature.String()
 	}
 
-	return strings.Join(s, "\n\n")
+	return s
 }
 
+// Get the (hex-encoded) SHA512 of the String value of the ballot.
+func (ballot *Ballot) GetSHA512() []byte {
+	h := sha512.New()
+	h.Write([]byte(ballot.String()))
+	sha512hex := make([]byte, hex.EncodedLen(sha512.Size))
+	hex.Encode(sha512hex, h.Sum(nil))
+	return sha512hex
+}
+
+// TagSets are optional, check to see if this ballot has them
 func (ballot *Ballot) HasTagSet() bool {
 	return ballot.TagSet != nil
 }
 
+// Signatures are generally required, but are sometimes optional (for example, for working with the ballot before it is signed)
+// This function checks to see if the ballot has a signature
 func (ballot *Ballot) HasSignature() bool {
 	return ballot.Signature != nil
 }

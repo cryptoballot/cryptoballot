@@ -1,8 +1,10 @@
 package cryptoballot
 
 import (
-	//"crypto/rand"
-	//"crypto/rsa"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha512"
 	"testing"
 )
 
@@ -52,5 +54,82 @@ func TestBallotParsing(t *testing.T) {
 	valueStrings := ballot.TagSet.ValueStrings()
 	if valueStrings[0] != "Patrick Hayes" || string(values[0]) != "Patrick Hayes" || valueStrings[1] != "true" || string(values[1]) != "true" {
 		t.Errorf("Failed to extract proper value value from tagset")
+	}
+}
+
+// A more meaningful test that takes us all the way through ballot creation, including creating the ballot and having it signed.
+func TestBallotCreation(t *testing.T) {
+	// Create a private / public keypair for the voter
+	voterPriv, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Error(err)
+	}
+	voterPub, err := NewPublicKeyFromCryptoKey(&voterPriv.PublicKey)
+	if err != nil {
+		t.Error(err)
+	}
+	// Create a public / private keypair for the ballot-clerk
+	clerkPriv, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		t.Error(err)
+	}
+	clerkPub, err := NewPublicKeyFromCryptoKey(&clerkPriv.PublicKey)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create an unsigned ballot
+	ballot := Ballot{
+		ElectionID: "12345",
+		BallotID:   "ARandomlyVoterSelectedString",
+		Vote:       Vote{"voteserver.com/12345/option1", "voteserver.com/12345/option2"},
+	}
+
+	// A manually created ballot should propely report if it has tagsets or signatures
+	if ballot.HasTagSet() {
+		t.Errorf("Manually created ballot not properly reporting if it has a taget")
+	}
+	if ballot.HasSignature() {
+		t.Errorf("Manually created ballot not properly reporting if it has a signature")
+	}
+
+	// Create unsigned SignatureRequest
+	signatureReq := SignatureRequest{
+		ElectionID: "12345",
+		RequestID:  voterPub.GetSHA512(),
+		PublicKey:  voterPub,
+		BallotHash: ballot.GetSHA512(),
+	}
+
+	// A manually crated SignatureRequest should properly report if it has been signed by the voter
+	if signatureReq.HasSignature() {
+		t.Errorf("Manually created SignatureRequest not properly reporting if it has a signature")
+	}
+
+	// Sign the Signature Request with the voter's key
+	h := sha512.New()
+	h.Write([]byte(signatureReq.String()))
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, voterPriv, crypto.SHA512, h.Sum(nil))
+	if err != nil {
+		t.Error(err)
+	}
+	signatureReq.Signature = Signature(rawSignature)
+
+	// Verify the SignatureRequest signature
+	err = signatureReq.VerifySignature()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Sign the ballot with the clerk's key
+	ballot.Signature, err = signatureReq.SignBallot(clerkPriv)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Verify the ballot signature
+	err = ballot.VerifySignature(clerkPub)
+	if err != nil {
+		t.Error(err)
 	}
 }

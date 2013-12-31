@@ -8,7 +8,6 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
-	"strings"
 )
 
 type SignatureRequest struct {
@@ -25,6 +24,7 @@ type SignatureRequest struct {
 func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) {
 	var (
 		err        error
+		hasSign    bool
 		electionID string
 		requestID  []byte
 		publicKey  PublicKey
@@ -32,9 +32,16 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 		signature  Signature
 	)
 
+	// The SignatureRequest is composed of individual components seperated by double linebreaks
 	parts := bytes.Split(rawSignatureRequest, []byte("\n\n"))
 
-	if len(parts) != 5 {
+	numParts := len(parts)
+	switch {
+	case numParts == 4:
+		hasSign = false
+	case numParts == 5:
+		hasSign = true
+	default:
 		return &SignatureRequest{}, errors.New("Cannot read Signature Request. Invalid format")
 	}
 
@@ -46,7 +53,7 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	}
 
 	requestID = parts[1]
-	if !bytes.Equal(requestID, publicKey.GetSHA512()) {
+	if !bytes.Equal(requestID, []byte(publicKey.GetSHA512())) {
 		return &SignatureRequest{}, errors.New("Invalid Request ID. A Request ID must be the (hex encoded) SHA512 of the voters public key.")
 	}
 
@@ -59,9 +66,13 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 		return &SignatureRequest{}, errors.New("You must provide exactly 512 bits for the blinded SHA512 ballot hash")
 	}
 
-	signature, err = NewSignature(parts[4])
-	if err != nil {
-		return &SignatureRequest{}, err
+	if hasSign {
+		signature, err = NewSignature(parts[4])
+		if err != nil {
+			return &SignatureRequest{}, err
+		}
+	} else {
+		signature = nil
 	}
 
 	sigReq := SignatureRequest{
@@ -72,9 +83,11 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 		signature,
 	}
 
-	// Verify the signature
-	if err = sigReq.VerifySignature(); err != nil {
-		return &SignatureRequest{}, errors.New("Invalid signature. The signature provided does not cryptographically sign this Signature Request or does not match the public-key provided. " + err.Error())
+	// Verify the signature if it has been signed
+	if sigReq.HasSignature() {
+		if err = sigReq.VerifySignature(); err != nil {
+			return &SignatureRequest{}, errors.New("Invalid signature. The signature provided does not cryptographically sign this Signature Request or does not match the public-key provided. " + err.Error())
+		}
 	}
 
 	// All checks pass
@@ -83,26 +96,22 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 
 // Verify the voter's signature attached to the SignatureRequest
 func (sigReq *SignatureRequest) VerifySignature() error {
-	s := []string{
-		sigReq.ElectionID,
-		string(sigReq.RequestID),
-		sigReq.PublicKey.String(),
-		string(sigReq.BallotHash),
+	if !sigReq.HasSignature() {
+		return errors.New("Could not verify signature: Signature does not exist")
 	}
+	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
 
-	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(strings.Join(s, "\n\n")))
+	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(s))
 }
 
 // Implements Stringer. Outputs the same text representation we are expecting the voter to POST in their Signature Request.
+// This is also the same format that is expected in NewSignatureRequest
 func (sigReq *SignatureRequest) String() string {
-	s := []string{
-		sigReq.ElectionID,
-		string(sigReq.RequestID),
-		sigReq.PublicKey.String(),
-		string(sigReq.BallotHash),
-		sigReq.Signature.String(),
+	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
+	if sigReq.HasSignature() {
+		s += "\n\n" + sigReq.Signature.String()
 	}
-	return strings.Join(s, "\n\n")
+	return s
 }
 
 // Sign the blinded ballot hash attached to the Signature Request. It is the hex-encoded blinded SHA512 hash of the ballot.
@@ -120,4 +129,10 @@ func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, erro
 
 	signature := Signature(rawSignature)
 	return signature, nil
+}
+
+// Signatures are generally required, but are sometimes optional (for example, for working with the SignatureRequest before it is signed by the voter)
+// This function checks to see if the SignatureRequest has been signed by the voter
+func (sigReq *SignatureRequest) HasSignature() bool {
+	return sigReq.Signature != nil
 }
