@@ -53,7 +53,7 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	}
 
 	requestID = parts[1]
-	if !bytes.Equal(requestID, []byte(publicKey.GetSHA512())) {
+	if !bytes.Equal(requestID, publicKey.GetSHA512()) {
 		return &SignatureRequest{}, errors.New("Invalid Request ID. A Request ID must be the (hex encoded) SHA512 of the voters public key.")
 	}
 
