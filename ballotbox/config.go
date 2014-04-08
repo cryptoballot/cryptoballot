@@ -20,8 +20,10 @@ type Config struct {
 		sslmode            string
 		maxIdleConnections int
 	}
+	port           int    // Listen port -- generally it should be 443
 	readme         []byte // Static content for serving to the root readme (at "/")
 	ballotclerkURL string
+	adminKeysPath  string
 }
 
 //@@TEST: loading known good config from file
@@ -78,6 +80,16 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 		return
 	}
 	_, err = url.Parse(config.ballotclerkURL)
+	if err != nil {
+		return
+	}
+
+	config.adminKeysPath, err = c.GetString("ballot-box", "admin-keys")
+	if err != nil {
+		return
+	}
+
+	config.port, err = c.GetInt("ballot-box", "port")
 	if err != nil {
 		return
 	}

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
+	"reflect"
 	"testing"
 )
 
@@ -46,15 +47,17 @@ func TestBallotParsing(t *testing.T) {
 
 	// Test tags
 	keys := ballot.TagSet.Keys()
-	keyStrings := ballot.TagSet.KeyStrings()
-	if keyStrings[0] != "voter" || string(keys[0]) != "voter" || keyStrings[1] != "unsealed" || string(keys[1]) != "unsealed" {
+	if string(keys[0]) != "voter" || string(keys[1]) != "unsealed" {
 		t.Errorf("Failed to extract proper key value from tagset")
 	}
 	values := ballot.TagSet.Values()
-	valueStrings := ballot.TagSet.ValueStrings()
-	if valueStrings[0] != "Patrick Hayes" || string(values[0]) != "Patrick Hayes" || valueStrings[1] != "true" || string(values[1]) != "true" {
+	if string(values[0]) != "Patrick Hayes" || string(values[1]) != "true" {
 		t.Errorf("Failed to extract proper value value from tagset")
 	}
+	if !reflect.DeepEqual(ballot.TagSet.Map(), map[string]string{"voter": "Patrick Hayes", "unsealed": "true"}) {
+		t.Errorf("Failed to extract proper map from tagset")
+	}
+
 }
 
 // A more meaningful test that takes us all the way through ballot creation, including creating the ballot and having it signed.
@@ -85,25 +88,12 @@ func TestBallotCreation(t *testing.T) {
 		Vote:       Vote{"voteserver.com/12345/option1", "voteserver.com/12345/option2"},
 	}
 
-	// A manually created ballot should propely report if it has tagsets or signatures
-	if ballot.HasTagSet() {
-		t.Errorf("Manually created ballot not properly reporting if it has a taget")
-	}
-	if ballot.HasSignature() {
-		t.Errorf("Manually created ballot not properly reporting if it has a signature")
-	}
-
 	// Create unsigned SignatureRequest
 	signatureReq := SignatureRequest{
 		ElectionID: "12345",
 		RequestID:  voterPub.GetSHA512(),
 		PublicKey:  voterPub,
 		BallotHash: ballot.GetSHA512(),
-	}
-
-	// A manually crated SignatureRequest should properly report if it has been signed by the voter
-	if signatureReq.HasSignature() {
-		t.Errorf("Manually created SignatureRequest not properly reporting if it has a signature")
 	}
 
 	// Sign the Signature Request with the voter's key

@@ -10,16 +10,15 @@ import (
 )
 
 const (
-	MaxTagKeySize     = 64
-	MaxTagValueSize   = 256
 	MaxBallotIDSize   = 128
-	MaxElectionIDSize = 128
+	MaxElectionIDSize = 48 // Votes are stored in a postgres table named votes_<electon-id> so we need to limit the election ID size.
 )
 
 var (
 	// maxBallotSize: election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
-	MaxBallotSize = MaxElectionIDSize + MaxBallotIDSize + (64 * 256 * 2) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
-	ValidBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
+	MaxBallotSize   = MaxElectionIDSize + MaxBallotIDSize + (64 * 256 * 2) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
+	ValidBallotID   = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
+	ValidElectionID = regexp.MustCompile(`^[0-9a-zA-Z]+$`)                           // Regex for valid characters. We use this ID to construct the name of a table, so we need to limit allowed characters.
 )
 
 type Ballot struct {
@@ -83,6 +82,9 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	}
 
 	electionID = string(parts[0])
+	if !ValidElectionID.MatchString(electionID) {
+		return &Ballot{}, errors.New("ElectionID contains illigal characters. Only alpha-numeric characters allowed.")
+	}
 
 	ballotID = string(parts[1])
 	if len(ballotID) > 512 {
@@ -171,89 +173,4 @@ func (ballot *Ballot) HasTagSet() bool {
 // This function checks to see if the ballot has a signature
 func (ballot *Ballot) HasSignature() bool {
 	return ballot.Signature != nil
-}
-
-type Tag struct {
-	Key   []byte
-	Value []byte
-}
-
-func NewTag(rawTag []byte) (Tag, error) {
-	parts := bytes.SplitN(rawTag, []byte("="), 2)
-	if len(parts) != 2 {
-		return Tag{}, errors.New("Malformed tag")
-	}
-	if len(parts[0]) > MaxTagKeySize {
-		return Tag{}, errors.New("Tag key too long")
-	}
-	if len(parts[1]) > MaxTagValueSize {
-		return Tag{}, errors.New("Tag value too long")
-	}
-
-	return Tag{
-		parts[0],
-		parts[1],
-	}, nil
-}
-
-func (tag *Tag) String() string {
-	return string(tag.Key) + "=" + string(tag.Value)
-}
-
-type TagSet []Tag
-
-func NewTagSet(rawTagSet []byte) (TagSet, error) {
-	parts := bytes.Split(rawTagSet, []byte("\n"))
-	tagSet := TagSet(make([]Tag, len(parts)))
-	for i, rawTag := range parts {
-		tag, err := NewTag(rawTag)
-		if err != nil {
-			return TagSet{}, err
-		}
-		tagSet[i] = tag
-	}
-	return tagSet, nil
-}
-
-func (tagSet *TagSet) Keys() [][]byte {
-	output := make([][]byte, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = tag.Key
-	}
-	return output
-}
-
-func (tagSet *TagSet) KeyStrings() []string {
-	output := make([]string, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = string(tag.Key)
-	}
-	return output
-}
-
-func (tagSet *TagSet) Values() [][]byte {
-	output := make([][]byte, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = tag.Value
-	}
-	return output
-}
-
-func (tagSet *TagSet) ValueStrings() []string {
-	output := make([]string, len(*tagSet), len(*tagSet))
-	for i, tag := range *tagSet {
-		output[i] = string(tag.Value)
-	}
-	return output
-}
-
-func (tagSet *TagSet) String() string {
-	var output string
-	for i, tag := range *tagSet {
-		output += tag.String()
-		if i != len(*tagSet)-1 {
-			output += "\n"
-		}
-	}
-	return output
 }

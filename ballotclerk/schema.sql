@@ -1,12 +1,10 @@
-CREATE EXTENSION IF NOT EXISTS hstore;
-
-CREATE TABLE ballots (
-  ballot_id char(128) NOT NULL, 
+CREATE TABLE fulfilled_signature_requests_<election-id> (
+  request_id char(128) NOT NULL,  --@@TODO: change to 64 on move to SHA256
   public_key text NOT NULL, 
-  tags hstore, 
-  ballot text NOT NULL
+  ballot_hash char(128) NOT NULL, --@@TODO: change to 64 on move to SHA256
+  signature text NOT NULL,
+  ballot_signature text NOT NULL,
 );
 
-CREATE INDEX ballot_id_idx ON ballots (ballot_id);
+CREATE INDEX request_id_idx ON ballots (ballot_id);
 CREATE INDEX public_key_idx ON ballots (public_key);
-CREATE INDEX tags_idx on ballots (tags);

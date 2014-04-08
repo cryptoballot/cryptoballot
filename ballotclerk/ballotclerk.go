@@ -46,7 +46,6 @@ func main() {
 	if err != nil {
 		log.Fatal("Error starting http server: ", err)
 	}
-
 }
 
 func bootstrap() {
@@ -95,6 +94,7 @@ func bootstrap() {
 }
 
 // When a user accesses "/" display the readme
+// @@TODO Cache
 func rootHandler(w http.ResponseWriter, r *http.Request) {
 	p := markdown.NewParser(&markdown.Extensions{Smart: true})
 	out := bufio.NewWriter(w)
@@ -103,6 +103,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// Handle a signature-request coming from a user
 func signHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed. Only POST is allowed here.", http.StatusMethodNotAllowed)
@@ -136,15 +137,16 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fulfilledsignatureReqest := NewFulfilledSignatureRequest(*signatureReqest, ballotSig)
+	fulfilledsignatureRequest := NewFulfilledSignatureRequest(*signatureReqest, ballotSig)
 
-	//@@TODO: store the fulfilledsignatureReqest in the database
+	//@@TODO: store the fulfilledsignatureRequest in the database
 
-	fmt.Fprint(w, fulfilledsignatureReqest)
+	fmt.Fprint(w, fulfilledsignatureRequest)
 	return
 }
 
 // Display the public key used to sign ballots when a user asks for "/publickey"
+// @@TODO: Cache
 func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)

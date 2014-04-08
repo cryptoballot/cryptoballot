@@ -1,9 +1,8 @@
 package main
 
-// NOTES
-// See https://bitbucket.org/bumble/bumble-golang-common/src/master/key/publickey.go
-
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
 	"encoding/pem"
@@ -12,6 +11,7 @@ import (
 	"fmt"
 	//"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
+	"github.com/lib/pq/hstore"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"log"
@@ -21,9 +21,22 @@ import (
 	"strings"
 )
 
+const (
+	schemaQuery = `CREATE TABLE ballots_<election-id> (
+					  ballot_id char(128) NOT NULL, 
+					  tags hstore, 
+					  ballot text NOT NULL
+					);
+
+					CREATE INDEX ballot_id_idx ON ballots_<election-id> (ballot_id);
+					CREATE INDEX tags_idx on ballots_<election-id> (tags);`
+)
+
 var (
 	db             *sql.DB
-	ballotClerkKey PublicKey // Used to verify signatures on ballots
+	ballotClerkKey PublicKey   // Used to verify signatures on ballots
+	adminKeys      []PublicKey // Admin requests must be signed by an admin
+	adminPEMs      []pem.Block // We publish the public PEMBlocks of all admin users
 	conf           Config
 )
 
@@ -48,9 +61,9 @@ func main() {
 
 	//@@TODO /admin/ adminHandler
 
-	log.Println("Listning on port 8002")
+	log.Println("Listning on port " + strconv.Itoa(conf.port))
 
-	err := http.ListenAndServe(":8002", nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(conf.port), nil)
 
 	if err != nil {
 		log.Fatal("Error starting http server: ", err)
@@ -85,6 +98,33 @@ func bootstrap() {
 		db.SetMaxIdleConns(conf.voteDB.maxIdleConnections)
 	}
 
+	// Set up the admin public keys
+	publicKeyPEM, err := ioutil.ReadFile(conf.adminKeysPath)
+	if err != nil {
+		return
+	}
+	for {
+		var PEMBlock *pem.Block
+		PEMBlock, publicKeyPEM = pem.Decode(publicKeyPEM)
+		if PEMBlock == nil {
+			break
+		}
+		if PEMBlock.Type != "PUBLIC KEY" {
+			log.Fatal("Found unexpected " + PEMBlock.Type + " in " + conf.adminKeysPath)
+		}
+		adminPEMs = append(adminPEMs, *PEMBlock)
+
+		adminPublicCryptoKey, err := x509.ParsePKIXPublicKey(PEMBlock.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		adminPublicKey, err := NewPublicKeyFromCryptoKey(adminPublicCryptoKey.(*rsa.PublicKey))
+		if err != nil {
+			log.Fatal(err)
+		}
+		adminKeys = append(adminKeys, adminPublicKey)
+	}
+
 	// If we are in 'set-up' mode, set-up the database and exit
 	// @@TODO: schema.sql should be found in some path that is configurable by the user (voteflow-path environment variable?)
 	if *set_up_opt {
@@ -112,6 +152,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 	if ballotID == "" {
 		if r.Method == "GET" {
 			handleGETVoteBatch(w, r, electionID)
+			return
 		} else {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -123,8 +164,6 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 		handleGETVote(w, r, electionID, ballotID)
 	} else if r.Method == "PUT" {
 		handlePUTVote(w, r, electionID, ballotID)
-	} else if r.Method == "DELETE" {
-		handleDELETEVote(w, r, electionID, ballotID)
 	} else if r.Method == "HEAD" {
 		handleHEADVote(w, r, electionID, ballotID)
 	} else {
@@ -134,7 +173,16 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
-	w.Write([]byte("OK, let's GET a vote!"))
+	var ballotString []byte
+	err := db.QueryRow("select ballot from ballots where ballot_id = $1", ballotID).Scan(&ballotString)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Ballot not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+	w.Write(ballotString)
 }
 
 func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
@@ -157,28 +205,50 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 		return
 	}
 
-	//@@TODO save to database
-
-	w.Write([]byte(ballot.String()))
-}
-
-func handleDELETEVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
-	// If X-Voteflow-Public-Key was passed, it's already been verified, so we just need to check that it exists
-	pk := r.Header.Get("X-Voteflow-Public-Key")
-	if pk == "" {
-		http.Error(w, "X-Voteflow-Public-Key header required for DELETE operations", http.StatusBadRequest)
+	// Check the database to see if the ballot already exists
+	var count int
+	err = db.QueryRow("select count(*) from ballots where ballot_id = $1", ballot.BallotID).Scan(&count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if count != 0 {
+		http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
 		return
 	}
 
-	w.Write([]byte("OK, let's DELETE a vote!"))
+	err = saveBallotToDB(ballot)
+	if err != nil {
+		http.Error(w, "Error saving ballot. "+err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
-	w.Write([]byte("OK, let's HEAD a vote!"))
+	w.Write([]byte("Not implemented yet!"))
 }
 
 func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID string) {
-	w.Write([]byte("Full vote batch response to go here"))
+	var ballotString sql.RawBytes
+	rows, err := db.Query("select ballot from ballots")
+	if err != nil {
+		http.Error(w, "Database query error. "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&ballotString)
+		if err != nil {
+			http.Error(w, "\n\nDatabase error. "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(ballotString)
+		w.Write([]byte("\n\n\n"))
+	}
+	err = rows.Err()
+	if err != nil {
+		http.Error(w, "\n\nDatabase error. "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // returns electionID, BallotID, publicKey (base64 encoded) and an error
@@ -188,19 +258,19 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err 
 
 	// Check for the correct number of request parts
 	if len(urlparts) < 3 || len(urlparts) > 4 {
-		err = parseError{"Invalid number of request parts", http.StatusNotFound}
+		err = parseError{"Invalid number of url parts. 404 Not Found.", http.StatusNotFound}
 		return
 	}
 
 	// Get the electionID
 	electionID = urlparts[2]
-	if len(electionID) > MaxElectionIDSize {
+	if len(electionID) > MaxElectionIDSize || !ValidElectionID.MatchString(electionID) {
 		err = parseError{"Invalid Election ID. 404 Not Found.", http.StatusNotFound}
 		return
 	}
 
 	// If we are only length 3, that's it, we are asking for a full report / ballot roll for an election
-	if len(urlparts) == 3 {
+	if len(urlparts) == 3 || urlparts[3] == "" {
 		return
 	}
 
@@ -280,22 +350,13 @@ func loadBallotFromDB(ElectionID string, ballotID string) (*Ballot, error) {
 }
 
 func saveBallotToDB(ballot *Ballot) error {
-	// The most complicated thing about this query is dealing with the tagSet, which needs to be inserted into an hstore column
-	var tagKeyHolders, tagValHolders []string
-	for i := 4; i < len(ballot.TagSet)+4; i++ {
-		tagKeyHolders = append(tagKeyHolders, "$"+strconv.Itoa(i))
-		tagValHolders = append(tagValHolders, "$"+strconv.Itoa(i+len(ballot.TagSet)))
-	}
-	query := "INSERT INTO ballots (ballot_id, ballot, tags) VALUES ($1, $2, $3, hstore(ARRAY[" + strings.Join(tagKeyHolders, ", ") + "], ARRAY[" + strings.Join(tagValHolders, ", ") + "]))"
-
-	// golang's use of variadics is entirely too stringent, so you get crap like this
-	values := append([]string{ballot.BallotID, ballot.String()}, append(ballot.TagSet.KeyStrings(), ballot.TagSet.ValueStrings()...)...)
-	// Convert []string to []interface{}
-	insertValues := make([]interface{}, len(values))
-	for i, v := range values {
-		insertValues[i] = interface{}(v)
+	// Frist transform the tagset into an hstore
+	var tags hstore.Hstore
+	tags.Map = make(map[string]sql.NullString, len(ballot.TagSet))
+	for key, value := range ballot.TagSet.Map() {
+		tags.Map[key] = sql.NullString{value, true}
 	}
 
-	_, err := db.Exec(query, insertValues...)
+	_, err := db.Exec("INSERT INTO ballots (ballot_id, ballot, tags) VALUES ($1, $2, $3)", ballot.BallotID, ballot.String(), tags)
 	return err
 }

@@ -1,0 +1,256 @@
+
+
+@@TODO: Move to SHA256
+@@TODO: "create election" functionality on both ballotbox and ballotclerk
+  - admin keys in config file. or just SHA256 hash of admin keys to keep it simple?
+  - 
+
+Admin
+ - admin-id 
+ - publicKey
+ - priviledges
+    - administer election
+     - create-election, delete-election, edit-election
+ - info
+   - name
+   - other-info
+
+
+Election
+  - election-id
+  - title
+  - description
+  - start-date
+  - end-date
+  - admin-id
+  - admin-signature
+
+-----------------------
+CryptoBallot notes
+
+Schema
+ - changelog
+  - voter-pk
+  - vote-batch
+  - full http-request
+  - other info
+    - timestamp
+    - IP making request
+
+ - votes
+   - voter-pk
+   - vote-batch
+   - vote
+     -> sorted array of git-paths (return seperated list) -> hstore
+- primary-keys ==> voter-pk + git-repo-path (implicit / indexed)
+
+
+GET /election/<election-id> <== get metadata about an election
+
+ - A ballot could also have the following tombstone (410 Gone):
+
+ BALLOT DELETED
+
+ <ballot-id>
+
+ <ballot-public-key>
+
+ <admin-id>
+
+ <tagset> (reason, datetime at the very least)
+
+ <admin-signature>
+
+
+
+--------------------------
+
+All requsts now require the HTTP Digest header. 
+
+Example:
+
+Digest: SHA-512=MWVkMWQxYTRiMzk5MDQ0MzI3NGU5NDEyZTk5OWY1ZGFmNzgyZTJlO
+   DYzYjRjYzFhOTlmNTQwYzI2M2QwM2U2MQ==
+
+
+NEW SYSTEM
+
+1. Unblinded: Voter sends ballot (no ID, but does include public key in header) to BallotClerk server. 
+2. BallotClerk server contacts VoterList server, querying it by public-key. 
+3. BallotClerk server checks it's internal logs to see if this voter has already been issued a signed ballot.
+4. BallotClerk server signs the ballot, and sends this signed-ballot back to the voter.
+5. When the voting is finished, a list of all ballot-signature requests are published.
+
+
+Request for signature
+---------------------
+<election-id>
+
+<request-id> (SHA-512 of public-key)
+
+<voter-public-key>
+
+<ballot-blinded-or-unblinded>
+
+<voter-signature>
+
+
+
+PUT /sign/election-id/request-id (responds with fully signed ballot). 
+
+GET /sigs/election-id
+GET /sigs/election-id/request-id
+
+
+
+Signed Ballot
+-------------
+<election-id>
+
+<ballot-id> (SHA-512 of randomly generated bits -- must be unique)
+
+<vote>
+
+<tags>
+
+<ballot-signature>
+
+
+
+
+
+
+
+
+
+
+
+ADMIN
+-----
+
+IP address lockdown
+All admin-requests must be signed by an admin public key, which are stored in config
+
+PUT /admin/election/<election-id>
+GET /admin/election/<election-id>
+DELETE /admin/election/<election-id>
+
+Election:
+<election-id>
+
+<admin-public-key>
+
+<election-title>
+
+<election-description>
+
+<election-tags> (updated, created, ?)
+
+<admin-signature>
+
+Not sure about deleting ballots..  likely:
+GET /admin/ballot/<election-id>/<ballot-id> (should this be allowed - generally not)
+DELETE /admin/ballot/<election-id>/<ballot-id> (with tombstone in body) OR
+POST /admin/ballot/delete/<election-id>/<ballot-id> (with tombstone in body)
+
+-----------------
+
+Voter Database
+
+ - Each voter generates a master public key. An agent, when the person is verified as who they say they are, signs their public key with the agent's key. This will likely take the form of a document such as:
+ <voter-name>
+
+ <voter-address>
+
+ <voter-master-public-key>
+
+ <tags>
+
+ <agent-public-key>
+
+ <agent-signature>
+
+- This document along with the master-public-key is stored in a master_public_key table.
+
+- When the voter wishes to vote, they generate a 'voting-public-key', sign it with the master key, and asks the voter-database server to store it and verify. 
+
+- The voter then casts their vote with their voting-public-key and signs their vote with it.
+
+- Votes are tallied, and the talliers contact the voter-database server to verify that the voter is allowed to vote. The voting server checks it's records and confirms that the voting-key is valid and that the master-key used to sign it is also valid.
+
+THIS IS SUBOPTIMAL:
+ - Identity registrar can easily see who voted for what.
+ - Since all backend identities are hidden, the identity registrar could manufacture voters and no one would be able to independantly vet the list of voters.
+ - A more honest approach would simply to have the voters vote with their public key, and have the identity registrar return the voter's full identity upon query.
+
+IDEAL SYSTEM:
+ - The identity-registrar does a blind signature of all votes.
+ - In order to prevent an attacker from making use of a stolen registrar private key, the voters must include a token with their vote that has the following property:
+   - Once the votes are unsealed, anyone (or priviledged appointed auditors) may use the combined tokens to get a list of all the voters who voted, but not *which* vote blongs to whom.
+
+------------------
+
+Disallow http - only allow https
+Disallow compression! (See BREACH / oracle attack)
+(unless --unsafe is passed)
+
+conf file should be owned by user launching server and set to read-only, otherwise will refuse to launch
+(unless --unsafe is passed)
+
+What's the best way to communicate between servers? with encryption and low-overhead? RPC?
+
+Server set-up
+Should create an SELinux image -- what is the most secure bare-bones linux distribution?
+provide app-armour profile?
+
+
+
+
+
+
+What I want to see in go:
+
+1. When non-boolean variables are used in an if statement, we should check to see if their equal to their zero value
+
+2. An operator to concatenate []byte s
+
+3. Easy creation of []byte from literals. 
+
+  If I can do this:  x := 'y', I should also be able to do this y := 'Hello World'
+
+  Caveat: Using a multi-byte character inside a ' ' should be illigal. I shouldn't be able to do this:
+
+4. Easy access to the last value of an array. 
+
+
+5. Built in ordered maps. 
+
+6. Iterate over the values in a struct without using reflect.
+
+7. interface conversion errors (such as panic: "interface conversion: *os.PathError is not pq.PGError: missing method Fatal") should be detectable at compile time.
+
+Array functions:
+
+pop
+shift
+unshift
+append
+
+Ordered maps type
+
+
+
+
+================
+
+Crypto notes:
+
+Psudorandom:
+Random number, multiply by self, choose middle number, repeat
+
+Share the seed (key!) to generate random numbers.
+
+Use the random numbers generated as a one time pad.
+
+==================
+
