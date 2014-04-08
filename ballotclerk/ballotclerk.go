@@ -49,21 +49,19 @@ func main() {
 }
 
 func bootstrap() {
-	config_path_opt := flag.String("config", "./test.conf", "Path to config file. The config file must be owned by and only readable by this user.")
+	config_path_opt := flag.String("config", "./example-conf/example.conf", "Path to config file. The config file must be owned by and only readable by this user.")
 	set_up_opt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
 	flag.Parse()
 
 	// Populate the global configuration object with settings from the config file.
-	//@@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
+	// @@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
 	err := conf.loadFromFile(*config_path_opt)
 	if err != nil {
 		log.Fatal("Error parsing config file. ", err)
 	}
 
-	//@@TODO: Check to make sure the sslmode is set to "verify-full" (unless the user passed --insecure)
-	//        See pq package documentation
-
 	// Connect to the database and set-up
+	// @@TODO: Check to make sure the sslmode is set to "verify-full" (unless the user passed --insecure)
 	db, err = sql.Open("postgres", conf.databaseConnectionString())
 	if err != nil {
 		log.Fatal("Database connection error: ", err)
@@ -72,7 +70,7 @@ func bootstrap() {
 	if err != nil {
 		log.Fatal("Database connection error: ", err)
 	}
-	// Set the maximum number of idle connections in the connection pool. `-1` means default (2 idle connections in the pool)
+	// Set the maximum number of idle connections in the connection pool. `-1` means default of 2 idle connections in the pool
 	if conf.database.maxIdleConnections != -1 {
 		db.SetMaxIdleConns(conf.database.maxIdleConnections)
 	}
@@ -160,7 +158,7 @@ func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pemBlock := pem.Block{
-		Type:  "RSA PUBLIC KEY",
+		Type:  "PUBLIC KEY",
 		Bytes: derEncodedPublicKey,
 	}
 	pem.Encode(w, &pemBlock)

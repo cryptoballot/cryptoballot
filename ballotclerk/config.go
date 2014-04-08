@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"github.com/dlintw/goconf"
+	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"strconv"
 )
@@ -24,7 +25,8 @@ type Config struct {
 	readme            []byte         // Static content for serving to the root readme (at "/")
 	signingPrivateKey rsa.PrivateKey // For now we have a single key -- eventually there should be one key per election
 	voterlistURL      string
-	auditorPrivateKey rsa.PrivateKey // For accessing the voter-list server, which is only open to auditors
+	auditorPrivateKey rsa.PrivateKey // For accessing the voter-list server, which is only open to auditors.
+	admins            []User         // List of administrators allowed to create and edit elections on this service.
 }
 
 //@@TEST: loading known good config from file
@@ -83,11 +85,11 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 	if err != nil {
 		return
 	}
-	rawPEM, err := ioutil.ReadFile(privateKeyLocation)
+	rawKeyPEM, err := ioutil.ReadFile(privateKeyLocation)
 	if err != nil {
 		return
 	}
-	PEMBlock, _ := pem.Decode(rawPEM)
+	PEMBlock, _ := pem.Decode(rawKeyPEM)
 	if PEMBlock.Type != "RSA PRIVATE KEY" {
 		err = errors.New("Could not find an RSA PRIVATE KEY block in " + privateKeyLocation)
 		return
@@ -97,6 +99,33 @@ func (config *Config) loadFromFile(filepath string) (err error) {
 		return
 	}
 	config.signingPrivateKey = *signingPrivateKey
+
+	// Ingest administrators
+	config.admins = make([]User, 0)
+	adminPEMLocation, err := c.GetString("ballot-clerk", "admins")
+	if err != nil {
+		return
+	}
+	rawAdminPEM, err := ioutil.ReadFile(adminPEMLocation)
+	if err != nil {
+		return
+	}
+	var adminPEMBlock *pem.Block
+	for {
+		adminPEMBlock, rawAdminPEM = pem.Decode(rawAdminPEM)
+		if adminPEMBlock == nil {
+			break
+		}
+		if adminPEMBlock.Type != "PUBLIC KEY" {
+			err = errors.New("Found unexpected " + adminPEMBlock.Type + " in " + adminPEMLocation)
+			return
+		}
+		user, err := NewUserFromBlock(adminPEMBlock)
+		if err != nil {
+			return err
+		}
+		config.admins = append(config.admins, *user)
+	}
 
 	// Ingest the readme
 	readmeLocation, err := c.GetString("ballot-clerk", "readme")
