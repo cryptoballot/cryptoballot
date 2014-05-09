@@ -50,7 +50,6 @@ func (err parseError) Error() string {
 }
 
 func main() {
-	// Bootstrap parses flags and config files, and set's up the database connection.
 	bootstrap()
 
 	// Bootstrap is complete, let's serve some REST
@@ -58,6 +57,7 @@ func main() {
 	//@@TODO SSL only
 
 	http.HandleFunc("/vote/", voteHandler)
+	http.HandleFunc("/adminkeys", adminKeysHandler)
 
 	//@@TODO /admin/ adminHandler
 
@@ -70,6 +70,7 @@ func main() {
 	}
 }
 
+// Bootstrap parses flags and config files, and set's up the database connection.
 func bootstrap() {
 	config_path_opt := flag.String("config", "./test.conf", "Path to config file. The config file must be owned by and only readable by this user.")
 	set_up_opt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
@@ -101,7 +102,7 @@ func bootstrap() {
 	// Set up the admin public keys
 	publicKeyPEM, err := ioutil.ReadFile(conf.adminKeysPath)
 	if err != nil {
-		return
+		log.Fatal("Error loading admin-keys file: ", err)
 	}
 	for {
 		var PEMBlock *pem.Block
@@ -138,6 +139,26 @@ func bootstrap() {
 		}
 		fmt.Println("Database set-up complete. Please run again without --set-up-db")
 		os.Exit(0)
+	}
+}
+
+// Display the public key used to sign ballots when a user asks for "/publickey"
+// @@TODO: Cache
+func adminKeysHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
+		return
+	}
+
+	for i, pemBlock := range adminPEMs {
+		if i != 0 {
+			fmt.Fprint(w, "\n")
+		}
+		err := pem.Encode(w, &pemBlock)
+		if err != nil {
+			http.Error(w, "Error parsing PEMBlock: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
