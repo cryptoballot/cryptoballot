@@ -118,19 +118,6 @@ PUT /vote/<election-id>/<ballot-id> HTTP/1.1
 
 
 
-Git Server (Initiative / ballot creation)
-----------------------------
-  - Plain old git server.
-  - Each "proposal" is merely a git repository that users may collaboratively edit (through pull requests, forking and the usual means).
-  - Public keys may or may not match those stored in Identity server. Users may choose to seperate these concerns for additional security and anonymity.
-  - Updating git is entirely independant from voting (although they may optionally be tied together by end-client UI software).
-  - Client software may want to have an alert be sent to the user to "update their vote" if their vote no longer points to the "tip" of the repository.
-  - Using git ensures that the text-content of proposals are tamper resistant.
-  - Risks include:
-     - If push access to a respotiroy is comprimised, clumsy client software may acidentally encourage users to update their vote to point to the "tip" of the repository, even though that tip content may be significantly different in intent that what they originally voted for. This is low risk since such tampering is likely to be quickly discovered and rectified.
-
-
-
 User-interface / client software
 --------------------------------
  - Multiple versions may be built by 3rd parties and others.
@@ -150,6 +137,13 @@ The following steps can be taken to do an end-to-end verification of an election
  6. Verify the the number of ballots is not more than the number of Fufilled Signature Requests.
  7. Verify the voter signature on all Signature Requests against the voters' public keys.
  8. Contact the VoterList server and verify that all public keys belong to verified voters.
+
+
+
+Shortcomings
+------------
+1. Cryptoballot provides no guarantees of endpoint security of the machine or software being used to cast the vote. 
+2. Cryptoballot does not provide any protection against voter coersion. Since cryptoballot allows voters to view their vote after it has been counted in order to verify the veracity of the election, this opens the door to private coersion of votes or vote-trading. This problem is not unique to Cryptoballot and is endemic to any electronic voting system that allows voting on private devices in a private setting.
 
 
 
