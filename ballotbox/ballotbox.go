@@ -1,24 +1,18 @@
 package main
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
 	"database/sql"
-	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
-	//"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
-	"github.com/lib/pq/hstore"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -34,9 +28,8 @@ const (
 
 var (
 	db             *sql.DB
-	ballotClerkKey PublicKey   // Used to verify signatures on ballots
-	adminKeys      []PublicKey // Admin requests must be signed by an admin
-	adminPEMs      []pem.Block // We publish the public PEMBlocks of all admin users
+	ballotClerkKey PublicKey // Used to verify signatures on ballots
+	admins         UserSet   // Admin requests must be signed by an admin. We publish the public keys of all admin users
 	conf           Config
 )
 
@@ -50,16 +43,16 @@ func (err parseError) Error() string {
 }
 
 func main() {
+	spew.Config.DisableMethods = true
 	bootstrap()
 
 	// Bootstrap is complete, let's serve some REST
 	//@@TODO BEAST AND CRIME protection
 	//@@TODO SSL only
 
-	http.HandleFunc("/vote/", voteHandler)
-	http.HandleFunc("/adminkeys", adminKeysHandler)
-
-	//@@TODO /admin/ adminHandler
+	http.HandleFunc("/vote/", voteHandler)         // Casting votes and viewing votes. See vote-handler.go
+	http.HandleFunc("/election/", electionHandler) // Creating elections and viewing election metadata. See election-handler.go
+	http.HandleFunc("/admins", adminsHandler)      // View admins, their public keys and their perms
 
 	log.Println("Listning on port " + strconv.Itoa(conf.port))
 
@@ -99,35 +92,18 @@ func bootstrap() {
 		db.SetMaxIdleConns(conf.voteDB.maxIdleConnections)
 	}
 
-	// Set up the admin public keys
-	publicKeyPEM, err := ioutil.ReadFile(conf.adminKeysPath)
+	// Set up the admin users and register their public keys
+	pemdata, err := ioutil.ReadFile(conf.adminKeysPath)
 	if err != nil {
 		log.Fatal("Error loading admin-keys file: ", err)
 	}
-	for {
-		var PEMBlock *pem.Block
-		PEMBlock, publicKeyPEM = pem.Decode(publicKeyPEM)
-		if PEMBlock == nil {
-			break
-		}
-		if PEMBlock.Type != "PUBLIC KEY" {
-			log.Fatal("Found unexpected " + PEMBlock.Type + " in " + conf.adminKeysPath)
-		}
-		adminPEMs = append(adminPEMs, *PEMBlock)
-
-		adminPublicCryptoKey, err := x509.ParsePKIXPublicKey(PEMBlock.Bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		adminPublicKey, err := NewPublicKeyFromCryptoKey(adminPublicCryptoKey.(*rsa.PublicKey))
-		if err != nil {
-			log.Fatal(err)
-		}
-		adminKeys = append(adminKeys, adminPublicKey)
+	admins, err = NewUserSet(pemdata)
+	if err != nil {
+		log.Fatal("Error loading admin user data: ", err)
 	}
 
 	// If we are in 'set-up' mode, set-up the database and exit
-	// @@TODO: schema.sql should be found in some path that is configurable by the user (voteflow-path environment variable?)
+	// @@TODO: schema.sql should be found in some path that is configurable by the user.
 	if *set_up_opt {
 		schema_sql, err := ioutil.ReadFile("./schema.sql")
 		if err != nil {
@@ -142,187 +118,23 @@ func bootstrap() {
 	}
 }
 
-// Display the public key used to sign ballots when a user asks for "/publickey"
-// @@TODO: Cache
-func adminKeysHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
-		return
-	}
-
-	for i, pemBlock := range adminPEMs {
-		if i != 0 {
-			fmt.Fprint(w, "\n")
-		}
-		err := pem.Encode(w, &pemBlock)
-		if err != nil {
-			http.Error(w, "Error parsing PEMBlock: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-}
-
-func voteHandler(w http.ResponseWriter, r *http.Request) {
-	electionID, ballotID, err := parseVoteRequest(r)
-	if err != nil {
-		http.Error(w, err.Error(), err.(parseError).Code)
-		return
-	}
-
-	// If there is no ballotID and we are GETing, just return the full-list of votes for the electionID
-	if ballotID == "" {
-		if r.Method == "GET" {
-			handleGETVoteBatch(w, r, electionID)
-			return
-		} else {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-	}
-
-	// We are dealing with an individual vote
-	if r.Method == "GET" {
-		handleGETVote(w, r, electionID, ballotID)
-	} else if r.Method == "PUT" {
-		handlePUTVote(w, r, electionID, ballotID)
-	} else if r.Method == "HEAD" {
-		handleHEADVote(w, r, electionID, ballotID)
-	} else {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-}
-
-func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
-	var ballotString []byte
-	err := db.QueryRow("select ballot from ballots where ballot_id = $1", ballotID).Scan(&ballotString)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Ballot not found", http.StatusNotFound)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-	w.Write(ballotString)
-}
-
-func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	ballot, err := NewBallot(body)
-	if err != nil {
-		http.Error(w, "Error reading ballot. "+err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Verify the signature
-	err = verifyBallotSignature(ballot)
-	if err != nil {
-		http.Error(w, "Error verifying ballot signature. "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Check the database to see if the ballot already exists
-	var count int
-	err = db.QueryRow("select count(*) from ballots where ballot_id = $1", ballot.BallotID).Scan(&count)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if count != 0 {
-		http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
-		return
-	}
-
-	err = saveBallotToDB(ballot)
-	if err != nil {
-		http.Error(w, "Error saving ballot. "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
-	w.Write([]byte("Not implemented yet!"))
-}
-
-func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID string) {
-	var ballotString sql.RawBytes
-	rows, err := db.Query("select ballot from ballots")
-	if err != nil {
-		http.Error(w, "Database query error. "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-	for rows.Next() {
-		err := rows.Scan(&ballotString)
-		if err != nil {
-			http.Error(w, "\n\nDatabase error. "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Write(ballotString)
-		w.Write([]byte("\n\n\n"))
-	}
-	err = rows.Err()
-	if err != nil {
-		http.Error(w, "\n\nDatabase error. "+err.Error(), http.StatusInternalServerError)
-	}
-}
-
-// returns electionID, BallotID, publicKey (base64 encoded) and an error
-func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err error) {
-	// Parse URL and route
-	urlparts := strings.Split(r.RequestURI, "/")
-
-	// Check for the correct number of request parts
-	if len(urlparts) < 3 || len(urlparts) > 4 {
-		err = parseError{"Invalid number of url parts. 404 Not Found.", http.StatusNotFound}
-		return
-	}
-
-	// Get the electionID
-	electionID = urlparts[2]
-	if len(electionID) > MaxElectionIDSize || !ValidElectionID.MatchString(electionID) {
-		err = parseError{"Invalid Election ID. 404 Not Found.", http.StatusNotFound}
-		return
-	}
-
-	// If we are only length 3, that's it, we are asking for a full report / ballot roll for an election
-	if len(urlparts) == 3 || urlparts[3] == "" {
-		return
-	}
-
-	// Get the ballotID (hex encoded SHA512 of base64 encoded public-key)
-	ballotID = urlparts[3]
-	if len(ballotID) > MaxBallotIDSize || !ValidBallotID.MatchString(ballotID) {
-		err = parseError{"Invalid Ballot ID. 404 Not Found.", http.StatusNotFound}
-	}
-
-	// If the user has provided a signature of the request in the headers, verify it
-	if r.Header.Get("X-Voteflow-Signature") != "" {
-		// Verify the signature headers, do a cryptographic check to make sure the header and Method / URL request is signed
-		if suberr := verifySignatureHeaders(r); suberr != nil {
-			err = parseError{suberr.Error(), http.StatusBadRequest}
-			return
-		}
-	}
-
-	// All checks pass
-	return
-}
-
+// When a voter or an admin makes a priviledged request that requires verification
+// of their public-key, they are required to include the following HTTP headers:
+// 1. X-Public-Key: The user's base64 encoded public key.
+// 2. X-Signature: Signature for this request. The user should sign the HTTP request string which includes
+//    the method and the path (for example PUT /vote/1234/939fhdsjkksdkl0903f). This signature should be
+//    base64 encoded
+// This function verifies that these headers are constructed properly and that the signature
+// cryptographically signs the request. This function does not check the cryptographic veracity of the body.
 func verifySignatureHeaders(r *http.Request) error {
-	pk, err := NewPublicKey([]byte(r.Header.Get("X-Voteflow-Public-Key")))
+	pk, err := NewPublicKey([]byte(r.Header.Get("X-Public-Key")))
 	if err != nil {
-		return errors.New("Error parsing X-Voteflow-Public-Key header. " + err.Error())
+		return errors.New("Error parsing X-Public-Key header. " + err.Error())
 	}
 
-	sig, err := NewSignature([]byte(r.Header.Get("X-Voteflow-Signature")))
+	sig, err := NewSignature([]byte(r.Header.Get("X-Signature")))
 	if err != nil {
-		return errors.New("Error parsing X-Voteflow-Signature header. " + err.Error())
+		return errors.New("Error parsing X-Signature header. " + err.Error())
 	}
 
 	// Verify the signature against the request string. For example PUT /vote/1234/939fhdsjkksdkl0903f...
@@ -334,50 +146,12 @@ func verifySignatureHeaders(r *http.Request) error {
 	return nil
 }
 
-func verifyBallotSignature(ballot *Ballot) error {
-	// First we need to get the public key we will be using the verify the ballot.
-	//@@TODO: One public key per election
-
-	// First we need to load the public key from the ballotClerk server if this value has not already been set
-	if ballotClerkKey.IsEmpty() {
-		resp, err := http.Get(conf.ballotclerkURL + "/publickey")
-		if err != nil {
-			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
-		}
-
-		PEMBlock, _ := pem.Decode(body)
-		if PEMBlock == nil || PEMBlock.Type != "RSA PUBLIC KEY" {
-			return errors.New("Error fetching public key from Ballot Clerk Server. Could not find an RSA PUBLIC KEY block")
-		}
-		publicKey, err := NewPublicKey([]byte(base64.StdEncoding.EncodeToString(PEMBlock.Bytes)))
-		if err != nil {
-			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
-		}
-		ballotClerkKey = publicKey
+// Display all admin user information when a user asks for "/admins"
+func adminsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
+		return
 	}
 
-	// Verify the ballot
-	return ballot.VerifySignature(ballotClerkKey)
-}
-
-// Load a ballot from the backend postgres database - returns a pointer to a ballot.
-func loadBallotFromDB(ElectionID string, ballotID string) (*Ballot, error) {
-	return nil, errors.New("Not implemented")
-}
-
-func saveBallotToDB(ballot *Ballot) error {
-	// Frist transform the tagset into an hstore
-	var tags hstore.Hstore
-	tags.Map = make(map[string]sql.NullString, len(ballot.TagSet))
-	for key, value := range ballot.TagSet.Map() {
-		tags.Map[key] = sql.NullString{value, true}
-	}
-
-	_, err := db.Exec("INSERT INTO ballots (ballot_id, ballot, tags) VALUES ($1, $2, $3)", ballot.BallotID, ballot.String(), tags)
-	return err
+	fmt.Fprint(w, admins.String())
 }

@@ -10,15 +10,13 @@ import (
 )
 
 const (
-	MaxBallotIDSize   = 128
-	MaxElectionIDSize = 48 // Votes are stored in a postgres table named votes_<electon-id> so we need to limit the election ID size.
+	MaxBallotIDSize = 128
 )
 
 var (
 	// maxBallotSize: election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
-	MaxBallotSize   = MaxElectionIDSize + MaxBallotIDSize + (64 * 256 * 2) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
-	ValidBallotID   = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
-	ValidElectionID = regexp.MustCompile(`^[0-9a-zA-Z]+$`)                           // Regex for valid characters. We use this ID to construct the name of a table, so we need to limit allowed characters.
+	MaxBallotSize = MaxElectionIDSize + MaxBallotIDSize + (64 * 256 * 2) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
+	ValidBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
 )
 
 type Ballot struct {
@@ -54,11 +52,11 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 
 	// Determine what components exist
 	numParts := len(parts)
-	switch {
-	case numParts == 3:
+	switch numParts {
+	case 3:
 		tagsSec = 0
 		signSec = 0
-	case numParts == 4:
+	case 4:
 		// We need to determine if the last element in the ballot is a tag or a signature
 		if bytes.Contains(parts[3], []byte{'\n'}) {
 			// If it contains a linebreak, it's a tagset
@@ -74,7 +72,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 				signSec = 0
 			}
 		}
-	case numParts == 5:
+	case 5:
 		tagsSec = 3
 		signSec = 4
 	default:
@@ -82,6 +80,9 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	}
 
 	electionID = string(parts[0])
+	if len(electionID) > MaxElectionIDSize {
+		return &Ballot{}, errors.New("Invalid ElectionID. Too many characters")
+	}
 	if !ValidElectionID.MatchString(electionID) {
 		return &Ballot{}, errors.New("ElectionID contains illigal characters. Only alpha-numeric characters allowed.")
 	}

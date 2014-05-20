@@ -83,13 +83,6 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 		signature,
 	}
 
-	// Verify the signature if it has been signed
-	if sigReq.HasSignature() {
-		if err = sigReq.VerifySignature(); err != nil {
-			return &SignatureRequest{}, errors.New("Invalid signature. The signature provided does not cryptographically sign this Signature Request or does not match the public-key provided. " + err.Error())
-		}
-	}
-
 	// All checks pass
 	return &sigReq, nil
 }
