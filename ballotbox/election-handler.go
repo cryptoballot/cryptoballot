@@ -41,7 +41,7 @@ func electionHandler(w http.ResponseWriter, r *http.Request) {
 func handlePUTElection(w http.ResponseWriter, r *http.Request, electionID string) {
 	err := verifySignatureHeaders(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -53,7 +53,7 @@ func handlePUTElection(w http.ResponseWriter, r *http.Request, electionID string
 
 	election, err := NewElection(body)
 	if err != nil {
-		http.Error(w, "Error reading election. "+err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	if election.ElectionID != electionID {
@@ -88,5 +88,6 @@ func handlePUTElection(w http.ResponseWriter, r *http.Request, electionID string
 	}
 
 	// All checks pass. Save the election
-	fmt.Fprint(w, "Saving Election\n\n", election.String())
+	//@@TODO: Actually save it
+	fmt.Fprint(w, election.String())
 }
