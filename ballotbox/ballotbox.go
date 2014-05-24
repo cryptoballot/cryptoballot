@@ -18,6 +18,8 @@ import (
 const (
 	schemaQuery = `CREATE TABLE ballots_<election-id> (
 					  ballot_id char(128) NOT NULL, 
+					  start timestamp NOT NULL,
+					  end timestamp NOT NULL,
 					  tags hstore, 
 					  ballot text NOT NULL
 					);
@@ -127,12 +129,20 @@ func bootstrap() {
 // This function verifies that these headers are constructed properly and that the signature
 // cryptographically signs the request. This function does not check the cryptographic veracity of the body.
 func verifySignatureHeaders(r *http.Request) error {
-	pk, err := NewPublicKey([]byte(r.Header.Get("X-Public-Key")))
+	rawpk := r.Header.Get("X-Public-Key")
+	if rawpk == "" {
+		return errors.New("Missing X-Public-Key header. ")
+	}
+	pk, err := NewPublicKey([]byte(rawpk))
 	if err != nil {
 		return errors.New("Error parsing X-Public-Key header. " + err.Error())
 	}
 
-	sig, err := NewSignature([]byte(r.Header.Get("X-Signature")))
+	rawsig := r.Header.Get("X-Signature")
+	if rawsig == "" {
+		return errors.New("Missing X-Signature-Key header. ")
+	}
+	sig, err := NewSignature([]byte(rawsig))
 	if err != nil {
 		return errors.New("Error parsing X-Signature header. " + err.Error())
 	}
@@ -140,7 +150,7 @@ func verifySignatureHeaders(r *http.Request) error {
 	// Verify the signature against the request string. For example PUT /vote/1234/939fhdsjkksdkl0903f...
 	err = sig.VerifySignature(pk, []byte(r.Method+" "+r.RequestURI))
 	if err != nil {
-		return errors.New("Error verifying signature. " + err.Error())
+		return errors.New("Cryptographic verification of X-Signature header failed. " + err.Error())
 	}
 
 	return nil
