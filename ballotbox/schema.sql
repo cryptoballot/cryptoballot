@@ -6,5 +6,5 @@ CREATE TABLE ballots_<election-id> (
   ballot text NOT NULL
 );
 
-CREATE INDEX ballot_id_idx ON ballots_<election-id> (ballot_id);
-CREATE INDEX tags_idx on ballots_<election-id> (tags);
+CREATE INDEX ballot_id_idx_<election-id> ON ballots_<election-id> (ballot_id);
+CREATE INDEX tags_idx_<election-id> on ballots_<election-id> (tags);

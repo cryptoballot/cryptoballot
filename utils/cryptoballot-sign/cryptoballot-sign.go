@@ -17,6 +17,10 @@ import (
 )
 
 func main() {
+	var noNewLine bool
+	var trimNewLine bool
+	flag.BoolVar(&noNewLine, "n", false, "do not output the trailing newline")
+	flag.BoolVar(&trimNewLine, "d", false, "trim the linux newline character (0A) from the end of the input")
 	flag.Parse()
 
 	if flag.NArg() == 0 {
@@ -24,7 +28,7 @@ func main() {
 
 USAGE:
 cryptoballot-sign <path-to-private-key.pem> <path-to-file-to-sign>
-echo -n "string to sign" | cryptoballot-sign <path-to-private-key.pem>
+echo "string to sign" | cryptoballot-sign -d <path-to-private-key.pem>
 
 The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" | openssl dgst -sha512 -sign <path-to-private-key.pem> | base64 `)
 		return
@@ -67,17 +71,34 @@ The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" 
 		inStream = os.Stdin
 	}
 
-	hash := sha512.New()
-	_, err = io.Copy(hash, inStream)
+	// Read the source
+	target, err := ioutil.ReadAll(inStream)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Check for the commen error of there being a trailing newline (0A) character.
+	lastByte := target[len(target)-1]
+	if lastByte == 0x0A {
+		if trimNewLine {
+			target = target[0 : len(target)-1]
+		} else {
+			log.Println("Warning: Your input contains a trailing newline character (0A). You may want to run this again with the -d flag.")
+		}
+	}
+
+	// Compute the signature
+	hash := sha512.New()
+	hash.Write(target)
 	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA512, hash.Sum(nil))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	signature := cryptoballot.Signature(rawSignature)
-	fmt.Println(signature)
+	if noNewLine {
+		fmt.Print(signature)
+	} else {
+		fmt.Println(signature)
+	}
 }
