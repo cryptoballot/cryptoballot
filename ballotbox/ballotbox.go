@@ -16,16 +16,25 @@ import (
 )
 
 const (
-	schemaQuery = `CREATE TABLE ballots_<election-id> (
-					  ballot_id char(128) NOT NULL, 
-					  start timestamp NOT NULL,
-					  end timestamp NOT NULL,
+	schemaQuery = `	CREATE EXTENSION IF NOT EXISTS hstore;
+					CREATE TABLE elections (
+					  election_id char(128) UNIQUE NOT NULL, --@@TODO: change to 64 on move to SHA256
+					  startdate timestamp NOT NULL,
+					  enddate timestamp NOT NULL,
+					  tags hstore, 
+					  election text NOT NULL
+					);
+					CREATE INDEX elections_id_idx ON elections (election_id);
+					CREATE INDEX elections_tags_idx on elections (tags);`
+
+	ballotsQuery = `CREATE EXTENSION IF NOT EXISTS hstore;
+					CREATE TABLE ballots_<election-id> (
+					  ballot_id char(128) NOT NULL, --@@TODO: change to 64 on move to SHA256
 					  tags hstore, 
 					  ballot text NOT NULL
 					);
-
-					CREATE INDEX ballot_id_idx ON ballots_<election-id> (ballot_id);
-					CREATE INDEX tags_idx on ballots_<election-id> (tags);`
+					CREATE INDEX ballot_id_idx_<election-id> ON ballots_<election-id> (ballot_id);
+					CREATE INDEX tags_idx_<election-id> on ballots_<election-id> (tags);`
 )
 
 var (
@@ -107,13 +116,9 @@ func bootstrap() {
 	// If we are in 'set-up' mode, set-up the database and exit
 	// @@TODO: schema.sql should be found in some path that is configurable by the user.
 	if *set_up_opt {
-		schema_sql, err := ioutil.ReadFile("./schema.sql")
+		_, err = db.Exec(schemaQuery)
 		if err != nil {
-			log.Fatal("Error loading database schema: ", err)
-		}
-		_, err = db.Exec(string(schema_sql))
-		if err != nil {
-			log.Fatal("Error loading database schema: ", err.(pq.PGError).Get('M'))
+			log.Fatal("Error creating database schema: ", err.(pq.PGError).Get('M'))
 		}
 		fmt.Println("Database set-up complete. Please run again without --set-up-db")
 		os.Exit(0)
@@ -140,7 +145,7 @@ func verifySignatureHeaders(r *http.Request) error {
 
 	rawsig := r.Header.Get("X-Signature")
 	if rawsig == "" {
-		return errors.New("Missing X-Signature-Key header. ")
+		return errors.New("Missing X-Signature header. ")
 	}
 	sig, err := NewSignature([]byte(rawsig))
 	if err != nil {
