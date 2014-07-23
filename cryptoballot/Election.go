@@ -12,7 +12,7 @@ const (
 )
 
 var (
-	ValidElectionID = regexp.MustCompile(`^[0-9a-zA-Z]+$`) // Regex for valid characters. We use this ID to construct the name of a table, so we need to limit allowed characters.
+	ValidElectionID = regexp.MustCompile(`^[0-9a-z_]+$`) // Regex for valid characters. We use this ID to construct the name of a table, so we need to limit allowed characters.
 )
 
 type Election struct {
