@@ -2,7 +2,8 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"database/sql"
+	"github.com/lib/pq/hstore"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"net/http"
@@ -28,11 +29,11 @@ func electionHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		//handleGETElection(w, r, electionID)
+		handleGETElection(w, r, electionID)
 	case "PUT":
 		handlePUTElection(w, r, electionID)
 	case "HEAD":
-		//handleHEADElection(w, r, electionID)
+		//@@TODO: handleHEADElection(w, r, electionID)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -88,6 +89,45 @@ func handlePUTElection(w http.ResponseWriter, r *http.Request, electionID string
 	}
 
 	// All checks pass. Save the election
-	//@@TODO: Actually save it
-	fmt.Fprint(w, election.String())
+	err = saveElectionToDB(election)
+	if err != nil {
+		http.Error(w, "Error saving election: "+err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func saveElectionToDB(election *Election) error {
+	// Frist transform the tagset into an hstore
+	var tags hstore.Hstore
+	tags.Map = make(map[string]sql.NullString, len(election.TagSet))
+	for key, value := range election.TagSet.Map() {
+		tags.Map[key] = sql.NullString{value, true}
+	}
+
+	_, err := db.Exec("INSERT INTO elections (election_id, election, startdate, enddate, tags) VALUES ($1, $2, $3, $4, $5)", election.ElectionID, election.String(), election.Start, election.End, tags)
+	if err != nil {
+		return err
+	}
+
+	// Create the election table for storing ballots
+	_, err = db.Exec(strings.Replace(ballotsQuery, "<election-id>", election.ElectionID, -1))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handleGETElection(w http.ResponseWriter, r *http.Request, electionID string) {
+	var rawElection []byte
+	err := db.QueryRow("SELECT election FROM elections WHERE election_id = $1", electionID).Scan(&rawElection)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Could not find election with ID "+electionID, http.StatusNotFound)
+		} else {
+			http.Error(w, "Error reading election from database: "+err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+	w.Write(rawElection)
+	return
 }
