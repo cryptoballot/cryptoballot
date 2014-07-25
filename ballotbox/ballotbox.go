@@ -170,3 +170,16 @@ func adminsHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprint(w, admins.String())
 }
+
+// Utlity function to check if an election exists
+func electionExists(electionID string) (bool, error) {
+	err := db.QueryRow("select 1 from elections where election_id = $1 limit 1", electionID).Scan()
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		} else {
+			return false, err
+		}
+	}
+	return true, nil
+}

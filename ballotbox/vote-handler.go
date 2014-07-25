@@ -87,8 +87,18 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err 
 }
 
 func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
+	// Check to make sure the Election exists
+	if exists, err := electionExists(electionID); !exists {
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			http.Error(w, "Election not found", http.StatusNotFound)
+		}
+		return
+	}
+
 	var ballotString []byte
-	err := db.QueryRow("select ballot from ballots where ballot_id = $1", ballotID).Scan(&ballotString)
+	err := db.QueryRow("select ballot from ballots_ "+electionID+" where ballot_id = $1", ballotID).Scan(&ballotString)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Ballot not found", http.StatusNotFound)
@@ -100,6 +110,16 @@ func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 }
 
 func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
+	// Check to make sure the Election exists
+	if exists, err := electionExists(electionID); !exists {
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			http.Error(w, "Election not found", http.StatusNotFound)
+		}
+		return
+	}
+
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -120,14 +140,13 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	}
 
 	// Check the database to see if the ballot already exists
-	var count int
-	err = db.QueryRow("select count(*) from ballots where ballot_id = $1", ballot.BallotID).Scan(&count)
+	err = db.QueryRow("select 1 from ballots_"+electionID+" where ballot_id = $1", ballot.BallotID).Scan()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if count != 0 {
-		http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -143,8 +162,18 @@ func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, b
 }
 
 func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID string) {
+	// First check to make sure the election exists
+	if exists, err := electionExists(electionID); !exists {
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			http.Error(w, "Election not found", http.StatusNotFound)
+		}
+		return
+	}
+
 	var ballotString sql.RawBytes
-	rows, err := db.Query("select ballot from ballots")
+	rows, err := db.Query("select ballot from ballots+_" + electionID)
 	if err != nil {
 		http.Error(w, "Database query error. "+err.Error(), http.StatusInternalServerError)
 		return
@@ -209,6 +238,6 @@ func saveBallotToDB(ballot *Ballot) error {
 		tags.Map[key] = sql.NullString{value, true}
 	}
 
-	_, err := db.Exec("INSERT INTO ballots (ballot_id, ballot, tags) VALUES ($1, $2, $3)", ballot.BallotID, ballot.String(), tags)
+	_, err := db.Exec("INSERT INTO ballots_"+ballot.ElectionID+" (ballot_id, ballot, tags) VALUES ($1, $2, $3)", ballot.BallotID, ballot.String(), tags)
 	return err
 }
