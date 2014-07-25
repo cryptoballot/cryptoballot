@@ -169,8 +169,8 @@ Paper Voting Equivilent to CryptoBallot
 Paper Voting Equivilent                                              | CryptoBallot
 ---------------------------------------------------------------------|-----------------------------------------------------------------------------
                                                                      | User generates private / public RSA keypair
-Voters registers to vote and is put on voteres list                  | User registers to vote and is put on voters list along with their public key
-Election Time!                                                       | Election Time!
+Voters registers to vote and is put on voters list                   | User registers to vote and is put on voters list along with their public key
+*Election Time!*                                                     | *Election Time!*
 Voter receives blank ballot by mail with unique ID stamped in corner | Voter randomly generates unique ID for ballot
 Voter writes down vote on their ballot at home                       | Voter creates digital ballot file on personal device using the generated ID
 Voter puts ballot in an envelope along with carbon paper             | Voter creates a blinded copy of their ballot using RSA blinding
@@ -180,7 +180,7 @@ Voting-station clerk signs outside of envelope                       | Ballot-Cl
 Voter removes ballot from envelope and discards carbon paper         | Voter unblinds digital ballot
 Voter goes to private voting booth                                   | Voter waits a random amount of time and enables Tor
 Voter places ballot in ballot-box                                    | Voter submits ballot to Ballot-Box server (which checks ballot-clerk signature on ballot)
-Counting time!                                                       | Counting time!
+*Counting time!*                                                     | *Counting time!*
 Clerk's signature is published                                       | Ballot-Clerk's public-key is published
 All ballots are poured out on big counting table                     | All ballots are published in the open
 All ballots are checked for the clerk's carbon-copied signature      | All ballots are cryptographically verified against Ballot-Clerk server's public key / signature
