@@ -186,6 +186,6 @@ All ballots are poured out on big counting table                     | All ballo
 All ballots are checked for the clerk's carbon-copied signature      | All ballots are cryptographically verified against Ballot-Clerk server's public key / signature
 All ballots are checked to make sure they have a unique-id           | All ballots are checked to make sure they have a unique-id
 Count the ballot and the receipts, make sure receipts >= ballots     | Count the ballot and the signature-request receipts, make sure receipts >= ballots
-Admins verify receipts are properly signed by a registered voter     | Admins verify signature-request receipts are properly signed by a registered voter
+Auditors verify receipts are properly signed by a registered voter   | Auditors verify signature-request receipts are properly signed by a registered voter
 Tally the results of the election!                                   | Tally the results of the election!
 
