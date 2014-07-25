@@ -19,9 +19,7 @@ VoterList Server (Voter registry)
   - Access to the VoterList should be limited to a verified list of Auditors who can verify the integrity of the VoterList database. Optionally the entire VoterList could be made public if so desired.
   - VoterList should allow anyone to verify that a public-key is active and valid, but should not disclose the identity of the voter with that public key.
   - Risks include:
-     - Account highjacking. This can be mitigated by user-management best practices including 2 factor authentication and email-notifications.
-     - Account stuffing (server is hacked and additional user-accounts and PKs are inserted into the database). This can be mitigated by repeatenly verfying the voter-database and monitoring for abnormal public-key registration activity.
-
+     - Account stuffing (server is hacked and additional user-accounts are inserted into the database). This can be mitigated by tying voter-database to another trusted ID database. For example, a driver's licence database. This risk is equally present in a paper-based voting system. 
 
 
 
