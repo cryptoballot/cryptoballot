@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	goodKey = []byte("MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu4W7ptone8v6Dve2/gRT8nisIStTzDNgHrFrFJUQMIlAzwqHCo4l6ZW5169SRyrCJvjljcEEH+WQgyUGOwUSpYHnCOPSXsKKWD6+X/dduk3oakGeQ6V9CMvyGKKUOZEyUP1uPSS6OH2lVCtc3eU1iMa4pFE75Qq3x54GUeFoJpRFllXhJZv4LF7TahkRYOgsrjRSbb/exUR9VRFVv3+03FB2gpgO6LGw5W7sGBvEjDA/ZKSii1m5Cvs14vYn1zhR7G0J6s+eqgh8yscs6fgaqttABl72Z9dLdmp3lTxRSQMDNJOExZb1TjE0Rr2fywZ19LyCym/8IUSkY1atx3Em/QIDAQAB")
-	goodSHA = []byte("cad74457654f86a1da02406b262693976fa94e9f2ad26fcee35a182328cdcdba62ddc40cef1151f70b36a0e61348922a3ae59be8cebc4f1d143dc4d6c92ea630")
-	badKey  = []byte("IAMNOTAKEY")
+	goodPublicKey    = []byte("MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA31GRu9r2QRA9PtIzMKyV3vloQlrmxRLYIgiUsNg6bNOmTOJ1og+HNpTY8XOujf3KpPS38F1XM3AAJQi3pUjcJEdeiqroFf8b7t2pas1V+Bg2XAWWbfKctpnMuxeIYuJE52KhUK4y+qGaLXI+53oT09w3V4CdeQNZllVL2a6q+6gjpdZ+/YOPQ+dncHtYCxNHu1Idub0EP/ZMkdcHLwpi/gmuw7qvdpQTeiw54krV3MoiZq50ZTxTFRCjFJ+C+pmrYaPygrkCkv3sj3v1Be8k0EBYsMH8yZoigbyE0/SlCH+RGLSiS1yAV+MHcoVMzPFbXnFv9usI3UNVSXrDSzsxYgiDaeX7KVrraKhJrM/LIypZbJDiKLpLzKFEx+SkSQ/3e8eSsedp7N5RSvcz9GU6K4sUYtvNdiwHZTTakoo7m8pBF7dE9Guxjtcc42vwBSArsYrfstFcMaVwwth1Ohh/vO1W5EmMzzsqqm7DYPCVFapwV7wlveYFyD5e9ZVb/im8s+2NHg6PY5L1ke+JN+zx75M54nGezk+1pJcy05r66a56Wyh85RgMUok1XMPbiVmhA8TVwlCZGnfXetsSsFKgFjAGD+DdLCdkj9TH2tG7pewlEDNjVM+iWJA8Tmt/H+n4tL1LedzGs1KkwEZKEcxZtxDdBxPWFQDK3UloOwaP6y0CAwEAAQ==")
+	goodPublicKeySHA = []byte("698274e67a7f9bdb7a19e6b6d12fa07c4b2074b512ce7fa341f865d137e0335a")
+	badKey           = []byte("IAMNOTAKEY")
 )
 
 func TestGoodPublicKey(t *testing.T) {
@@ -16,7 +16,7 @@ func TestGoodPublicKey(t *testing.T) {
 	// Set the min public key length to 2048 for testing purposes
 	MinPublicKeySize = 2048
 
-	pk, err := NewPublicKey(goodKey)
+	pk, err := NewPublicKey(goodPublicKey)
 	if err != nil {
 		t.Error(err)
 		return
@@ -26,7 +26,7 @@ func TestGoodPublicKey(t *testing.T) {
 		t.Errorf("Valid public key should not be empty")
 	}
 
-	if pk.String() != string(goodKey) {
+	if pk.String() != string(goodPublicKey) {
 		t.Errorf("Public Key does not survive round trip from string and back")
 	}
 
@@ -35,9 +35,9 @@ func TestGoodPublicKey(t *testing.T) {
 		t.Error(err)
 	}
 
-	SHA512 := pk.GetSHA512()
-	if !bytes.Equal(SHA512, goodSHA) {
-		t.Errorf("BallotID does not match SHA512. Got " + string(SHA512))
+	hash := pk.GetSHA256()
+	if !bytes.Equal(hash, goodPublicKeySHA) {
+		t.Errorf("BallotID does not match SHA256. Got " + string(hash))
 	}
 }
 

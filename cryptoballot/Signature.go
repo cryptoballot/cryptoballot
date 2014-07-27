@@ -3,7 +3,7 @@ package cryptoballot
 import (
 	"crypto"
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 )
@@ -43,7 +43,7 @@ func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
 		return err
 	}
 
-	hash := sha512.New()
+	hash := sha256.New()
 	hash.Write(message)
-	return rsa.VerifyPKCS1v15(pubkey, crypto.SHA512, hash.Sum(nil), sig.Bytes())
+	return rsa.VerifyPKCS1v15(pubkey, crypto.SHA256, hash.Sum(nil), sig.Bytes())
 }

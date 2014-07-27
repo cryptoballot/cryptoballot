@@ -12,6 +12,6 @@ func NewFulfilledSignatureRequest(sigReq SignatureRequest, sig Signature) *Fulfi
 	}
 }
 
-func (fulfilled *FulfilledSignatureRequest) String() string {
+func (fulfilled FulfilledSignatureRequest) String() string {
 	return fulfilled.SignatureRequest.String() + "\n\n" + fulfilled.BallotSignature.String()
 }

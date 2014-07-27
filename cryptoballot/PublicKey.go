@@ -2,7 +2,7 @@ package cryptoballot
 
 import (
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
@@ -57,11 +57,6 @@ func NewPublicKeyFromCryptoKey(pub *rsa.PublicKey) (PublicKey, error) {
 	return PublicKey(derBytes), nil
 }
 
-// Implements Stringer
-func (pk PublicKey) String() string {
-	return base64.StdEncoding.EncodeToString(pk)
-}
-
 // Extract the bytes out of the public key
 func (pk PublicKey) Bytes() []byte {
 	return []byte(pk)
@@ -76,13 +71,13 @@ func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 	return pubkey.(*rsa.PublicKey), nil
 }
 
-// Get the corresponding ID, which is the (hex encoded) SHA512 of the (base64 encoded) public key.
-func (pk PublicKey) GetSHA512() []byte {
-	h := sha512.New()
+// Get the corresponding ID, which is the (hex encoded) SHA256 of the (base64 encoded) public key.
+func (pk PublicKey) GetSHA256() []byte {
+	h := sha256.New()
 	h.Write([]byte(pk.String()))
-	sha512hex := make([]byte, hex.EncodedLen(sha512.Size))
-	hex.Encode(sha512hex, h.Sum(nil))
-	return sha512hex
+	sha256hex := make([]byte, hex.EncodedLen(sha256.Size))
+	hex.Encode(sha256hex, h.Sum(nil))
+	return sha256hex
 }
 
 // Get the number of bits in the key
@@ -101,4 +96,9 @@ func (pk PublicKey) IsEmpty() bool {
 	} else {
 		return false
 	}
+}
+
+// Implements Stringer
+func (pk PublicKey) String() string {
+	return base64.StdEncoding.EncodeToString(pk)
 }

@@ -4,35 +4,41 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"reflect"
 	"testing"
 )
 
 var (
-	goodBallot = []byte(`12345
+	goodBallot = []byte(`election12345
 
-1d6d8c6965c4a72c35c6bf9ac66483405168578ee503bf4b4a2248b3cd0e2415d9fa2436eab027635819fdc4d458551081b8e0039ab242b08ba7c664633fe923
+1d6d8c6965c4a72c35c6bf9ac66483405168578ee503bf4b4a2248b3cd0e2415
 
-/12345/e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
-/12345/d16085b3b913e5bc5e351c0a7461051e9973629a
+Mujica
+Obama
+Harper
+Netanyahu
+Putin
 
 voter=Patrick Hayes
 unsealed=true
 
-NDu0+HUo4WjBnnmw0H5CGc31UEx5Z4bdUHRLiPrABkwT/QsQtbI0m58CAy0yXlShTQtqpx7yYfb88h0/E1Bzcn4SfYapYl0ZozrTRyY77CDqGi3LEnnX28IfW4Q/SuVfdNvxrJja9ay/sxZf0dTON7UZKKLV7zCS/2I5aVhgv5yeP26eCPpDOBlHFxZuPwUBJiXIZhGGU0DxTePgThgYIryGvnF+zdV59c81jec4nXWFDhmBVIR6RB0BAJDfcXv7UUY07deHtH2DAMvvd/CjRriZBbQSFOq5VNsWMd2/bFf3s0n2LhOrnsqVjkM0g8WXYm3tE9Q8kCpmybFCoFNYnv+YV2ZWbcUuwfnShqK1Pyr1Rg+avVun7LAyEuHzf8MoQC/UAUucPwu7t4Wq0ZpK8rM6UNmbPyEA5lF/VP30pmp1vFJlAkskydBdWPga5N9hzfJCRALfSq7Ssz6v8Q8y/WfrvsSt+GoPgneTAd8AHjxP/6/LOLRqZka9TVR2SigCPDlAvM0awpaxoxiulrMAOVdFIPk1E7SuWJHjmhWcS2FEjkXU3wc1qIng2H8Xf8IZXONL1sM2J5o7Vu/P9KKjINTCPVzL+WBea60Og9JAh8w/UlGMhHVm1e/yJcu+4VPPTKYpU/ftCE9n4MrPqxX7ZVI3Fo6kMPJD4QQF2u0/Esk=`)
+v+dnjFSEtISBC9QHHtabOvzExR5VfwxOCkvrYOSRyevwo5ysAUTCPwZnewn2Liy+CHdox83KEnBTYQHCMTbTqR1jEXE883n6Cxj/6+Qp5Bz9rcOu578xG68a0iDGrvUPaJE7pN0dgAyHezwEFNtfx4/UqKURRfLInu70wL7glGEPuUJjCmjTxqZxIfiXweeIPoYdP5WHQdU5iryFN1vPHab/95lrcz4jrHvMKSSOOXOIav64B4YsCx5KZvGYJEN0WSAhu/ZGlEocHsXcnd9xDQZWi/vmsvw0Xjsn68Zc1wIhzbb5GGjWVb1v4edvGg0N0gvcNRKra7ULY+6hFkESib6IvXGufBbytK+v7tyr0oqIIcNiYuF2VUunpYyqkmLU8Ky5w6vFEcVi3H9ABtEQwcrnXvrLuN9eL6PX3TkhEQahYhVrb3vMsyI9sE6NRWZyp0zGW+E0bTqdtPkLvqRtqSHxVpYiiZLp4+x7mOqyzSCbg0df0XGV6stEXM15Cf1BlVjch0PRT6+pjUrbgDT1k8hkPV3ChD41uOV8R/agpDw3vJXi15fN7jB0H6xIAGexoIh7G8t5Thi5WXWHRYqW7PpaJdbW/hagz42TP4BO0A5L63TKABoLpHsM0tCBwz8GLz8h1YSeCqPN9kntTpLEFdPeUEjn/b14huvJnocMS2M=`)
 
-	goodSigningKey = []byte(`MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwacgxmSwqRtsZaMtxc6O7hSl6Y1vwCwqaRnm3N5LMy52X1FiEW+jbZf3ngC/M9EC1LKz0Sctur0UXA038bJJHY8tHvV6qVjdb60GPK41CupbyhWaiYWps3DGRiUSRhAxROnekOsaThE+4HYWd/QzOeajLja06episY92lnGJ6I37uAhSqNm5GwEgufCtNVu9I8DIIOcV6YpEbmc21ZHMGgOautSfZ/dlw5qkpCWNqxW7WH7XQayuNE/mTKZ615HqIqjSh/+OjTj3jkvPvX32SzzhDmWHrYWOv1c6Qo3z8fNYjYFQMffLoy1QJ9G/KmuDw2rmkLXOc/sClv9Z/gZVW07Wg2Xsgp3y/1cH9J3uOqmb3WOukJGOCK4+E0oAb/qsLkOzIeiUoVEeNg/h8XPVO0cJjblEVnwhQe3jUKBXem7kDC0t9wSBsPOE/6BaXzwVPd8em5Tpuw07nSjiiZvvCUMMuoXvUG5UyTmJh9rEw3ehJACC1AJLfX/HJw+wB/p+TfEhmuNpvtUVegbCPkYTh1wQzFMAbIPjrWog2xWVshLb+L7GJm8CQPDlAkwXG676PcTlYdEIL0rReCVN+S6tr8nVPrQrUFePv7EM5sgyQ9XgfVglf+38wDHnrhFZxyEmaMzfMVDUhqt6NSgpceMo8KCNL0oaH+IdJsn7zXjKqQkCAwEAAQ==`)
+	goodClerkPublicKey = []byte(`MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAwacgxmSwqRtsZaMtxc6O7hSl6Y1vwCwqaRnm3N5LMy52X1FiEW+jbZf3ngC/M9EC1LKz0Sctur0UXA038bJJHY8tHvV6qVjdb60GPK41CupbyhWaiYWps3DGRiUSRhAxROnekOsaThE+4HYWd/QzOeajLja06episY92lnGJ6I37uAhSqNm5GwEgufCtNVu9I8DIIOcV6YpEbmc21ZHMGgOautSfZ/dlw5qkpCWNqxW7WH7XQayuNE/mTKZ615HqIqjSh/+OjTj3jkvPvX32SzzhDmWHrYWOv1c6Qo3z8fNYjYFQMffLoy1QJ9G/KmuDw2rmkLXOc/sClv9Z/gZVW07Wg2Xsgp3y/1cH9J3uOqmb3WOukJGOCK4+E0oAb/qsLkOzIeiUoVEeNg/h8XPVO0cJjblEVnwhQe3jUKBXem7kDC0t9wSBsPOE/6BaXzwVPd8em5Tpuw07nSjiiZvvCUMMuoXvUG5UyTmJh9rEw3ehJACC1AJLfX/HJw+wB/p+TfEhmuNpvtUVegbCPkYTh1wQzFMAbIPjrWog2xWVshLb+L7GJm8CQPDlAkwXG676PcTlYdEIL0rReCVN+S6tr8nVPrQrUFePv7EM5sgyQ9XgfVglf+38wDHnrhFZxyEmaMzfMVDUhqt6NSgpceMo8KCNL0oaH+IdJsn7zXjKqQkCAwEAAQ==`)
 )
 
 // Basic test of parsing a good ballot
 func TestBallotParsing(t *testing.T) {
+	// To speed testing we set the public key size to the mimumum. We don't care about real security during testing.
+	MinPublicKeySize = absoluteMinPublicKeySize
+
 	ballot, err := NewBallot(goodBallot)
 	if err != nil {
 		t.Error(err)
 	}
 
-	signingKey, err := NewPublicKey(goodSigningKey)
+	signingKey, err := NewPublicKey(goodClerkPublicKey)
 	if err != nil {
 		t.Error(err)
 	}
@@ -63,7 +69,7 @@ func TestBallotParsing(t *testing.T) {
 // A more meaningful test that takes us all the way through ballot creation, including creating the ballot and having it signed.
 func TestBallotCreation(t *testing.T) {
 	// Create a private / public keypair for the voter
-	voterPriv, err := rsa.GenerateKey(rand.Reader, 1024)
+	voterPriv, err := rsa.GenerateKey(rand.Reader, absoluteMinPublicKeySize)
 	if err != nil {
 		t.Error(err)
 	}
@@ -72,7 +78,7 @@ func TestBallotCreation(t *testing.T) {
 		t.Error(err)
 	}
 	// Create a public / private keypair for the ballot-clerk
-	clerkPriv, err := rsa.GenerateKey(rand.Reader, 1024)
+	clerkPriv, err := rsa.GenerateKey(rand.Reader, absoluteMinPublicKeySize)
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,15 +97,15 @@ func TestBallotCreation(t *testing.T) {
 	// Create unsigned SignatureRequest
 	signatureReq := SignatureRequest{
 		ElectionID: "12345",
-		RequestID:  voterPub.GetSHA512(),
+		RequestID:  voterPub.GetSHA256(),
 		PublicKey:  voterPub,
-		BallotHash: ballot.GetSHA512(),
+		BallotHash: ballot.GetSHA256(),
 	}
 
 	// Sign the Signature Request with the voter's key
-	h := sha512.New()
+	h := sha256.New()
 	h.Write([]byte(signatureReq.String()))
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, voterPriv, crypto.SHA512, h.Sum(nil))
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, voterPriv, crypto.SHA256, h.Sum(nil))
 	if err != nil {
 		t.Error(err)
 	}

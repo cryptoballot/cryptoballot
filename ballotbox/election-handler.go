@@ -74,9 +74,9 @@ func handlePUTElection(w http.ResponseWriter, r *http.Request, electionID string
 	}
 
 	// Check to make sure this admin exists and has permission to administer elections
-	admin := admins.GetUser(election.AdminID)
+	admin := admins.GetUser(election.PublicKey)
 	if admin == nil {
-		http.Error(w, "Could not find admin with the provided user-id of "+string(election.AdminID), http.StatusForbidden)
+		http.Error(w, "Could not find admin with the provided public key of "+election.PublicKey.String(), http.StatusForbidden)
 		return
 	}
 	if !bytes.Equal(admin.PublicKey.Bytes(), election.PublicKey.Bytes()) {

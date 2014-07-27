@@ -168,7 +168,7 @@ func adminsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprint(w, admins.String())
+	fmt.Fprint(w, admins)
 }
 
 // Utlity function to check if an election exists

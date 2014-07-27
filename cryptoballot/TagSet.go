@@ -41,7 +41,8 @@ func NewTag(rawTag []byte) (Tag, error) {
 	}, nil
 }
 
-func (tag *Tag) String() string {
+// Implements Stringer
+func (tag Tag) String() string {
 	return string(tag.Key) + "=" + string(tag.Value)
 }
 
@@ -82,11 +83,12 @@ func (tagSet *TagSet) Map() map[string]string {
 	return output
 }
 
-func (tagSet *TagSet) String() string {
+// Implements Stringer
+func (tagSet TagSet) String() string {
 	var output string
-	for i, tag := range *tagSet {
+	for i, tag := range tagSet {
 		output += tag.String()
-		if i != len(*tagSet)-1 {
+		if i != len(tagSet)-1 {
 			output += "\n"
 		}
 	}

@@ -5,16 +5,16 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 )
 
 type SignatureRequest struct {
 	ElectionID string
-	RequestID  []byte // SHA512 (hex) of base64 encoded public-key
+	RequestID  []byte // SHA256 (hex) of base64 encoded public-key
 	PublicKey         // base64 encoded PEM formatted public-key
-	BallotHash []byte // SHA512 (hex-encoded) of the ballot. This would generally be blinded.
+	BallotHash []byte // SHA256 (hex-encoded) of the ballot. This would generally be blinded.
 	Signature         // Voter signature for the ballot request
 }
 
@@ -53,8 +53,8 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	}
 
 	requestID = parts[1]
-	if !bytes.Equal(requestID, publicKey.GetSHA512()) {
-		return &SignatureRequest{}, errors.New("Invalid Request ID. A Request ID must be the (hex encoded) SHA512 of the voters public key.")
+	if !bytes.Equal(requestID, publicKey.GetSHA256()) {
+		return &SignatureRequest{}, errors.New("Invalid Request ID. A Request ID must be the (hex encoded) SHA256 of the voters public key.")
 	}
 
 	ballotHash = parts[3]
@@ -62,8 +62,8 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	if err != nil {
 		return &SignatureRequest{}, errors.New("Ballot hash must be hex encoded.")
 	}
-	if n != sha512.Size {
-		return &SignatureRequest{}, errors.New("You must provide exactly 512 bits for the blinded SHA512 ballot hash")
+	if n != sha256.Size {
+		return &SignatureRequest{}, errors.New("You must provide exactly 256 bits for the blinded SHA256 ballot hash")
 	}
 
 	if hasSign {
@@ -97,25 +97,15 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(s))
 }
 
-// Implements Stringer. Outputs the same text representation we are expecting the voter to POST in their Signature Request.
-// This is also the same format that is expected in NewSignatureRequest
-func (sigReq *SignatureRequest) String() string {
-	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
-	if sigReq.HasSignature() {
-		s += "\n\n" + sigReq.Signature.String()
-	}
-	return s
-}
-
-// Sign the blinded ballot hash attached to the Signature Request. It is the hex-encoded blinded SHA512 hash of the ballot.
+// Sign the blinded ballot hash attached to the Signature Request. It is the hex-encoded blinded SHA256 hash of the ballot.
 func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, error) {
-	rawBytes := make([]byte, hex.DecodedLen(len(sigReq.BallotHash))) //@@TODO: Make this a straight 64 bytes (512 bits)
+	rawBytes := make([]byte, hex.DecodedLen(len(sigReq.BallotHash))) //@@TODO: Make this a straight 32 bytes (256 bits)
 	_, err := hex.Decode(rawBytes, sigReq.BallotHash)
 	if err != nil {
 		return Signature{}, err
 	}
 
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA512, rawBytes)
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, rawBytes)
 	if err != nil {
 		return Signature{}, err
 	}
@@ -128,4 +118,14 @@ func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, erro
 // This function checks to see if the SignatureRequest has been signed by the voter
 func (sigReq *SignatureRequest) HasSignature() bool {
 	return sigReq.Signature != nil
+}
+
+// Implements Stringer. Outputs the same text representation we are expecting the voter to POST in their Signature Request.
+// This is also the same format that is expected in NewSignatureRequest
+func (sigReq SignatureRequest) String() string {
+	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
+	if sigReq.HasSignature() {
+		s += "\n\n" + sigReq.Signature.String()
+	}
+	return s
 }

@@ -10,7 +10,6 @@ import (
 )
 
 type User struct {
-	UserID     []byte            // SHA512 (hex) of base64 encoded public-key
 	PublicKey  PublicKey         // base64 encoded PEM formatted public-key
 	Perms      []string          // List of permissions. @@TODO: Maybe this shouldn't be a string but should be an enumeration
 	Properties map[string]string // List of all key->value properties
@@ -29,7 +28,6 @@ func NewUser(PEMBlockBytes []byte) (*User, error) {
 func NewUserFromBlock(PEMBlock *pem.Block) (*User, error) {
 	var (
 		err       error
-		userID    []byte
 		publicKey PublicKey
 		perms     []string
 	)
@@ -48,15 +46,6 @@ func NewUserFromBlock(PEMBlock *pem.Block) (*User, error) {
 		return nil, err
 	}
 
-	_, ok := PEMBlock.Headers["userid"]
-	if !ok {
-		return nil, errors.New("userid not specified for user")
-	}
-	userID = []byte(PEMBlock.Headers["userid"])
-	if !bytes.Equal(userID, publicKey.GetSHA512()) {
-		return nil, errors.New("Invalid User ID. A User ID must be the (hex encoded) SHA512 of the user's public key.")
-	}
-
 	permString, ok := PEMBlock.Headers["perms"]
 	if !ok || permString == "" {
 		return nil, errors.New("No permissions specified for user")
@@ -72,7 +61,6 @@ func NewUserFromBlock(PEMBlock *pem.Block) (*User, error) {
 
 	// All checks pass
 	return &User{
-		userID,
 		publicKey,
 		perms,
 		PEMBlock.Headers,
@@ -89,7 +77,7 @@ func (user *User) HasPerm(checkperm string) bool {
 }
 
 // Implements Stringer
-func (user *User) String() string {
+func (user User) String() string {
 	pemBlock := pem.Block{
 		Type:    "PUBLIC KEY",
 		Headers: user.Properties,
@@ -128,12 +116,9 @@ func NewUserSet(PEMBlockBytes []byte) (UserSet, error) {
 	return userset, nil
 }
 
-// Add a user to a UserSet. Returns an error if a user with the same public-key or with the same ID already exists
+// Add a user to a UserSet. Returns an error if a user with the same public-key already exists
 func (userset *UserSet) Add(user *User) error {
 	for _, checkuser := range *userset {
-		if bytes.Equal(checkuser.UserID, user.UserID) {
-			return errors.New("Could not add user. User already exists with the same user-id")
-		}
 		if bytes.Equal(checkuser.PublicKey.Bytes(), user.PublicKey.Bytes()) {
 			return errors.New("Could not add user. User already exists with the same public-key")
 		}
@@ -144,30 +129,22 @@ func (userset *UserSet) Add(user *User) error {
 }
 
 // Removes a user from a UserSet. Returns an error if the user cannot be found or nil on success.
-func (userset *UserSet) Remove(userID []byte) error {
+func (userset *UserSet) Remove(pk PublicKey) error {
+	rawBytes := pk.Bytes()
 	for i, user := range *userset {
-		if bytes.Equal(userID, user.UserID) {
+		if bytes.Equal(rawBytes, user.PublicKey.Bytes()) {
 			*userset = append((*userset)[:i], (*userset)[i+1:]...)
 			return nil
 		}
 	}
-	return errors.New("Could not find user with userID " + string(userID))
+	return errors.New("Could not find user with public key of " + pk.String())
 }
 
-// Given a UserID, get the corresponding user from the UserSet. Returns nil if no user is found
-func (userset UserSet) GetUser(userID []byte) *User {
+// Given a public key, get the corresponding user from the UserSet. Returns nil if no user is found
+func (userset UserSet) GetUser(pk PublicKey) *User {
+	rawBytes := pk.Bytes()
 	for _, user := range userset {
-		if bytes.Equal(userID, user.UserID) {
-			return &user
-		}
-	}
-	return nil
-}
-
-// Given a Public Key, get the corresponding user from the UserSet. Returns nil if no user is found
-func (userset UserSet) GetUserByKey(publicKey PublicKey) *User {
-	for _, user := range userset {
-		if bytes.Equal(publicKey.Bytes(), user.PublicKey.Bytes()) {
+		if bytes.Equal(rawBytes, user.PublicKey.Bytes()) {
 			return &user
 		}
 	}

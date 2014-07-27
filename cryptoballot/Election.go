@@ -20,7 +20,6 @@ type Election struct {
 	Start      time.Time // Start date & time (RFC-1123 format with a numeric timezone)
 	End        time.Time // End date & time (RFC-1123 format with a numeric timezone)
 	TagSet               // Optional key-value tag-set
-	AdminID    []byte    // user-id of the admin that created this election
 	PublicKey            // The public key of the admin that created this election
 	Signature            // The signature used to create this election
 }
@@ -28,14 +27,12 @@ type Election struct {
 func NewElection(rawElection []byte) (*Election, error) {
 	var (
 		tagsSec    int
-		aidSec     int
 		keySec     int
 		signSec    int
 		err        error
 		electionID string
 		start      time.Time
 		end        time.Time
-		adminID    []byte
 		publicKey  PublicKey
 		tagSet     TagSet
 		signature  Signature
@@ -47,28 +44,24 @@ func NewElection(rawElection []byte) (*Election, error) {
 	// Determine what components exist
 	numParts := len(parts)
 	switch numParts {
-	case 7:
-		tagsSec = 3
-		aidSec = 4
-		keySec = 5
-		signSec = 6
 	case 6:
+		tagsSec = 3
+		keySec = 4
+		signSec = 5
+	case 5:
 		// We need to determine if the signature is missing or if the tagset is missing
-		// We do this by looking at the 4th element (index 3) and checking to see if it's a tagset or the admin user-id
+		// We do this by looking at the 4th element (index 3) and checking to see if it's a tagset or the public key
 		if bytes.Contains(parts[3], []byte{'\n'}) {
 			// If it contains a linebreak, it's a tagset. The signature is missing.
 			tagsSec = 3
-			aidSec = 4
-			keySec = 5
-		} else {
-			// It's a admin-id. There is a signature but no tagset.
-			aidSec = 3
 			keySec = 4
-			signSec = 5
+		} else {
+			// It's a public-key. There is a signature but no tagset.
+			keySec = 3
+			signSec = 4
 		}
-	case 5:
-		aidSec = 3
-		keySec = 4
+	case 4:
+		keySec = 3
 	default:
 		return &Election{}, errors.New("Cannot read election. Invalid election format")
 	}
@@ -100,14 +93,9 @@ func NewElection(rawElection []byte) (*Election, error) {
 		tagSet = nil
 	}
 
-	adminID = parts[aidSec]
-
 	publicKey, err = NewPublicKey(parts[keySec])
 	if err != nil {
 		return &Election{}, err
-	}
-	if !bytes.Equal(publicKey.GetSHA512(), adminID) {
-		return &Election{}, errors.New("Admin user-id and admin public key do not match")
 	}
 
 	if signSec != 0 {
@@ -125,7 +113,6 @@ func NewElection(rawElection []byte) (*Election, error) {
 		start,
 		end,
 		tagSet,
-		adminID,
 		publicKey,
 		signature,
 	}
@@ -141,26 +128,8 @@ func (election *Election) VerifySignature() error {
 	if election.HasTagSet() {
 		s += "\n\n" + election.TagSet.String()
 	}
-	s += "\n\n" + string(election.AdminID) + "\n\n" + election.PublicKey.String()
+	s += "\n\n" + election.PublicKey.String()
 	return election.Signature.VerifySignature(election.PublicKey, []byte(s))
-}
-
-// Implements Stringer. Returns the string that would be expected in a PUT request to create the election
-// The returned string is the same format as expected by NewElection
-func (election *Election) String() string {
-	s := election.ElectionID + "\n\n" + election.Start.Format(time.RFC1123Z) + "\n\n" + election.End.Format(time.RFC1123Z)
-
-	if election.HasTagSet() {
-		s += "\n\n" + election.TagSet.String()
-	}
-
-	s += "\n\n" + string(election.AdminID) + "\n\n" + election.PublicKey.String()
-
-	if election.HasSignature() {
-		s += "\n\n" + election.Signature.String()
-	}
-
-	return s
 }
 
 // TagSets are optional, check to see if this election has them
@@ -172,4 +141,22 @@ func (election *Election) HasTagSet() bool {
 // This function checks to see if the Election has been signed. It does not verify the signature, but merely checks to see if it exists.
 func (election *Election) HasSignature() bool {
 	return election.Signature != nil
+}
+
+// Implements Stringer. Returns the string that would be expected in a PUT request to create the election
+// The returned string is the same format as expected by NewElection
+func (election Election) String() string {
+	s := election.ElectionID + "\n\n" + election.Start.Format(time.RFC1123Z) + "\n\n" + election.End.Format(time.RFC1123Z)
+
+	if election.HasTagSet() {
+		s += "\n\n" + election.TagSet.String()
+	}
+
+	s += "\n\n" + election.PublicKey.String()
+
+	if election.HasSignature() {
+		s += "\n\n" + election.Signature.String()
+	}
+
+	return s
 }

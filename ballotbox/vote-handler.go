@@ -67,14 +67,14 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err 
 		return
 	}
 
-	// Get the ballotID (hex encoded SHA512 of base64 encoded public-key)
+	// Get the ballotID
 	ballotID = urlparts[3]
 	if len(ballotID) > MaxBallotIDSize || !ValidBallotID.MatchString(ballotID) {
 		err = parseError{"Invalid Ballot ID. 404 Not Found.", http.StatusNotFound}
 	}
 
 	// If the user has provided a signature of the request in the headers, verify it
-	if r.Header.Get("X-Voteflow-Signature") != "" {
+	if r.Header.Get("X-Signature") != "" {
 		// Verify the signature headers, do a cryptographic check to make sure the header and Method / URL request is signed
 		if suberr := verifySignatureHeaders(r); suberr != nil {
 			err = parseError{suberr.Error(), http.StatusBadRequest}

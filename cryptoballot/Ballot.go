@@ -2,11 +2,12 @@ package cryptoballot
 
 import (
 	"bytes"
-	"crypto/sha512"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"regexp"
+	"strconv"
 )
 
 const (
@@ -14,8 +15,8 @@ const (
 )
 
 var (
-	// maxBallotSize: election-id (max 128 bytes) + BallotID + (64 vote preferences) + (64 tags) + signature + line-seperators
-	MaxBallotSize = MaxElectionIDSize + MaxBallotIDSize + (64 * 256 * 2) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
+	// maxBallotSize: election-id (max 128 bytes) + BallotID + Vote + (64 tags) + signature + line-seperators
+	MaxBallotSize = MaxElectionIDSize + MaxBallotIDSize + (maxVoteSize) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
 	ValidBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
 )
 
@@ -88,8 +89,8 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	}
 
 	ballotID = string(parts[1])
-	if len(ballotID) > 512 {
-		return &Ballot{}, errors.New("Ballot ID is too large. Maximumber 512 characters")
+	if len(ballotID) > MaxBallotIDSize {
+		return &Ballot{}, errors.New("Ballot ID is too large. Ballot ID should be at most " + strconv.Itoa(MaxBallotIDSize) + "characters")
 	}
 	if !ValidBallotID.MatchString(ballotID) {
 		return &Ballot{}, errors.New("Ballot ID contains illigal characters. Valid characters are as per RFC 3986, sec 2: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=")
@@ -141,28 +142,13 @@ func (ballot *Ballot) VerifySignature(pk PublicKey) error {
 	return ballot.Signature.VerifySignature(pk, []byte(s))
 }
 
-// Implements Stringer. Returns the String that would be expected in a PUT request to create the ballot
-// The returned string is the same format as expected by NewBallot
-func (ballot *Ballot) String() string {
-	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
-
-	if ballot.HasTagSet() {
-		s += "\n\n" + ballot.TagSet.String()
-	}
-	if ballot.HasSignature() {
-		s += "\n\n" + ballot.Signature.String()
-	}
-
-	return s
-}
-
-// Get the (hex-encoded) SHA512 of the String value of the ballot.
-func (ballot *Ballot) GetSHA512() []byte {
-	h := sha512.New()
+// Get the (hex-encoded) SHA256 of the String value of the ballot.
+func (ballot *Ballot) GetSHA256() []byte {
+	h := sha256.New()
 	h.Write([]byte(ballot.String()))
-	sha512hex := make([]byte, hex.EncodedLen(sha512.Size))
-	hex.Encode(sha512hex, h.Sum(nil))
-	return sha512hex
+	sha256hex := make([]byte, hex.EncodedLen(sha256.Size))
+	hex.Encode(sha256hex, h.Sum(nil))
+	return sha256hex
 }
 
 // TagSets are optional, check to see if this ballot has them
@@ -174,4 +160,19 @@ func (ballot *Ballot) HasTagSet() bool {
 // This function checks to see if the ballot has a signature
 func (ballot *Ballot) HasSignature() bool {
 	return ballot.Signature != nil
+}
+
+// Implements Stringer. Returns the String that would be expected in a PUT request to create the ballot
+// The returned string is the same format as expected by NewBallot
+func (ballot Ballot) String() string {
+	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
+
+	if ballot.HasTagSet() {
+		s += "\n\n" + ballot.TagSet.String()
+	}
+	if ballot.HasSignature() {
+		s += "\n\n" + ballot.Signature.String()
+	}
+
+	return s
 }
