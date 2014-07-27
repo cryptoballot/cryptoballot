@@ -4,7 +4,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha512"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
@@ -30,7 +30,7 @@ USAGE:
 cryptoballot-sign <path-to-private-key.pem> <path-to-file-to-sign>
 echo "string to sign" | cryptoballot-sign -d <path-to-private-key.pem>
 
-The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" | openssl dgst -sha512 -sign <path-to-private-key.pem> | base64 `)
+The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" | openssl dgst -sha256 -sign <path-to-private-key.pem> | base64 `)
 		return
 	}
 
@@ -88,9 +88,9 @@ The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" 
 	}
 
 	// Compute the signature
-	hash := sha512.New()
+	hash := sha256.New()
 	hash.Write(target)
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA512, hash.Sum(nil))
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, hash.Sum(nil))
 	if err != nil {
 		log.Fatal(err)
 	}
