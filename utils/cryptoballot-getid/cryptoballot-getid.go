@@ -18,11 +18,13 @@ func main() {
 		fmt.Println(`cryptoballot-getid prints the ID of a public-key to be used as part of a SignatureRequest or User.
 
 To ensure that unique IDs are well formed, cryptoballot requires that the IDs of a SignatureRequest or a User (administrator or auditor)
-correspond one-to-one with their public keys. Specifically, an ID must be the hex-encoded SHA512 of the base64 encoded public key. 
-This ID can be generally manually using openssl, but to save time and frustration, this utility will do it for you.
+correspond one-to-one with their public keys. Specifically, an ID must be the hex-encoded SHA256 of the base64 encoded public key. 
+This ID can be generated manually using openssl, but to save time and frustration, this utility will do it for you.
 
 USAGE:
-cryptoballot-getid <path-to-public-key.pem>`)
+cryptoballot-getid <path-to-public-key.pem>
+
+The same thing can be accomplished with OpenSSL like so: openssl rsa -pubin -in <path-to-public-key.pem> -outform DER | base64 | tr -d '\n' | openssl sha -sha256`)
 		return
 	}
 
@@ -52,7 +54,7 @@ cryptoballot-getid <path-to-public-key.pem>`)
 			log.Fatal(err)
 		}
 
-		fmt.Println(string(publicKey.GetSHA512()))
+		fmt.Println(string(publicKey.GetSHA256()))
 		i++
 	}
 
