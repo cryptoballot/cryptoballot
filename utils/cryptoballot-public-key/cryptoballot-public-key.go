@@ -1,19 +1,14 @@
 package main
 
 import (
-	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/wikiocracy/cryptoballot/cryptoballot"
-	"io"
+	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"log"
-	"os"
 )
 
 func main() {
@@ -36,7 +31,7 @@ The same thing can be accomplished by OpenSSL like so: openssl rsa -in <path-to-
 		log.Fatal(err)
 	}
 
-	var i int
+	var publicKeys []PublicKey
 	var PEMBlock *pem.Block
 	var cryptoKey *rsa.PrivateKey
 	for {
@@ -52,50 +47,21 @@ The same thing can be accomplished by OpenSSL like so: openssl rsa -in <path-to-
 		if err != nil {
 			log.Fatal(err)
 		}
-		i++
-	}
-	if i == 0 {
-		log.Fatal("Could not find RSA PRIVATE KEY block in " + flag.Arg(0))
-	}
-
-	var inStream io.Reader
-	if flag.NArg() == 2 {
-		inStream, err = os.Open(flag.Arg(1))
+		pk, err := NewPublicKeyFromCryptoKey(&cryptoKey.PublicKey)
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else {
-		inStream = os.Stdin
+		publicKeys = append(publicKeys, pk)
+	}
+	if len(publicKeys) == 0 {
+		log.Fatal("Could not find RSA PRIVATE KEY block in " + flag.Arg(0))
 	}
 
-	// Read the source
-	target, err := ioutil.ReadAll(inStream)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Check for the commen error of there being a trailing newline (0A) character.
-	lastByte := target[len(target)-1]
-	if lastByte == 0x0A {
-		if trimNewLine {
-			target = target[0 : len(target)-1]
+	for i, publicKey := range publicKeys {
+		if noNewLine && i == len(publicKeys)-1 {
+			fmt.Print(publicKey)
 		} else {
-			log.Println("Warning: Your input contains a trailing newline character (0A). You may want to run this again with the -d flag.")
+			fmt.Println(publicKey)
 		}
-	}
-
-	// Compute the signature
-	hash := sha256.New()
-	hash.Write(target)
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, hash.Sum(nil))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	signature := cryptoballot.Signature(rawSignature)
-	if noNewLine {
-		fmt.Print(signature)
-	} else {
-		fmt.Println(signature)
 	}
 }
