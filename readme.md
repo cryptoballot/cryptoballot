@@ -1,7 +1,7 @@
 CryptoBallot
 ============
 
-WARNING: WORK IN PROGRESS!
+Build Status: [![Build Status](https://api.travis-ci.org/wikiocracy/cryptoballot.svg)](https://travis-ci.org/wikiocracy/cryptoballot)
 
 Features
 --------
