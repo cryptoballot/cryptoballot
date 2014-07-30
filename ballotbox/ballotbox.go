@@ -3,30 +3,15 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"flag"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/lib/pq"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
-	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
+	"strings"
 )
 
 const (
-	schemaQuery = `	CREATE EXTENSION IF NOT EXISTS hstore;
-					CREATE TABLE elections (
-					  election_id char(128) UNIQUE NOT NULL, --@@TODO: change to 64 on move to SHA256
-					  startdate timestamp NOT NULL,
-					  enddate timestamp NOT NULL,
-					  tags hstore, 
-					  election text NOT NULL
-					);
-					CREATE INDEX elections_id_idx ON elections (election_id);
-					CREATE INDEX elections_tags_idx on elections (tags);`
-
 	ballotsQuery = `CREATE EXTENSION IF NOT EXISTS hstore;
 					CREATE TABLE ballots_<election-id> (
 					  ballot_id char(128) NOT NULL, --@@TODO: change to 64 on move to SHA256
@@ -41,8 +26,28 @@ var (
 	db             *sql.DB
 	ballotClerkKey PublicKey // Used to verify signatures on ballots
 	admins         UserSet   // Admin requests must be signed by an admin. We publish the public keys of all admin users
-	conf           Config
+	conf           config
 )
+
+type config struct {
+	configFilePath string
+	database       struct {
+		host               string
+		port               int
+		user               string
+		password           string
+		dbname             string
+		sslmode            string
+		maxIdleConnections int
+	}
+	port             int                 // Listen port -- generally it should be 443
+	readmePath       string              // Path to the readme file
+	readme           []byte              // Static content for serving to the root readme (at "/")
+	electionclerkURL string              // URL for electionclerk
+	adminUsers       UserSet             // Admin users. Pulled from electionclerk server on bootstrap
+	clerkKey         PublicKey           // Election Clerk public key. Pulled from electionclerk server on bootstrap
+	elections        map[string]Election // List of valid elections. Pulled from electionclerk server on bootstrap, updated by data pushed from electionclerk.
+}
 
 type parseError struct {
 	Err  string
@@ -54,16 +59,13 @@ func (err parseError) Error() string {
 }
 
 func main() {
-	spew.Config.DisableMethods = true
 	bootstrap()
 
 	// Bootstrap is complete, let's serve some REST
 	//@@TODO BEAST AND CRIME protection
 	//@@TODO SSL only
 
-	http.HandleFunc("/vote/", voteHandler)         // Casting votes and viewing votes. See vote-handler.go
-	http.HandleFunc("/election/", electionHandler) // Creating elections and viewing election metadata. See election-handler.go
-	http.HandleFunc("/admins", adminsHandler)      // View admins, their public keys and their perms
+	http.HandleFunc("/vote/", voteHandler) // Casting votes and viewing votes. See vote-handler.go
 
 	log.Println("Listning on port " + strconv.Itoa(conf.port))
 
@@ -71,57 +73,6 @@ func main() {
 
 	if err != nil {
 		log.Fatal("Error starting http server: ", err)
-	}
-}
-
-// Bootstrap parses flags and config files, and set's up the database connection.
-func bootstrap() {
-	config_path_opt := flag.String("config", "./test.conf", "Path to config file. The config file must be owned by and only readable by this user.")
-	set_up_opt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
-	flag.Parse()
-
-	//@@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
-	err := conf.loadFromFile(*config_path_opt)
-	if err != nil {
-		log.Fatal("Error parsing config file. ", err)
-	}
-
-	//@@TODO: Check to make sure the sslmode is set to "verify-full" (unless the user passed --insecure)
-	//        See pq package documentation
-
-	// Connect to the database and set-up
-	db, err = sql.Open("postgres", conf.voteDBConnectionString())
-	if err != nil {
-		log.Fatal("Database connection error: ", err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("Database connection error: ", err)
-	}
-	// Set the maximum number of idle connections in the connection pool. `-1` means default (2 idle connections in the pool)
-	if conf.voteDB.maxIdleConnections != -1 {
-		db.SetMaxIdleConns(conf.voteDB.maxIdleConnections)
-	}
-
-	// Set up the admin users and register their public keys
-	pemdata, err := ioutil.ReadFile(conf.adminKeysPath)
-	if err != nil {
-		log.Fatal("Error loading admin-keys file: ", err)
-	}
-	admins, err = NewUserSet(pemdata)
-	if err != nil {
-		log.Fatal("Error loading admin user data: ", err)
-	}
-
-	// If we are in 'set-up' mode, set-up the database and exit
-	// @@TODO: schema.sql should be found in some path that is configurable by the user.
-	if *set_up_opt {
-		_, err = db.Exec(schemaQuery)
-		if err != nil {
-			log.Fatal("Error creating database schema: ", err.(pq.PGError).Get('M'))
-		}
-		fmt.Println("Database set-up complete. Please run again without --set-up-db")
-		os.Exit(0)
 	}
 }
 
@@ -161,25 +112,50 @@ func verifySignatureHeaders(r *http.Request) error {
 	return nil
 }
 
-// Display all admin user information when a user asks for "/admins"
-func adminsHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
-		return
+// Sync Elections to database tables
+// This will create database tables for any election that doesn't already have one
+// If a database table is found starting with `ballots_` that doesn't correspond to a
+// an Election an error will occur.
+func syncElectionToDB(elections map[string]Election) error {
+	// Build a list of elections found in the database
+	electionsInDB := make(map[string]bool)
+	rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'ballots_'")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var tablename string
+		err := rows.Scan(tablename)
+		if err != nil {
+			return err
+		}
+		electionID := strings.TrimPrefix(tablename, "ballots_")
+		electionsInDB[electionID] = true
 	}
 
-	fmt.Fprint(w, admins)
-}
-
-// Utlity function to check if an election exists
-func electionExists(electionID string) (bool, error) {
-	err := db.QueryRow("select 1 from elections where election_id = $1 limit 1", electionID).Scan()
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
+	// Compare elections in the database to elections passes in
+	// Create any missing tables
+	for electionID, _ := range elections {
+		if electionsInDB[electionID] {
+			// Election matches - mark as false to denote that it has been processed and is OK
+			electionsInDB[electionID] = false
 		} else {
-			return false, err
+			// Create missing table
+			_, err = db.Exec(strings.Replace(ballotsQuery, "<election-id>", electionID, -1))
+			if err != nil {
+				return err
+			}
 		}
 	}
-	return true, nil
+
+	// Check for extrenous elections in the database. If any remaining items in the map are TRUE we have an extraneous table
+	for tablename, extra := range electionsInDB {
+		if extra {
+			return fmt.Errorf("Found extraneous %s table in database. This table does not correspond to any existing election.", tablename)
+		}
+	}
+
+	// Success
+	return nil
 }

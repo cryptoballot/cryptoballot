@@ -2,8 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"encoding/base64"
-	"encoding/pem"
 	"errors"
 	"github.com/lib/pq/hstore"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
@@ -45,6 +43,7 @@ func voteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // returns electionID, BallotID, publicKey (base64 encoded) and an error
+//@@TODO: Move everything from /vote to /ballot and adjust naming of function appropriately
 func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err error) {
 	// Parse URL and route
 	urlparts := strings.Split(r.RequestURI, "/")
@@ -88,12 +87,9 @@ func parseVoteRequest(r *http.Request) (electionID string, ballotID string, err 
 
 func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
 	// Check to make sure the Election exists
-	if exists, err := electionExists(electionID); !exists {
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			http.Error(w, "Election not found", http.StatusNotFound)
-		}
+	_, ok := conf.elections[electionID]
+	if !ok {
+		http.Error(w, "Election not found", http.StatusNotFound)
 		return
 	}
 
@@ -102,8 +98,10 @@ func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Ballot not found", http.StatusNotFound)
+			return
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 	w.Write(ballotString)
@@ -111,14 +109,12 @@ func handleGETVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 
 func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ballotID string) {
 	// Check to make sure the Election exists
-	if exists, err := electionExists(electionID); !exists {
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			http.Error(w, "Election not found", http.StatusNotFound)
-		}
+	_, ok := conf.elections[electionID]
+	if !ok {
+		http.Error(w, "Election not found", http.StatusNotFound)
 		return
 	}
+	// @@TODO: Check election date
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -133,7 +129,7 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	}
 
 	// Verify the signature
-	err = verifyBallotSignature(ballot)
+	err = ballot.VerifySignature(conf.clerkKey)
 	if err != nil {
 		http.Error(w, "Error verifying ballot signature. "+err.Error(), http.StatusInternalServerError)
 		return
@@ -163,12 +159,9 @@ func handleHEADVote(w http.ResponseWriter, r *http.Request, electionID string, b
 
 func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID string) {
 	// First check to make sure the election exists
-	if exists, err := electionExists(electionID); !exists {
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		} else {
-			http.Error(w, "Election not found", http.StatusNotFound)
-		}
+	_, ok := conf.elections[electionID]
+	if !ok {
+		http.Error(w, "Election not found", http.StatusNotFound)
 		return
 	}
 
@@ -192,37 +185,6 @@ func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID strin
 	if err != nil {
 		http.Error(w, "\n\nDatabase error. "+err.Error(), http.StatusInternalServerError)
 	}
-}
-
-func verifyBallotSignature(ballot *Ballot) error {
-	// First we need to get the public key we will be using the verify the ballot.
-	//@@TODO: One public key per election
-
-	// First we need to load the public key from the ballotClerk server if this value has not already been set
-	if ballotClerkKey.IsEmpty() {
-		resp, err := http.Get(conf.ballotclerkURL + "/publickey")
-		if err != nil {
-			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
-		}
-
-		PEMBlock, _ := pem.Decode(body)
-		if PEMBlock == nil || PEMBlock.Type != "RSA PUBLIC KEY" {
-			return errors.New("Error fetching public key from Ballot Clerk Server. Could not find an RSA PUBLIC KEY block")
-		}
-		publicKey, err := NewPublicKey([]byte(base64.StdEncoding.EncodeToString(PEMBlock.Bytes)))
-		if err != nil {
-			return errors.New("Error fetching public key from Ballot Clerk Server. " + err.Error())
-		}
-		ballotClerkKey = publicKey
-	}
-
-	// Verify the ballot
-	return ballot.VerifySignature(ballotClerkKey)
 }
 
 // Load a ballot from the backend postgres database - returns a pointer to a ballot.
