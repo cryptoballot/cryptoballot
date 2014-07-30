@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	MaxElectionIDSize = 48 // Votes are stored in a postgres table named votes_<electon-id> so we need to limit the election ID size.
+	MaxElectionIDSize = 32 // Votes are stored in a postgres table named votes_<electon-id> so we need to limit the election ID size.
 )
 
 var (
