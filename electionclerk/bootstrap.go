@@ -1,143 +1,165 @@
 package main
 
 import (
-	"crypto/rsa"
 	"crypto/x509"
+	"database/sql"
 	"encoding/pem"
 	"errors"
+	"flag"
+	"fmt"
 	"github.com/dlintw/goconf"
+	"github.com/lib/pq"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
+	"log"
+	"os"
+	"path"
 	"strconv"
 )
 
-type Config struct {
-	configFile string
-	database   struct {
-		host               string
-		port               int
-		user               string
-		password           string
-		dbname             string
-		sslmode            string
-		maxIdleConnections int
+func bootstrap() {
+	configPathOpt := flag.String("config", "./ballotclerk.conf", "Path to config file. The config file must be owned by and only readable by this user.")
+	setUpOpt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
+	flag.Parse()
+
+	// Populate the global configuration object with settings from the config file.
+	// @@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
+	config, err := NewConfig(*configPathOpt)
+	if err != nil {
+		log.Fatal("Error parsing config file. ", err)
 	}
-	readme            []byte         // Static content for serving to the root readme (at "/")
-	signingPrivateKey rsa.PrivateKey // For now we have a single key -- eventually there should be one key per election
-	voterlistURL      string
-	auditorPrivateKey rsa.PrivateKey // For accessing the voter-list server, which is only open to auditors.
-	admins            []User         // List of administrators allowed to create and edit elections on this service.
+	conf = *config
+
+	// Connect to the database and set-up
+	// @@TODO: Check to make sure the sslmode is set to "verify-full" (unless the user passed --insecure)
+	db, err = sql.Open("postgres", conf.databaseConnectionString())
+	if err != nil {
+		log.Fatal("Database connection error: ", err)
+	}
+	err = db.Ping()
+	if err != nil {
+		log.Fatal("Database connection error: ", err)
+	}
+	// Set the maximum number of idle connections in the connection pool. `-1` means default of 2 idle connections in the pool
+	if conf.database.maxIdleConnections != -1 {
+		db.SetMaxIdleConns(conf.database.maxIdleConnections)
+	}
+
+	// If we are in 'set-up' mode, set-up the database and exit
+	if *setUpOpt {
+		_, err = db.Exec(schemaQuery)
+		if err != nil {
+			log.Fatal("Error loading database schema: ", err.(pq.PGError).Get('M'))
+		}
+		fmt.Println("Database set-up complete. Please run again without --set-up-db")
+		os.Exit(0)
+	}
 }
 
-//@@TEST: loading known good config from file
-//@@TODO: transform this into a NewConfig func
-//@@TODO: load keys from files
-func (config *Config) loadFromFile(filepath string) (err error) {
-	config.configFile = filepath
+func NewConfig(filepath string) (*Config, error) {
+	config := Config{
+		configFilePath: filepath,
+	}
 
 	c, err := goconf.ReadConfigFile(filepath)
 	if err != nil {
-		return
+		if os.IsNotExist(err) {
+			return nil, errors.New("Could not find config file. Try using the --config=\"<path-to-config-file>\" option to specify a config file.")
+		} else {
+			return nil, err
+		}
 	}
 
-	config.database.host, err = c.GetString("ballot-clerk-db", "host")
+	// Change our working directory to that of the config file so that paths referenced in the config file are relative to that location
+	err = os.Chdir(path.Dir(filepath))
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	config.database.port, err = c.GetInt("ballot-clerk-db", "port")
+	// Parse port
+	config.port, err = c.GetInt("", "port")
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	config.database.user, err = c.GetString("ballot-clerk-db", "user")
+	// Parse database config options
+	config.database.host, err = c.GetString("database", "host")
 	if err != nil {
-		return
+		return nil, err
 	}
-
-	config.database.password, err = c.GetString("ballot-clerk-db", "password")
+	config.database.port, err = c.GetInt("database", "port")
 	if err != nil {
-		return
+		return nil, err
 	}
-
-	config.database.dbname, err = c.GetString("ballot-clerk-db", "dbname")
+	config.database.user, err = c.GetString("database", "user")
 	if err != nil {
-		return
+		return nil, err
 	}
-
-	config.database.sslmode, err = c.GetString("ballot-clerk-db", "sslmode")
+	config.database.password, err = c.GetString("database", "password")
 	if err != nil {
-		return
+		return nil, err
 	}
-
-	// For max_idle_connections missing should translates to -1
-	if c.HasOption("ballot-clerk-db", "max_idle_connections") {
-		config.database.maxIdleConnections, err = c.GetInt("ballot-clerk-db", "max_idle_connections")
+	config.database.dbname, err = c.GetString("database", "dbname")
+	if err != nil {
+		return nil, err
+	}
+	config.database.sslmode, err = c.GetString("database", "sslmode")
+	if err != nil {
+		return nil, err
+	}
+	if c.HasOption("database", "max_idle_connections") {
+		config.database.maxIdleConnections, err = c.GetInt("database", "max_idle_connections")
 		if err != nil {
-			return
+			return nil, err
 		}
 	} else {
 		config.database.maxIdleConnections = -1
 	}
 
 	// Ingest the private key into the global config object
-	privateKeyLocation, err := c.GetString("ballot-clerk", "private-key")
+	config.signingKeyPath, err = c.GetString("", "signing-key")
 	if err != nil {
-		return
+		return nil, err
 	}
-	rawKeyPEM, err := ioutil.ReadFile(privateKeyLocation)
+	rawKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
 	if err != nil {
-		return
+		return nil, err
 	}
 	PEMBlock, _ := pem.Decode(rawKeyPEM)
 	if PEMBlock.Type != "RSA PRIVATE KEY" {
-		err = errors.New("Could not find an RSA PRIVATE KEY block in " + privateKeyLocation)
-		return
+		return nil, errors.New("Could not find an RSA PRIVATE KEY block in " + config.signingKeyPath)
 	}
-	signingPrivateKey, err := x509.ParsePKCS1PrivateKey(PEMBlock.Bytes)
+	signingKey, err := x509.ParsePKCS1PrivateKey(PEMBlock.Bytes)
 	if err != nil {
-		return
+		return nil, err
 	}
-	config.signingPrivateKey = *signingPrivateKey
+	config.signingKey = *signingKey
 
 	// Ingest administrators
-	config.admins = make([]User, 0)
-	adminPEMLocation, err := c.GetString("ballot-clerk", "admins")
+	config.adminKeysPath, err = c.GetString("", "admins")
 	if err != nil {
-		return
+		return nil, err
 	}
-	rawAdminPEM, err := ioutil.ReadFile(adminPEMLocation)
+	adminPEMBytes, err := ioutil.ReadFile(config.adminKeysPath)
 	if err != nil {
-		return
+		return nil, err
 	}
-	var adminPEMBlock *pem.Block
-	for {
-		adminPEMBlock, rawAdminPEM = pem.Decode(rawAdminPEM)
-		if adminPEMBlock == nil {
-			break
-		}
-		if adminPEMBlock.Type != "PUBLIC KEY" {
-			err = errors.New("Found unexpected " + adminPEMBlock.Type + " in " + adminPEMLocation)
-			return
-		}
-		user, err := NewUserFromBlock(adminPEMBlock)
-		if err != nil {
-			return err
-		}
-		config.admins = append(config.admins, *user)
+	config.adminUsers, err = NewUserSet(adminPEMBytes)
+	if err != nil {
+		return nil, err
 	}
 
 	// Ingest the readme
-	readmeLocation, err := c.GetString("ballot-clerk", "readme")
+	config.readmePath, err = c.GetString("", "readme")
 	if err != nil {
-		return
+		return nil, err
 	}
-	config.readme, err = ioutil.ReadFile(readmeLocation)
+	config.readme, err = ioutil.ReadFile(config.readmePath)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	return
+	return &config, nil
 }
 
 func (config *Config) databaseConnectionString() (connection string) {

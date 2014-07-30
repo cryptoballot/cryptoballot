@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
 	"github.com/lib/pq/hstore"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
@@ -74,13 +73,9 @@ func handlePUTElection(w http.ResponseWriter, r *http.Request, electionID string
 	}
 
 	// Check to make sure this admin exists and has permission to administer elections
-	admin := admins.GetUser(election.PublicKey)
+	admin := conf.adminUsers.GetUser(election.PublicKey)
 	if admin == nil {
 		http.Error(w, "Could not find admin with the provided public key of "+election.PublicKey.String(), http.StatusForbidden)
-		return
-	}
-	if !bytes.Equal(admin.PublicKey.Bytes(), election.PublicKey.Bytes()) {
-		http.Error(w, "Public Key provided by the election does not match the admin's public key.", http.StatusForbidden)
 		return
 	}
 	if !admin.HasPerm("election-admin") {
@@ -100,7 +95,7 @@ func saveElectionToDB(election *Election) error {
 	var tags hstore.Hstore
 	tags.Map = make(map[string]sql.NullString, len(election.TagSet))
 	for key, value := range election.TagSet.Map() {
-		tags.Map[key] = sql.NullString{value, true}
+		tags.Map[key] = sql.NullString{String: value, Valid: true}
 	}
 
 	_, err := db.Exec("INSERT INTO elections (election_id, election, startdate, enddate, tags) VALUES ($1, $2, $3, $4, $5)", election.ElectionID, election.String(), election.Start, election.End, tags)
@@ -108,11 +103,13 @@ func saveElectionToDB(election *Election) error {
 		return err
 	}
 
-	// Create the election table for storing ballots
-	_, err = db.Exec(strings.Replace(ballotsQuery, "<election-id>", election.ElectionID, -1))
+	// Create the sigreqa table for storing signature requests
+	_, err = db.Exec(strings.Replace(sigreqsQuery, "<election-id>", election.ElectionID, -1))
 	if err != nil {
 		return err
 	}
+
+	//@@TODO - tell ballotbox database about election
 
 	return nil
 }
