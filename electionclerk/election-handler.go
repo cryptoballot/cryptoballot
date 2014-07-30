@@ -21,6 +21,13 @@ func electionHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the electionID
 	electionID := urlparts[2]
+
+	// @@TODO: list all elections
+	if electionID == "" {
+		return
+	}
+
+	// Check for valid election ID
 	if len(electionID) > MaxElectionIDSize || !ValidElectionID.MatchString(electionID) {
 		http.Error(w, "Invalid Election ID. 404 Not Found.", http.StatusNotFound)
 		return
