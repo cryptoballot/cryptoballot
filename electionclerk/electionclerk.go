@@ -30,7 +30,7 @@ const (
 					  public_key text NOT NULL, 
 					  ballot_hash char(64) NOT NULL,
 					  signature text NOT NULL,
-					  ballot_signature text NOT NULL,
+					  ballot_signature text NOT NULL
 					);
 
 					CREATE INDEX request_id_idx ON sigreqs_<election-id> (request_id);`
