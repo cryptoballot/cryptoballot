@@ -5,6 +5,8 @@ type FulfilledSignatureRequest struct {
 	BallotSignature Signature // BallotClerk signature signing off on the validity of the ballot
 }
 
+//@@TODO: This one should actually parse bytes
+//@@TODO: Create new NewFulfilledSignatureRequestFromParts
 func NewFulfilledSignatureRequest(sigReq SignatureRequest, sig Signature) *FulfilledSignatureRequest {
 	return &FulfilledSignatureRequest{
 		sigReq,

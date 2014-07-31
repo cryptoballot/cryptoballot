@@ -32,7 +32,12 @@ func TestGoodSignatureRequest(t *testing.T) {
 		t.Errorf("failed to generate private key")
 	}
 
-	if _, err := req.SignBallot(key); err != nil {
+	sig, err := req.SignBallot(key)
+	if err != nil {
 		t.Errorf("failed to sign ballot")
 	}
+
+	//@@TODO: Test round-trip fufilledSignReqStr to string and back
+	fufilledSignReq := NewFulfilledSignatureRequest(*req, sig)
+	fufilledSignReq.String()
 }
