@@ -2,9 +2,6 @@ package cryptoballot
 
 import (
 	"bytes"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -98,20 +95,8 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 }
 
 // Sign the blinded ballot hash attached to the Signature Request. It is the hex-encoded blinded SHA256 hash of the ballot.
-func (sigReq *SignatureRequest) SignBallot(key *rsa.PrivateKey) (Signature, error) {
-	rawBytes := make([]byte, hex.DecodedLen(len(sigReq.BallotHash))) //@@TODO: Make this a straight 32 bytes (256 bits)
-	_, err := hex.Decode(rawBytes, sigReq.BallotHash)
-	if err != nil {
-		return Signature{}, err
-	}
-
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, key, crypto.SHA256, rawBytes)
-	if err != nil {
-		return Signature{}, err
-	}
-
-	signature := Signature(rawSignature)
-	return signature, nil
+func (sigReq *SignatureRequest) SignBallot(priv PrivateKey) (Signature, error) {
+	return priv.SignSHA256(sigReq.BallotHash)
 }
 
 // Signatures are generally required, but are sometimes optional (for example, for working with the SignatureRequest before it is signed by the voter)

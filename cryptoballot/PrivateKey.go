@@ -45,6 +45,15 @@ func NewPrivateKeyFromCryptoKey(priv *rsa.PrivateKey) PrivateKey {
 	return PrivateKey(x509.MarshalPKCS1PrivateKey(priv))
 }
 
+// Generate a new PrivateKey
+func GeneratePrivateKey(keySize int) (PrivateKey, error) {
+	cryptoKey, err := rsa.GenerateKey(rand.Reader, keySize)
+	if err != nil {
+		return nil, err
+	}
+	return NewPrivateKeyFromCryptoKey(cryptoKey), nil
+}
+
 // Extract the bytes out of the private key
 func (pk PrivateKey) Bytes() []byte {
 	return []byte(pk)
@@ -105,14 +114,14 @@ func (pk PrivateKey) SignSHA256(hexbytes []byte) (Signature, error) {
 	}
 
 	// Decode hex bytes into raw bytes
-	var bytes []byte
-	_, err = hex.Decode(bytes, hexbytes)
+	decodedBytes := make([]byte, hex.DecodedLen(len(hexbytes)))
+	_, err = hex.Decode(decodedBytes, hexbytes)
 	if err != nil {
 		return nil, err
 	}
 
 	// Compute the signature and return the results
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, bytes)
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, decodedBytes)
 	if err != nil {
 		return nil, err
 	}

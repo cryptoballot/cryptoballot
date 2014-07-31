@@ -1,10 +1,6 @@
 package cryptoballot
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
 	"reflect"
 	"testing"
 )
@@ -69,20 +65,20 @@ func TestBallotParsing(t *testing.T) {
 // A more meaningful test that takes us all the way through ballot creation, including creating the ballot and having it signed.
 func TestBallotCreation(t *testing.T) {
 	// Create a private / public keypair for the voter
-	voterPriv, err := rsa.GenerateKey(rand.Reader, absoluteMinPublicKeySize)
+	voterPriv, err := GeneratePrivateKey(absoluteMinPublicKeySize)
 	if err != nil {
 		t.Error(err)
 	}
-	voterPub, err := NewPublicKeyFromCryptoKey(&voterPriv.PublicKey)
+	voterPub, err := voterPriv.PublicKey()
 	if err != nil {
 		t.Error(err)
 	}
 	// Create a public / private keypair for the ballot-clerk
-	clerkPriv, err := rsa.GenerateKey(rand.Reader, absoluteMinPublicKeySize)
+	clerkPriv, err := GeneratePrivateKey(absoluteMinPublicKeySize)
 	if err != nil {
 		t.Error(err)
 	}
-	clerkPub, err := NewPublicKeyFromCryptoKey(&clerkPriv.PublicKey)
+	clerkPub, err := clerkPriv.PublicKey()
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,13 +99,10 @@ func TestBallotCreation(t *testing.T) {
 	}
 
 	// Sign the Signature Request with the voter's key
-	h := sha256.New()
-	h.Write([]byte(signatureReq.String()))
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, voterPriv, crypto.SHA256, h.Sum(nil))
+	signatureReq.Signature, err = voterPriv.Sign(signatureReq)
 	if err != nil {
 		t.Error(err)
 	}
-	signatureReq.Signature = Signature(rawSignature)
 
 	// Verify the SignatureRequest signature
 	err = signatureReq.VerifySignature()
@@ -117,7 +110,7 @@ func TestBallotCreation(t *testing.T) {
 		t.Error(err)
 	}
 
-	// Sign the ballot with the clerk's key
+	// Sign the ballot with the SignatureRequest, using the clerk's private key
 	ballot.Signature, err = signatureReq.SignBallot(clerkPriv)
 	if err != nil {
 		t.Error(err)

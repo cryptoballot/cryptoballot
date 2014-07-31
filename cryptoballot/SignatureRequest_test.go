@@ -1,8 +1,6 @@
 package cryptoballot
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
 	"testing"
 )
 
@@ -29,7 +27,7 @@ func TestGoodSignatureRequest(t *testing.T) {
 		t.Errorf("SignatureRequest round-trip from string and back again failed.")
 	}
 
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	key, err := GeneratePrivateKey(2048)
 	if err != nil {
 		t.Errorf("failed to generate private key")
 	}
