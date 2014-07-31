@@ -35,30 +35,13 @@ echo "full ballot string" | cryptoballot-signature-request <path-to-private-key.
 	if err != nil {
 		log.Fatal(err)
 	}
-	var i int
-	var PEMBlock *pem.Block
-	var cryptoKey *rsa.PrivateKey
-	for {
-		PEMBlock, rawPEM = pem.Decode(rawPEM)
-		if PEMBlock == nil {
-			break
-		}
-		if PEMBlock.Type != "RSA PRIVATE KEY" {
-			continue
-		}
-
-		cryptoKey, err = x509.ParsePKCS1PrivateKey(PEMBlock.Bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		i++
-	}
-	if i == 0 {
-		log.Fatal("Could not find RSA PRIVATE KEY block in " + flag.Arg(0))
+	cryptoKey, err = NewPrivateKey(rawPEM)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Generate the public-key from the private-key
-	voterPub, err := NewPublicKeyFromCryptoKey(&cryptoKey.PublicKey)
+	voterPub, err := cryptoKey.PublicKey()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,13 +74,10 @@ echo "full ballot string" | cryptoballot-signature-request <path-to-private-key.
 	}
 
 	// Sign the Signature Request with the voter's key
-	h := sha256.New()
-	h.Write([]byte(signatureReq.String()))
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, h.Sum(nil))
+	signatureReq.Signature, err = cryptoKey.Sign(signatureReq)
 	if err != nil {
 		log.Fatal(err)
 	}
-	signatureReq.Signature = Signature(rawSignature)
 
 	// Print the final SignatureRequest
 	if noNewLine {

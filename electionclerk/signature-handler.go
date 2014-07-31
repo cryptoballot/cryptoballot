@@ -35,7 +35,7 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 	// @@TODO: Check that this voter has not already retreived a fulfilled signature request.
 
 	// Sign the ballot
-	ballotSig, err := signatureReqest.SignBallot(&conf.signingKey)
+	ballotSig, err := signatureReqest.SignBallot(conf.signingKey)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

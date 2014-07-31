@@ -38,27 +38,9 @@ The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" 
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	var i int
-	var PEMBlock *pem.Block
-	var cryptoKey *rsa.PrivateKey
-	for {
-		PEMBlock, rawPEM = pem.Decode(rawPEM)
-		if PEMBlock == nil {
-			break
-		}
-		if PEMBlock.Type != "RSA PRIVATE KEY" {
-			continue
-		}
-
-		cryptoKey, err = x509.ParsePKCS1PrivateKey(PEMBlock.Bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		i++
-	}
-	if i == 0 {
-		log.Fatal("Could not find RSA PRIVATE KEY block in " + flag.Arg(0))
+	cryptoKey, err = NewPrivateKey(rawPEM)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	var inStream io.Reader
@@ -88,14 +70,12 @@ The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" 
 	}
 
 	// Compute the signature
-	hash := sha256.New()
-	hash.Write(target)
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, hash.Sum(nil))
+	signature, err := cryptoKey.SignBytes(target)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	signature := cryptoballot.Signature(rawSignature)
+	// Print results
 	if noNewLine {
 		fmt.Print(signature)
 	} else {

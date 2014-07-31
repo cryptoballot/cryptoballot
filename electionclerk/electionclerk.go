@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
 	"database/sql"
 	"encoding/pem"
 	"errors"
@@ -52,15 +50,15 @@ type Config struct {
 		sslmode            string
 		maxIdleConnections int
 	}
-	port           int            // Listen port -- generally it should be 443
-	adminKeysPath  string         // Path to admin-users public-key PEM file. This file will be published at /admins
-	adminUsers     UserSet        // Admin users
-	readmePath     string         // Path to readme file
-	readme         []byte         // Static content for serving to the root readme (at "/")
-	signingKeyPath string         // Path to the private key used for signing ballots
-	signingKey     rsa.PrivateKey // Signing key. @@TODO: For now we have a single key -eventually there should be one key per election
-	voterlistURL   string         // URL for the voter-list server
-	ballotboxURL   string         // URL for the ballot-box server
+	port           int        // Listen port -- generally it should be 443
+	adminKeysPath  string     // Path to admin-users public-key PEM file. This file will be published at /admins
+	adminUsers     UserSet    // Admin users
+	readmePath     string     // Path to readme file
+	readme         []byte     // Static content for serving to the root readme (at "/")
+	signingKeyPath string     // Path to the private key used for signing ballots
+	signingKey     PrivateKey // Signing key. @@TODO: For now we have a single key -eventually there should be one key per election
+	voterlistURL   string     // URL for the voter-list server
+	ballotboxURL   string     // URL for the ballot-box server
 }
 
 func main() {
@@ -107,7 +105,7 @@ func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	derEncodedPublicKey, err := x509.MarshalPKIXPublicKey(&conf.signingKey.PublicKey)
+	publicKey, err := conf.signingKey.PublicKey()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -115,7 +113,7 @@ func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	pemBlock := pem.Block{
 		Type:  "PUBLIC KEY",
-		Bytes: derEncodedPublicKey,
+		Bytes: publicKey.Bytes(),
 	}
 	pem.Encode(w, &pemBlock)
 	return

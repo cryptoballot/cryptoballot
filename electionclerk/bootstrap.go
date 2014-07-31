@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/x509"
 	"database/sql"
-	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
@@ -18,7 +16,7 @@ import (
 )
 
 func bootstrap() {
-	configPathOpt := flag.String("config", "./ballotclerk.conf", "Path to config file. The config file must be owned by and only readable by this user.")
+	configPathOpt := flag.String("config", "./electionclerk.conf", "Path to config file. The config file must be owned by and only readable by this user.")
 	setUpOpt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
 	flag.Parse()
 
@@ -121,19 +119,14 @@ func NewConfig(filepath string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	rawKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
+	signingKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
 	if err != nil {
 		return nil, err
 	}
-	PEMBlock, _ := pem.Decode(rawKeyPEM)
-	if PEMBlock.Type != "RSA PRIVATE KEY" {
-		return nil, errors.New("Could not find an RSA PRIVATE KEY block in " + config.signingKeyPath)
-	}
-	signingKey, err := x509.ParsePKCS1PrivateKey(PEMBlock.Bytes)
+	config.signingKey, err = NewPrivateKey(signingKeyPEM)
 	if err != nil {
 		return nil, err
 	}
-	config.signingKey = *signingKey
 
 	// Ingest administrators
 	config.adminKeysPath, err = c.GetString("", "admins")
