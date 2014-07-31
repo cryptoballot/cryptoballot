@@ -72,7 +72,8 @@ func main() {
 	//@@TODO SSL only
 	http.HandleFunc("/", rootHandler)               // Displays the readme
 	http.HandleFunc("/sign", signHandler)           // Provides the ability to POST new Signature Requests. See signature-handler.go
-	http.HandleFunc("/election", electionHandler)   // Creating elections and viewing election metadata. See election-handler.go
+	http.HandleFunc("/election", electionHandler)   // Send to election handler. Used for getting all elections
+	http.HandleFunc("/election/", electionHandler)  // Creating elections and viewing election metadata. See election-handler.go
 	http.HandleFunc("/admins", adminsHandler)       // View admins, their public keys and their perms
 	http.HandleFunc("/publickey", publicKeyHandler) // Reports this servers public key
 
@@ -87,6 +88,10 @@ func main() {
 
 // When a user accesses "/" display the readme
 func rootHandler(w http.ResponseWriter, r *http.Request) {
+	if r.RequestURI != "/" {
+		http.Error(w, "404 Not Found.", http.StatusNotFound)
+		return
+	}
 	_, err := w.Write(conf.readme)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

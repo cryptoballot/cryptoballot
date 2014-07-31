@@ -13,6 +13,12 @@ func electionHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse URL and route
 	urlparts := strings.Split(r.RequestURI, "/")
 
+	// If the user is asking for `/election` or `/election/` then give them all the elections
+	if r.RequestURI == "/election" || r.RequestURI == "/election/" {
+		handleGETAllElections(w, r)
+		return
+	}
+
 	// Check for the correct number of request parts
 	if len(urlparts) != 3 {
 		http.Error(w, "Invalid URL. 404 Not Found.", http.StatusNotFound)
@@ -21,11 +27,6 @@ func electionHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the electionID
 	electionID := urlparts[2]
-
-	// @@TODO: list all elections
-	if electionID == "" {
-		return
-	}
 
 	// Check for valid election ID
 	if len(electionID) > MaxElectionIDSize || !ValidElectionID.MatchString(electionID) {
@@ -133,5 +134,22 @@ func handleGETElection(w http.ResponseWriter, r *http.Request, electionID string
 		return
 	}
 	w.Write(rawElection)
+	return
+}
+
+func handleGETAllElections(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT election FROM elections")
+	if err != nil {
+		http.Error(w, "Error reading elections from database: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(w) // Will this work? Can I scan into a io.Writer?
+		if err != nil {
+			http.Error(w, "Error reading elections from database: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 	return
 }
