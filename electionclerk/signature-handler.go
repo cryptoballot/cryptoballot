@@ -41,7 +41,7 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fulfilledsignatureRequest := NewFulfilledSignatureRequest(*signatureReqest, ballotSig)
+	fulfilledsignatureRequest := NewFulfilledSignatureRequestFromParts(*signatureReqest, ballotSig)
 
 	//@@TODO: store the fulfilledsignatureRequest in the database
 

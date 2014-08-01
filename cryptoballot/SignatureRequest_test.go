@@ -1,6 +1,7 @@
 package cryptoballot
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -25,19 +26,30 @@ func TestGoodSignatureRequest(t *testing.T) {
 
 	if string(goodRequest) != req.String() {
 		t.Errorf("SignatureRequest round-trip from string and back again failed.")
+		return
 	}
 
 	key, err := GeneratePrivateKey(2048)
 	if err != nil {
 		t.Errorf("failed to generate private key")
+		return
 	}
 
 	sig, err := req.SignBallot(key)
 	if err != nil {
 		t.Errorf("failed to sign ballot")
+		return
 	}
 
-	//@@TODO: Test round-trip fufilledSignReqStr to string and back
-	fufilledSignReq := NewFulfilledSignatureRequest(*req, sig)
-	fufilledSignReq.String()
+	// Test round-trip FulfilledSignatureRequest to string and back
+	fufilledSignReq := NewFulfilledSignatureRequestFromParts(*req, sig)
+	fufilledSignReqStr := fufilledSignReq.String()
+	checkFufilledSignReq, err := NewFulfilledSignatureRequest([]byte(fufilledSignReqStr))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !reflect.DeepEqual(*checkFufilledSignReq, *fufilledSignReq) {
+		t.Errorf("FulfilledSignatureRequest failed string round-trip")
+	}
 }
