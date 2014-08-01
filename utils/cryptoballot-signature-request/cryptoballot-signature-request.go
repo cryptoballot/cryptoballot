@@ -1,12 +1,6 @@
 package main
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"fmt"
 	. "github.com/wikiocracy/cryptoballot/cryptoballot"
@@ -35,7 +29,7 @@ echo "full ballot string" | cryptoballot-signature-request <path-to-private-key.
 	if err != nil {
 		log.Fatal(err)
 	}
-	cryptoKey, err = NewPrivateKey(rawPEM)
+	cryptoKey, err := NewPrivateKey(rawPEM)
 	if err != nil {
 		log.Fatal(err)
 	}
