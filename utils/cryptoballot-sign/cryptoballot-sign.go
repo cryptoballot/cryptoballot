@@ -1,15 +1,9 @@
 package main
 
 import (
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/wikiocracy/cryptoballot/cryptoballot"
+	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io"
 	"io/ioutil"
 	"log"
@@ -38,7 +32,7 @@ The same thing can be accomplished by OpenSSL like so: echo -n "string to sign" 
 	if err != nil {
 		log.Fatal(err)
 	}
-	cryptoKey, err = NewPrivateKey(rawPEM)
+	cryptoKey, err := NewPrivateKey(rawPEM)
 	if err != nil {
 		log.Fatal(err)
 	}
