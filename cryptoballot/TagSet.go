@@ -2,7 +2,7 @@ package cryptoballot
 
 import (
 	"bytes"
-	"errors"
+	"github.com/phayes/errors"
 )
 
 const (
@@ -17,22 +17,31 @@ type Tag struct {
 
 type TagSet []Tag
 
+var (
+	ErrTagKeyTooBig    = errors.Newf("Tag key too long. Maximum tag key size is $i characters", MaxTagKeySize)
+	ErrTagValTooBig    = errors.Newf("Tag value too long. Maximum tag value size is $i characters", MaxTagValueSize)
+	ErrTagMalformed    = errors.New("Malformed tag")
+	ErrTagKeyMalformed = errors.New("Malformed tag key") //@@TODO: Actually put some limits around allowed-charcters for keys
+	ErrTagKeyNotFound  = errors.New("Missing tag key")
+	ErrTagValNotFound  = errors.New("Missing tag value")
+)
+
 func NewTag(rawTag []byte) (Tag, error) {
 	parts := bytes.SplitN(rawTag, []byte("="), 2)
 	if len(parts) != 2 {
-		return Tag{}, errors.New("Malformed tag")
+		return Tag{}, ErrTagMalformed
 	}
 	if len(parts[0]) == 0 {
-		return Tag{}, errors.New("Mising tag key")
+		return Tag{}, ErrTagKeyNotFound
 	}
 	if len(parts[0]) > MaxTagKeySize {
-		return Tag{}, errors.New("Tag key too long")
+		return Tag{}, ErrTagKeyTooBig
 	}
 	if len(parts[1]) == 0 {
-		return Tag{}, errors.New("Missing tag value")
+		return Tag{}, ErrTagValNotFound
 	}
 	if len(parts[1]) > MaxTagValueSize {
-		return Tag{}, errors.New("Tag value too long")
+		return Tag{}, ErrTagValTooBig
 	}
 
 	return Tag{

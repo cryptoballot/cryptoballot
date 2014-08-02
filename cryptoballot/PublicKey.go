@@ -6,9 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
-	//"github.com/davecgh/go-spew/spew"
-	"strconv"
+	"github.com/phayes/errors"
 )
 
 const (
@@ -17,6 +15,11 @@ const (
 
 var (
 	MinPublicKeySize = 4096 // Recommended minimum public key size -- this can be changed
+
+	ErrPubicMinKeySize    = errors.New("Invalid public key - too short")
+	ErrPublicKeyBase64    = errors.New("Invalid Public Key. Could not read base64 encoded bytes")
+	ErrPublicKeyLen       = errors.New("Could not determine PublicKey key length")
+	ErrPublicKeyCryptoKey = errors.New("Could not create from rsa.PublicKey from PublicKey. Could not parse PublicKey bytes")
 )
 
 // A DER encoded public key
@@ -29,7 +32,7 @@ func NewPublicKey(base64PublicKey []byte) (PublicKey, error) {
 	dbuf := make([]byte, decodedLen)
 	n, err := base64.StdEncoding.Decode(dbuf, base64PublicKey)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, ErrPublicKeyBase64)
 	}
 	pk := PublicKey(dbuf[:n])
 
@@ -42,7 +45,7 @@ func NewPublicKey(base64PublicKey []byte) (PublicKey, error) {
 		panic("MinPublicKeySize has been set less than the allowed absoluteMinPublicKeySize of 2048")
 	}
 	if keylen < MinPublicKeySize {
-		return nil, errors.New("Invalid public key - too short. Please use at least " + strconv.Itoa(MinPublicKeySize) + " bits")
+		return nil, errors.Wrapf(ErrPubicMinKeySize, "Please use at least %s bits for public-key", MinPublicKeySize)
 	}
 
 	return pk, nil
@@ -66,7 +69,7 @@ func (pk PublicKey) Bytes() []byte {
 func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 	pubkey, err := x509.ParsePKIXPublicKey(pk.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, ErrPublicKeyCryptoKey)
 	}
 	return pubkey.(*rsa.PublicKey), nil
 }
@@ -84,7 +87,7 @@ func (pk PublicKey) GetSHA256() []byte {
 func (pk PublicKey) KeyLength() (int, error) {
 	pubkey, err := pk.GetCryptoKey()
 	if err != nil {
-		return 0, nil
+		return 0, errors.Wrap(err, ErrPublicKeyLen)
 	}
 	return pubkey.N.BitLen(), nil
 }

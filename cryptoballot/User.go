@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
+	"github.com/phayes/errors"
 	"strings"
 )
 
@@ -17,10 +17,20 @@ type User struct {
 
 type UserSet []User
 
+var (
+	ErrUserInvalidPEM      = errors.New("Could not decode PEM Block for user")
+	ErrUserBlockNotFound   = errors.New("Could not find PUBLIC KEY block for user")
+	ErrUserPermsNotFound   = errors.New("No permissions specified for user")
+	ErrUserPermsInvalid    = errors.New("Could not parse user permissions")
+	ErrUserExtraData       = errors.New("Could not parse PEM Blocks or extra data found that could not be parsed.")
+	ErrUserSetUserExists   = errors.New("Could not add User to UserSet. User already exists with the same public-key")
+	ErrUserSetUserNotFound = errors.New("Could not find user")
+)
+
 func NewUser(PEMBlockBytes []byte) (*User, error) {
 	PEMBlock, _ := pem.Decode(PEMBlockBytes)
 	if PEMBlock == nil {
-		return nil, errors.New("Could not decode PEM Block for user")
+		return nil, ErrUserInvalidPEM
 	}
 	return NewUserFromBlock(PEMBlock)
 }
@@ -33,12 +43,12 @@ func NewUserFromBlock(PEMBlock *pem.Block) (*User, error) {
 	)
 
 	if PEMBlock.Type != "PUBLIC KEY" {
-		return nil, errors.New("Could not find PUBLIC KEY block for user")
+		return nil, errors.Wraps(ErrUserBlockNotFound, "Unexpected "+PEMBlock.Type)
 	}
 
 	publicCryptoKey, err := x509.ParsePKIXPublicKey(PEMBlock.Bytes)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, ErrUserInvalidPEM)
 	}
 
 	publicKey, err = NewPublicKeyFromCryptoKey(publicCryptoKey.(*rsa.PublicKey))
@@ -48,13 +58,13 @@ func NewUserFromBlock(PEMBlock *pem.Block) (*User, error) {
 
 	permString, ok := PEMBlock.Headers["perms"]
 	if !ok || permString == "" {
-		return nil, errors.New("No permissions specified for user")
+		return nil, ErrUserPermsNotFound
 	}
 	permsRaw := strings.Split(permString, ",")
 	for _, val := range permsRaw {
 		trimmed := strings.TrimSpace(val)
 		if trimmed == "" {
-			return nil, errors.New("Could not parse user permissions")
+			return nil, ErrUserPermsInvalid
 		}
 		perms = append(perms, trimmed)
 	}
@@ -98,7 +108,7 @@ func NewUserSet(PEMBlockBytes []byte) (UserSet, error) {
 				break // We're done
 			} else {
 				// There's still data to be processed, but we can't make sense of it
-				return nil, errors.New("Could not parse PEM Blocks")
+				return nil, ErrUserExtraData
 			}
 		}
 		if PEMBlock.Type != "PUBLIC KEY" {
@@ -120,7 +130,7 @@ func NewUserSet(PEMBlockBytes []byte) (UserSet, error) {
 func (userset *UserSet) Add(user *User) error {
 	for _, checkuser := range *userset {
 		if bytes.Equal(checkuser.PublicKey.Bytes(), user.PublicKey.Bytes()) {
-			return errors.New("Could not add user. User already exists with the same public-key")
+			return ErrUserSetUserExists
 		}
 	}
 
@@ -137,7 +147,7 @@ func (userset *UserSet) Remove(pk PublicKey) error {
 			return nil
 		}
 	}
-	return errors.New("Could not find user with public key of " + pk.String())
+	return ErrUserSetUserNotFound
 }
 
 // Given a public key, get the corresponding user from the UserSet. Returns nil if no user is found

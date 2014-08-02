@@ -1,8 +1,7 @@
 package cryptoballot
 
 import (
-	"errors"
-	"strconv"
+	"github.com/phayes/errors"
 	"strings"
 )
 
@@ -20,19 +19,25 @@ var maxVoteSize = (MaxVoteOptions * MaxVoteBytes) + MaxVoteOptions
 // It's up to the counting / tallying applications to assign meaning to these strings
 type Vote []string
 
+var (
+	ErrVoteTooBig         = errors.Newf("Vote has too many bytes. A vote may have a maximum of %i characters, including seperators", maxVoteSize)
+	ErrVoteTooManyOptions = errors.Newf("Vote has too many options")
+	ErrVoteOptionTooBig   = errors.Newf("Vote option has too many characters")
+)
+
 // Given a raw slice of bytes, construct a Vote
 // @@TODO: A custom splitter that checks for errors as it goes might be faster than splitting the whole thing and then looping the results to check for errors.
 func NewVote(rawVote []byte) (Vote, error) {
 	if len(rawVote) > maxVoteSize {
-		return Vote{}, errors.New("Vote has too many bytes. A vote may have a maximum of " + strconv.Itoa(maxVoteSize) + " characters, including seperators.")
+		return Vote{}, ErrVoteTooBig
 	}
 	vote := Vote(strings.Split(string(rawVote), "\n"))
 	if len(vote) > MaxVoteOptions {
-		return Vote{}, errors.New("Vote has too many options. A vote may have a maximum of " + strconv.Itoa(MaxVoteOptions) + " option lines.")
+		return Vote{}, errors.Wrapf(ErrVoteTooManyOptions, "A vote may have a maximum of %i option lines", MaxVoteOptions)
 	}
 	for i, voteItem := range vote {
 		if len(voteItem) > MaxVoteBytes {
-			return Vote{}, errors.New("Vote item as position " + strconv.Itoa(i) + " is too large. Each vote-item line may have a maximu of " + strconv.Itoa(MaxVoteBytes) + " bytes.")
+			return Vote{}, errors.Wrapf(ErrVoteOptionTooBig, "Vote item as position %i is too large. Each vote-item line may have a maximum of %i bytes", i, MaxVoteBytes)
 		}
 	}
 	return vote, nil

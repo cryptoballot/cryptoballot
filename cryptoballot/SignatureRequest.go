@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
+	"github.com/phayes/errors"
 )
 
 type SignatureRequest struct {
@@ -14,6 +14,17 @@ type SignatureRequest struct {
 	BallotHash []byte // SHA256 (hex-encoded) of the ballot. This would generally be blinded.
 	Signature         // Voter signature for the ballot request
 }
+
+var (
+	ErrSignatureRequestInvalid    = errors.New("Cannot read Signature Request. Invalid format")
+	ErrSignatureRequestPublicKey  = errors.New("Cannot read Signature Request. Invalid Public Key")
+	ErrSignatureRequestID         = errors.New("Invalid SignatureRequest ID. A SignatureRequest ID must be the (hex encoded) SHA256 of the voters public key.")
+	ErrSignatureRequestBallotHash = errors.New("Invalid Signature Request. Ballot hash must be hex encoded.")
+	ErrSignatureRequestHashBits   = errors.New("Invalid Signature Request. You must provide exactly 256 bits for the blinded SHA256 ballot hash")
+	ErrSignatureRequestSigInvalid = errors.New("Invalid Signature Request. Could not parse voter signature")
+	ErrSignatureRequestSigNotFoud = errors.New("Could not verify voter signature on Signature Request: voter-signature does not exist")
+	ErrSignatureRequestSignBallot = errors.New("Could not sign ballot")
+)
 
 // Given a raw Signature Request string (as a []byte -- see documentation for format), return a new SignatureRequest object.
 // Generally the Signature Request string is coming from a voter in a POST body.
@@ -39,34 +50,34 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 	case numParts == 5:
 		hasSign = true
 	default:
-		return &SignatureRequest{}, errors.New("Cannot read Signature Request. Invalid format")
+		return &SignatureRequest{}, ErrSignatureRequestInvalid
 	}
 
 	electionID = string(parts[0])
 
 	publicKey, err = NewPublicKey(parts[2])
 	if err != nil {
-		return &SignatureRequest{}, err
+		return &SignatureRequest{}, errors.Wrap(err, ErrSignatureRequestPublicKey)
 	}
 
 	requestID = parts[1]
 	if !bytes.Equal(requestID, publicKey.GetSHA256()) {
-		return &SignatureRequest{}, errors.New("Invalid Request ID. A Request ID must be the (hex encoded) SHA256 of the voters public key.")
+		return &SignatureRequest{}, ErrSignatureRequestID
 	}
 
 	ballotHash = parts[3]
 	n, err := hex.Decode(make([]byte, hex.DecodedLen(len(ballotHash))), ballotHash)
 	if err != nil {
-		return &SignatureRequest{}, errors.New("Ballot hash must be hex encoded.")
+		return &SignatureRequest{}, ErrSignatureRequestBallotHash
 	}
 	if n != sha256.Size {
-		return &SignatureRequest{}, errors.New("You must provide exactly 256 bits for the blinded SHA256 ballot hash")
+		return &SignatureRequest{}, ErrSignatureRequestHashBits
 	}
 
 	if hasSign {
 		signature, err = NewSignature(parts[4])
 		if err != nil {
-			return &SignatureRequest{}, err
+			return &SignatureRequest{}, errors.Wrap(err, ErrSignatureRequestSigInvalid)
 		}
 	} else {
 		signature = nil
@@ -87,7 +98,7 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 // Verify the voter's signature attached to the SignatureRequest
 func (sigReq *SignatureRequest) VerifySignature() error {
 	if !sigReq.HasSignature() {
-		return errors.New("Could not verify signature: Signature does not exist")
+		return ErrSignatureRequestSigNotFoud
 	}
 	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
 
@@ -96,7 +107,11 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 
 // Sign the blinded ballot hash attached to the Signature Request. It is the hex-encoded blinded SHA256 hash of the ballot.
 func (sigReq *SignatureRequest) SignBallot(priv PrivateKey) (Signature, error) {
-	return priv.SignSHA256(sigReq.BallotHash)
+	sig, err := priv.SignSHA256(sigReq.BallotHash)
+	if err != nil {
+		return nil, errors.Wrap(err, ErrSignatureRequestSignBallot)
+	}
+	return sig, nil
 }
 
 // Signatures are generally required, but are sometimes optional (for example, for working with the SignatureRequest before it is signed by the voter)

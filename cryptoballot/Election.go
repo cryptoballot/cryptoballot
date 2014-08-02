@@ -2,7 +2,7 @@ package cryptoballot
 
 import (
 	"bytes"
-	"errors"
+	"github.com/phayes/errors"
 	"regexp"
 	"time"
 )
@@ -13,6 +13,16 @@ const (
 
 var (
 	ValidElectionID = regexp.MustCompile(`^[0-9a-z_]+$`) // Regex for valid characters. We use this ID to construct the name of a table, so we need to limit allowed characters.
+
+	ErrElectionIDTooBig      = errors.Newf("Invalid ElectionID. Too many characters. Maximum is %i characters", MaxElectionIDSize)
+	ErrEelectionInvalid      = errors.New("Cannot parse election. Invalid format")
+	ErrElectionIDInvalid     = errors.New("ElectionID contains illigal characters. Only lowercase alpha-numeric characters allowed")
+	ErrElectionStartInvalid  = errors.New("Invalid election start time")
+	ErrElectionEndInvalid    = errors.New("Invalid election end time")
+	ErrElectionInvalidTagSet = errors.New("Cannot parse TagSet in election")
+	ErrElectionInvalidKey    = errors.New("Cannot parse PublicKey in election")
+	ErrElectionInvalidSig    = errors.New("Cannot parse Signature in election")
+	ErrEletionSigNotFound    = errors.New("Could not verify election signature: Signature does not exist")
 )
 
 type Election struct {
@@ -63,31 +73,31 @@ func NewElection(rawElection []byte) (*Election, error) {
 	case 4:
 		keySec = 3
 	default:
-		return &Election{}, errors.New("Cannot read election. Invalid election format")
+		return &Election{}, ErrEelectionInvalid
 	}
 
 	electionID = string(parts[0])
 	if len(electionID) > MaxElectionIDSize {
-		return &Election{}, errors.New("Invalid ElectionID. Too many characters")
+		return &Election{}, ErrElectionIDTooBig
 	}
 	if !ValidElectionID.MatchString(electionID) {
-		return &Election{}, errors.New("ElectionID contains illigal characters. Only alpha-numeric characters allowed.")
+		return &Election{}, ErrElectionIDInvalid
 	}
 
 	start, err = time.Parse(time.RFC1123Z, string(parts[1]))
 	if err != nil {
-		return &Election{}, err
+		return &Election{}, errors.Wrap(err, ErrElectionStartInvalid)
 	}
 
 	end, err = time.Parse(time.RFC1123Z, string(parts[2]))
 	if err != nil {
-		return &Election{}, err
+		return &Election{}, errors.Wrap(err, ErrElectionEndInvalid)
 	}
 
 	if tagsSec != 0 {
 		tagSet, err = NewTagSet(parts[tagsSec])
 		if err != nil {
-			return &Election{}, err
+			return &Election{}, errors.Wrap(err, ErrElectionInvalidTagSet)
 		}
 	} else {
 		tagSet = nil
@@ -95,13 +105,13 @@ func NewElection(rawElection []byte) (*Election, error) {
 
 	publicKey, err = NewPublicKey(parts[keySec])
 	if err != nil {
-		return &Election{}, err
+		return &Election{}, errors.Wrap(err, ErrElectionInvalidKey)
 	}
 
 	if signSec != 0 {
 		signature, err = NewSignature(parts[signSec])
 		if err != nil {
-			return &Election{}, err
+			return &Election{}, errors.Wrap(err, ErrElectionInvalidSig)
 		}
 	} else {
 		signature = nil
@@ -122,7 +132,7 @@ func NewElection(rawElection []byte) (*Election, error) {
 // Verify that the election has been property cryptographically signed
 func (election *Election) VerifySignature() error {
 	if !election.HasSignature() {
-		return errors.New("Could not verify election signature: Signature does not exist")
+		return ErrEletionSigNotFound
 	}
 	s := election.ElectionID + "\n\n" + election.Start.Format(time.RFC1123Z) + "\n\n" + election.End.Format(time.RFC1123Z)
 	if election.HasTagSet() {

@@ -5,22 +5,28 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
+	"github.com/phayes/errors"
 )
 
 // An RSA signature. Raw bytes.
 type Signature []byte
 
+var (
+	ErrSignatureBase64   = errors.New("Invalid Signature. Could not read base64 encoded bytes")
+	ErrSignatureTooShort = errors.New("Invalid Signature. Signature too short")
+	ErrSignatureVerify   = errors.New("Could not cryptographically verify signature")
+)
+
 // Create a new signature from a base64 encoded item, as we would get in a PUT or POST request
-//@@TEST: Make sure "Signature too short" is working as expected
+//@@TODO: Test to make sure "Signature too short" is working as expected
 func NewSignature(Base64Signature []byte) (Signature, error) {
 	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(Base64Signature)))
 	n, err := base64.StdEncoding.Decode(dbuf, Base64Signature)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, ErrSignatureBase64)
 	}
 	if n < 128 {
-		return nil, errors.New("Signature too short")
+		return nil, ErrSignatureTooShort
 	}
 	sig := dbuf[:n]
 
@@ -37,13 +43,18 @@ func (sig Signature) Bytes() []byte {
 	return []byte(sig)
 }
 
+// Verify that the signature crytpographically signs the given message using the given public key
 func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
 	pubkey, err := pk.GetCryptoKey()
 	if err != nil {
-		return err
+		return errors.Wrap(err, ErrSignatureVerify)
 	}
 
 	hash := sha256.New()
 	hash.Write(message)
-	return rsa.VerifyPKCS1v15(pubkey, crypto.SHA256, hash.Sum(nil), sig.Bytes())
+	err = rsa.VerifyPKCS1v15(pubkey, crypto.SHA256, hash.Sum(nil), sig.Bytes())
+	if err != nil {
+		return errors.Wrap(err, ErrSignatureVerify)
+	}
+	return err
 }

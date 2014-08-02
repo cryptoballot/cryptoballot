@@ -5,9 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
+	"github.com/phayes/errors"
 	"regexp"
-	"strconv"
 )
 
 const (
@@ -18,6 +17,15 @@ var (
 	// maxBallotSize: election-id (max 128 bytes) + BallotID + Vote + (64 tags) + signature + line-seperators
 	MaxBallotSize = MaxElectionIDSize + MaxBallotIDSize + (maxVoteSize) + (64 * (MaxTagKeySize + MaxTagValueSize + 1)) + base64.StdEncoding.EncodedLen(1024) + (4*2 + 64 + 64)
 	ValidBallotID = regexp.MustCompile(`^[0-9a-zA-Z\-\.\[\]_~:/?#@!$&'()*+,;=]+$`) // Regex for valid characters. More or less the same as RFC 3986, sec 2.
+
+	ErrBallotTooBig        = errors.Newf("This ballot is too big. Maximum ballot size is %i bytes", MaxBallotSize)
+	ErrBallotIDTooBig      = errors.Newf("Ballot ID is too big. Maximum ballot-id size is %i characters", MaxBallotIDSize)
+	ErrBallotInvalid       = errors.New("Invalid ballot format")
+	ErrBallotIDInvalid     = errors.New("Ballot ID contains illigal characters. Valid characters are as per RFC 3986, sec 2: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=")
+	ErrBallotInvalidVote   = errors.New("Cannot parse Cote in ballot")
+	ErrBallotInvalidTagSet = errors.New("Cannot parse TagSet in ballot")
+	ErrBallotInvalidSig    = errors.New("Cannot parse ballot Signature")
+	ErrBallotSigNotFound   = errors.New("Could not verify ballot signature: Signature does not exist")
 )
 
 type Ballot struct {
@@ -45,7 +53,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 
 	// Check it's size
 	if len(rawBallot) > MaxBallotSize {
-		return nil, errors.New("Invalid ballot. This ballot is too big.")
+		return nil, ErrBallotTooBig
 	}
 
 	// Split the ballot into parts seperated by a double linebreak
@@ -77,34 +85,34 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 		tagsSec = 3
 		signSec = 4
 	default:
-		return &Ballot{}, errors.New("Cannot read ballot. Invalid ballot format")
+		return &Ballot{}, ErrBallotInvalid
 	}
 
 	electionID = string(parts[0])
 	if len(electionID) > MaxElectionIDSize {
-		return &Ballot{}, errors.New("Invalid ElectionID. Too many characters")
+		return &Ballot{}, ErrElectionIDTooBig
 	}
 	if !ValidElectionID.MatchString(electionID) {
-		return &Ballot{}, errors.New("ElectionID contains illigal characters. Only alpha-numeric characters allowed.")
+		return &Ballot{}, ErrElectionIDInvalid
 	}
 
 	ballotID = string(parts[1])
 	if len(ballotID) > MaxBallotIDSize {
-		return &Ballot{}, errors.New("Ballot ID is too large. Ballot ID should be at most " + strconv.Itoa(MaxBallotIDSize) + "characters")
+		return &Ballot{}, ErrBallotIDTooBig
 	}
 	if !ValidBallotID.MatchString(ballotID) {
-		return &Ballot{}, errors.New("Ballot ID contains illigal characters. Valid characters are as per RFC 3986, sec 2: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:/?#[]@!$&'()*+,;=")
+		return &Ballot{}, ErrBallotIDInvalid
 	}
 
 	vote, err = NewVote(parts[2])
 	if err != nil {
-		return &Ballot{}, err
+		return &Ballot{}, errors.Wrap(err, ErrBallotInvalidVote)
 	}
 
 	if tagsSec != 0 {
 		tagSet, err = NewTagSet(parts[tagsSec])
 		if err != nil {
-			return &Ballot{}, err
+			return &Ballot{}, errors.Wrap(err, ErrBallotInvalidTagSet)
 		}
 	} else {
 		tagSet = nil
@@ -113,7 +121,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	if signSec != 0 {
 		signature, err = NewSignature(parts[signSec])
 		if err != nil {
-			return &Ballot{}, err
+			return &Ballot{}, errors.Wrap(err, ErrBallotInvalidSig)
 		}
 	} else {
 		signature = nil
@@ -133,7 +141,7 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 // Verify that the ballot has been property cryptographically signed
 func (ballot *Ballot) VerifySignature(pk PublicKey) error {
 	if !ballot.HasSignature() {
-		return errors.New("Could not verify ballot signature: Signature does not exist")
+		return ErrBallotSigNotFound
 	}
 	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
 	if ballot.HasTagSet() {

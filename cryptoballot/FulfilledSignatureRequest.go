@@ -2,7 +2,7 @@ package cryptoballot
 
 import (
 	"bytes"
-	"errors"
+	"github.com/phayes/errors"
 )
 
 type FulfilledSignatureRequest struct {
@@ -10,12 +10,16 @@ type FulfilledSignatureRequest struct {
 	BallotSignature Signature // ElectionClerk signature signing off on the validity of the ballot
 }
 
+var (
+	ErrFulfilledSignatureRequestInvalid = errors.New("Cannot read Fulfilled Signature Request. Invalid format")
+)
+
 // Given the raw bytes of a Fulfilled Signature Request, get a FulfilledSignatureRequest object
 func NewFulfilledSignatureRequest(rawBytes []byte) (*FulfilledSignatureRequest, error) {
 	parts := bytes.Split(rawBytes, []byte("\n\n"))
 
 	if len(parts) != 6 {
-		return &FulfilledSignatureRequest{}, errors.New("Cannot read Fulfilled Signature Request. Invalid format")
+		return &FulfilledSignatureRequest{}, ErrFulfilledSignatureRequestInvalid
 	}
 
 	signatureRequest, err := NewSignatureRequest(bytes.Join(parts[:5], []byte("\n\n")))
