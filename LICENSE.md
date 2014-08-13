@@ -1,4 +1,4 @@
-CryptoBallot is open-source lisenced under the GPLv3, the text of which is below.
+CryptoBallot is open-source licensed under the GPLv3, the text of which is below.
 
 If you require a special license for non GPLv3-compatible uses of CryptoBallot please
 contact Patrick Hayes. email: patrick.d.hayes@gmail.com. ph: 1-250-792-5058.
