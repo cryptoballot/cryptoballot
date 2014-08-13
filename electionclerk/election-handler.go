@@ -2,8 +2,8 @@ package main
 
 import (
 	"database/sql"
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"github.com/lib/pq/hstore"
-	. "github.com/wikiocracy/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"net/http"
 	"strings"

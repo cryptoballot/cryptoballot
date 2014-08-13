@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	. "github.com/wikiocracy/cryptoballot/cryptoballot"
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"log"
 	"net/http"
 	"strconv"

@@ -1,7 +1,7 @@
 CryptoBallot
 ============
 
-[![Build Status](https://api.travis-ci.org/wikiocracy/cryptoballot.svg)](https://travis-ci.org/wikiocracy/cryptoballot)
+[![Build Status](https://api.travis-ci.org/cryptoballot/cryptoballot.svg)](https://travis-ci.org/cryptoballot/cryptoballot)
 
 Features
 --------

@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	. "github.com/wikiocracy/cryptoballot/cryptoballot"
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"io"
 	"io/ioutil"
 	"log"
