@@ -105,9 +105,17 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(s))
 }
 
-// Sign the blinded ballot hash attached to the Signature Request. It is the hex-encoded blinded SHA256 hash of the ballot.
+// Sign the blinded ballot hash attached to the Signature Request.
+// Despite the fact that we sign the SHA256 hash of the ballot, we do not use RSA standard SHA256 hashing and padding
+// Instead we do use naive RSA signing to sign the raw signature on the raw hash to ensure compatibility with blinding schemes.
 func (sigReq *SignatureRequest) SignBallot(priv PrivateKey) (Signature, error) {
-	sig, err := priv.SignSHA256(sigReq.BallotHash)
+	rawHash := make([]byte, hex.DecodedLen(len(sigReq.BallotHash)))
+	_, err := hex.Decode(rawHash, sigReq.BallotHash)
+	if err != nil {
+		return nil, errors.Wrap(err, ErrSignatureRequestSignBallot)
+	}
+
+	sig, err := priv.SignRawBytes(rawHash)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrSignatureRequestSignBallot)
 	}

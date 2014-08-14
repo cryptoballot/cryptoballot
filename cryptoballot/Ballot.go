@@ -147,7 +147,9 @@ func (ballot *Ballot) VerifySignature(pk PublicKey) error {
 	if ballot.HasTagSet() {
 		s += "\n\n" + ballot.TagSet.String()
 	}
-	return ballot.Signature.VerifySignature(pk, []byte(s))
+	h := sha256.New()
+	h.Write([]byte(s))
+	return ballot.Signature.VerifyRawSignature(pk, h.Sum(nil))
 }
 
 // Get the (hex-encoded) SHA256 of the String value of the ballot.

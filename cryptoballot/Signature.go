@@ -58,3 +58,18 @@ func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
 	}
 	return err
 }
+
+// Verify that the signature crytpographically signs the given message using the given public key
+// This message does not verify using a hash function or padding but verifies using naive RSA verification
+func (sig Signature) VerifyRawSignature(pk PublicKey, message []byte) error {
+	pubkey, err := pk.GetCryptoKey()
+	if err != nil {
+		return errors.Wrap(err, ErrSignatureVerify)
+	}
+
+	err = rsa.VerifyPKCS1v15(pubkey, 0, message, sig.Bytes())
+	if err != nil {
+		return errors.Wrap(err, ErrSignatureVerify)
+	}
+	return err
+}

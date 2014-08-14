@@ -92,6 +92,7 @@ func (pk PrivateKey) Sign(item fmt.Stringer) (Signature, error) {
 }
 
 // Sign the given bytes and return a Signature
+// This will use SHA256 as the signing hash function
 func (pk PrivateKey) SignBytes(bytes []byte) (Signature, error) {
 	h := sha256.New()
 	h.Write(bytes)
@@ -111,7 +112,22 @@ func (pk PrivateKey) SignString(str string) (Signature, error) {
 	return pk.SignBytes([]byte(str))
 }
 
+// Sign the given bytes using naive RSA signing (no hash or padding) and return a Signature using
+// This is compatible with blinded messages and blind signatures
+func (pk PrivateKey) SignRawBytes(bytes []byte) (Signature, error) {
+	cryptoKey, err := pk.GetCryptoKey()
+	if err != nil {
+		return nil, errors.Wrap(err, ErrPrivatKeySign)
+	}
+	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, 0, bytes)
+	if err != nil {
+		return nil, errors.Wrap(err, ErrPrivatKeySign)
+	}
+	return Signature(rawSignature), nil
+}
+
 // Sign the given hex-endcoded hash checksum and return a Signature
+// @@TODO Remove this -- undeeded
 func (pk PrivateKey) SignSHA256(hexbytes []byte) (Signature, error) {
 	if hex.DecodedLen(len(hexbytes)) != sha256.Size {
 		return nil, ErrPrivateKeySHA256
