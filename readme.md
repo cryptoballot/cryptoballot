@@ -187,3 +187,9 @@ Count the ballot and the receipts, make sure receipts >= ballots     | Count the
 Auditors verify receipts are properly signed by a registered voter   | Auditors verify signature-request receipts are properly signed by a registered voter
 Tally the results of the election!                                   | Tally the results of the election!
 
+Database Setup
+--------------
+The system can build the database schema automatically. Run either of the following:
+
+    ballotbox --set-up-db
+    electionclerk --set-up-db
