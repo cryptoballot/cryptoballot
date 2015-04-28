@@ -1,3 +1,5 @@
+Copyright © 2015 Patrick Hayes
+
 CryptoBallot is open-source licensed under the GNU Affero General Public License V3 (AGPLv3), the text of which is below.
 
 If you require a special license for non AGPLv3-compatible uses of CryptoBallot please
