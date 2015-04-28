@@ -6,5 +6,5 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 See http://www.gnu.org/licenses/ for the full license.
 
-### If you require a special license for non AGPLv3-compatible uses of CryptoBallot please
-contact Patrick Hayes. email: patrick.d.hayes@gmail.com. ph: 1-250-792-5058.
+*If you require a special license for non AGPLv3-compatible uses of CryptoBallot please
+contact Patrick Hayes. email: patrick.d.hayes@gmail.com. ph: 1-250-792-5058.*
