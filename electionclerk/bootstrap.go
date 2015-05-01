@@ -5,7 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	. "../cryptoballot"
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"github.com/dlintw/goconf"
 	"github.com/lib/pq"
 	"io/ioutil"

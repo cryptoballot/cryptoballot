@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	. "../cryptoballot"
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"github.com/lib/pq/hstore"
 	"io/ioutil"
 	"net/http"
