@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	. "../cryptoballot"
 	"io/ioutil"
 	"net/http"
 )

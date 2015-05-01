@@ -5,7 +5,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	. "../cryptoballot"
 	"log"
 	"net/http"
 	"strconv"
