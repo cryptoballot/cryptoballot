@@ -145,11 +145,14 @@ func handleGETAllElections(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		err := rows.Scan(w) // Will this work? Can I scan into a io.Writer?
+		var rawElection []byte
+		err := rows.Scan(rawElection) // Will this work? Can I scan into a io.Writer?
 		if err != nil {
 			http.Error(w, "Error reading elections from database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		w.Write(rawElection)
+		w.Write([]byte("\n\n\n"))
 	}
 	return
 }
