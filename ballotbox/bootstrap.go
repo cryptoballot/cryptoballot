@@ -208,6 +208,8 @@ func UpdateConfigFromBallotClerk(conf *config) error {
 	}
 	if len(body) != 0 {
 		rawElections := bytes.Split(body, []byte("\n\n\n"))
+		conf.elections = make(map[string]Election, len(rawElections))
+
 		for _, rawElection := range rawElections {
 			election, err := NewElection(rawElection)
 			if err != nil {
@@ -320,6 +322,9 @@ func httpGetAll(url string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, errors.New("Received " + resp.Status + " from " + url)
+	}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
