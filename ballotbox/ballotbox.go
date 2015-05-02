@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/cryptoballot/cryptoballot/cryptoballot"
-	"github.com/davecgh/go-spew/spew"
 	"log"
 	"net/http"
 	"strconv"
@@ -134,8 +133,6 @@ func syncElectionToDB(elections map[string]Election) error {
 		electionID := strings.TrimPrefix(tablename, "ballots_")
 		electionsInDB[electionID] = true
 	}
-
-	spew.Dump(electionsInDB)
 
 	// Compare elections in the database to elections passes in
 	// Create any missing tables
