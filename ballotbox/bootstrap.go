@@ -23,19 +23,30 @@ import (
 // Bootstrap parses flags and config files, and set's up the database connection.
 func bootstrap() {
 	configPathOpt := flag.String("config", "./test.conf", "Path to config file. The config file must be owned by and only readable by this user.")
+	configEnvOpt := flag.Bool("envconfig", false, "Use environment variables (instead of an ini file) for configuration.")
+
 	flag.Parse()
 
 	//@@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
-	cnf, err := NewConfig(*configPathOpt)
-	if err != nil {
-		log.Fatal("Error loading data from config file. ", err)
+	if *configEnvOpt {
+		c, err := NewConfigFromEnv()
+		if err != nil {
+			log.Fatal("Error loading environment variables. ", err)
+		}
+		conf = *c
+	} else {
+		c, err := NewConfigFromFile(*configPathOpt)
+		if err != nil {
+			log.Fatal("Error parsing config file. ", err)
+		}
+		conf = *c
 	}
-	conf = *cnf
 
 	//@@TODO: Check to make sure the sslmode is set to "verify-full" (unless the user passed --insecure)
 	//        See pq package documentation
 
 	// Connect to the database and set-up
+	var err error
 	db, err = sql.Open("postgres", conf.databaseConnectionString())
 	if err != nil {
 		log.Fatal("Database connection error: ", err)
@@ -57,7 +68,7 @@ func bootstrap() {
 }
 
 //@@TEST: loading known good config from file
-func NewConfig(filepath string) (*config, error) {
+func NewConfigFromFile(filepath string) (*config, error) {
 	conf := config{
 		configFilePath: filepath,
 	}
@@ -128,56 +139,173 @@ func NewConfig(filepath string) (*config, error) {
 		return nil, err
 	}
 
+	// Ingest the readme
+	conf.readmePath, err = c.GetString("", "readme")
+	if err != nil {
+		return nil, err
+	}
+
+	// Process local files
+	err = configProcessFiles(&conf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update From BallotClerk
+	err = UpdateConfigFromBallotClerk(&conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return &conf, nil
+}
+
+// Process the readme
+func configProcessFiles(conf *config) error {
+	// Ingest the readme
+	var err error
+	conf.readme, err = ioutil.ReadFile(conf.readmePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateConfigFromBallotClerk(conf *config) error {
 	// Get the ballot-clerk public key
 	body, err := httpGetAll(conf.electionclerkURL + "/publickey")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	PEMBlock, _ := pem.Decode(body)
 	if PEMBlock.Type != "PUBLIC KEY" {
-		return nil, errors.New("Could not parse Election Clerk Public Key")
+		return errors.New("Could not parse Election Clerk Public Key")
 	}
 	cryptoKey, err := x509.ParsePKIXPublicKey(PEMBlock.Bytes)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	conf.clerkKey, err = NewPublicKeyFromCryptoKey(cryptoKey.(*rsa.PublicKey))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Get the admin users
 	body, err = httpGetAll(conf.electionclerkURL + "/admins")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	conf.adminUsers, err = NewUserSet(body)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Get the list of elections
 	body, err = httpGetAll(conf.electionclerkURL + "/election")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if len(body) != 0 {
 		rawElections := bytes.Split(body, []byte("\n\n\n"))
 		for _, rawElection := range rawElections {
 			election, err := NewElection(rawElection)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			conf.elections[election.ElectionID] = *election
 		}
 	}
 
-	// Ingest the readme
-	conf.readmePath, err = c.GetString("", "readme")
+	return nil
+}
+
+func NewConfigFromEnv() (*config, error) {
+	var err error
+
+	conf := config{
+		configFilePath: "",
+	}
+
+	// Change our working directory to that of BALLOTBOX_CONFIG_DIR so everything is relative to it
+	if config_dir := os.Getenv("BALLOTBOX_CONFIG_DIR"); config_dir != "" {
+		err = os.Chdir(path.Dir(config_dir))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Parse port
+	if port := os.Getenv("BALLOTBOX_PORT"); port != "" {
+		conf.port, err = strconv.Atoi(port)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("Missing BALLOTBOX_PORT")
+	}
+	if db_port := os.Getenv("BALLOTBOX_DATABASE_PORT"); db_port != "" {
+		conf.database.port, err = strconv.Atoi(db_port)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("Missing BALLOTBOX_DATABASE_PORT")
+	}
+	conf.database.host = os.Getenv("BALLOTBOX_DATABASE_HOST")
+	if conf.database.host == "" {
+		return nil, errors.New("Missing BALLOTBOX_DATABASE_HOST")
+	}
+	conf.database.user = os.Getenv("BALLOTBOX_DATABASE_USER")
+	if conf.database.user == "" {
+		return nil, errors.New("Missing BALLOTBOX_DATABASE_USER")
+	}
+	conf.database.password = os.Getenv("BALLOTBOX_DATABASE_PASSWORD")
+	if conf.database.password == "" {
+		return nil, errors.New("Missing BALLOTBOX_DATABASE_PASSWORD")
+	}
+	conf.database.dbname = os.Getenv("BALLOTBOX_DATABASE_DBNAME")
+	if conf.database.dbname == "" {
+		return nil, errors.New("Missing BALLOTBOX_DATABASE_DBNAME")
+	}
+	conf.database.sslmode = os.Getenv("BALLOTBOX_DATABASE_SSLMODE")
+	if conf.database.sslmode == "" {
+		return nil, errors.New("Missing BALLOTBOX_DATABASE_SSLMODE")
+	}
+
+	if max_idle := os.Getenv("BALLOTBOX_DATABASE_IDLE_CONNECTIONS"); max_idle != "" {
+		conf.database.maxIdleConnections, err = strconv.Atoi(max_idle)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		conf.database.maxIdleConnections = -1
+	}
+
+	// Parse election-clerk URL
+	conf.electionclerkURL = os.Getenv("BALLOTBOX_ELECTIONCLERK_URL")
+	if conf.electionclerkURL == "" {
+		return nil, errors.New("Missing BALLOTBOX_ELECTIONCLERK_URL")
+	}
+	_, err = url.Parse(conf.electionclerkURL)
 	if err != nil {
 		return nil, err
 	}
-	conf.readme, err = ioutil.ReadFile(conf.readmePath)
+
+	// Readme
+	conf.readmePath = os.Getenv("BALLOTBOX_README")
+	if conf.readmePath == "" {
+		return nil, errors.New("Missing BALLOTBOX_README")
+	}
+
+	// Process local files
+	err = configProcessFiles(&conf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update From BallotClerk
+	err = UpdateConfigFromBallotClerk(&conf)
 	if err != nil {
 		return nil, err
 	}
