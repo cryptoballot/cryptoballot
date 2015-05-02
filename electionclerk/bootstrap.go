@@ -17,19 +17,27 @@ import (
 
 func bootstrap() {
 	configPathOpt := flag.String("config", "./electionclerk.conf", "Path to config file. The config file must be owned by and only readable by this user.")
+	configEnvOpt := flag.Bool("envconfig", false, "Use environment variables (instead of an ini file) for configuration.")
 	setUpOpt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")
 	flag.Parse()
 
-	// Populate the global configuration object with settings from the config file.
-	// @@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
-	config, err := NewConfig(*configPathOpt)
-	if err != nil {
-		log.Fatal("Error parsing config file. ", err)
+	if *configEnvOpt {
+		config, err := NewConfigFromEnv()
+		if err != nil {
+			log.Fatal("Error loading environment variables. ", err)
+		}
+		conf = *config
+	} else {
+		config, err := NewConfigFromFile(*configPathOpt)
+		if err != nil {
+			log.Fatal("Error parsing config file. ", err)
+		}
+		conf = *config
 	}
-	conf = *config
 
 	// Connect to the database and set-up
 	// @@TODO: Check to make sure the sslmode is set to "verify-full" (unless the user passed --insecure)
+	var err error
 	db, err = sql.Open("postgres", conf.databaseConnectionString())
 	if err != nil {
 		log.Fatal("Database connection error: ", err)
@@ -54,7 +62,8 @@ func bootstrap() {
 	}
 }
 
-func NewConfig(filepath string) (*Config, error) {
+// @@TODO Check to make sure the config file is readable only by this user (unless the user passed --insecure)
+func NewConfigFromFile(filepath string) (*Config, error) {
 	config := Config{
 		configFilePath: filepath,
 	}
@@ -119,6 +128,111 @@ func NewConfig(filepath string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Ingest administrators
+	config.adminKeysPath, err = c.GetString("", "admins")
+	if err != nil {
+		return nil, err
+	}
+
+	// Ingest the readme
+	config.readmePath, err = c.GetString("", "readme")
+	if err != nil {
+		return nil, err
+	}
+
+	// Processs files
+	err = configProcessFiles(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
+}
+
+func NewConfigFromEnv() (*Config, error) {
+	var err error
+
+	config := Config{
+		configFilePath: "",
+	}
+
+	// Change our working directory to that of ELECTIONCLERK_CONFIG_DIR so everything is relative to it
+	if config_dir := os.Getenv("ELECTIONCLERK_CONFIG_DIR"); config_dir != "" {
+		err := os.Chdir(path.Dir(config_dir))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Parse port
+	if port := os.Getenv("ELECTIONCLERK_PORT"); port != "" {
+		config.port, err = strconv.Atoi(port)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("Missing ELECTIONCLERK_PORT")
+	}
+
+	// Parse database config options
+	if db_port := os.Getenv("ELECTIONCLERK_DATABASE_PORT"); db_port != "" {
+		config.database.port, err = strconv.Atoi(db_port)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, errors.New("Missing ELECTIONCLERK_DATABASE_PORT")
+	}
+	config.database.host = os.Getenv("ELECTIONCLERK_DATABASE_HOST")
+	if config.database.host == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_DATABASE_HOST")
+	}
+	config.database.user = os.Getenv("ELECTIONCLERK_DATABASE_USER")
+	if config.database.user == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_DATABASE_USER")
+	}
+	config.database.password = os.Getenv("ELECTIONCLERK_DATABASE_PASSWORD")
+	if config.database.password == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_DATABASE_PASSWORD")
+	}
+	config.database.dbname = os.Getenv("ELECTIONCLERK_DATABASE_DBNAME")
+	if config.database.dbname == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_DATABASE_DBNAME")
+	}
+	config.database.sslmode = os.Getenv("ELECTIONCLERK_DATABASE_SSLMODE")
+	if config.database.sslmode == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_DATABASE_SSLMODE")
+	}
+
+	if max_idle := os.Getenv("ELECTIONCLERK_DATABASE_IDLE_CONNECTIONS"); max_idle != "" {
+		config.database.maxIdleConnections, err = strconv.Atoi(max_idle)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		config.database.maxIdleConnections = -1
+	}
+
+	// Private Signing Key
+	config.signingKeyPath = os.Getenv("ELECTIONCLERK_SIGNING_KEY")
+	if config.signingKeyPath == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_SIGNING_KEY")
+	}
+
+	// Administrators
+	config.adminKeysPath = os.Getenv("ELECTIONCLERK_ADMINS")
+	if config.signingKeyPath == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_ADMINS")
+	}
+
+	// Readme
+	config.readmePath = os.Getenv("ELECTIONCLERK_README")
+	if config.readmePath == "" {
+		return nil, errors.New("Missing ELECTIONCLERK_README")
+	}
+
+	// Ingest the private key into the global config object
 	signingKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
 	if err != nil {
 		return nil, err
@@ -129,10 +243,6 @@ func NewConfig(filepath string) (*Config, error) {
 	}
 
 	// Ingest administrators
-	config.adminKeysPath, err = c.GetString("", "admins")
-	if err != nil {
-		return nil, err
-	}
 	adminPEMBytes, err := ioutil.ReadFile(config.adminKeysPath)
 	if err != nil {
 		return nil, err
@@ -143,16 +253,43 @@ func NewConfig(filepath string) (*Config, error) {
 	}
 
 	// Ingest the readme
-	config.readmePath, err = c.GetString("", "readme")
-	if err != nil {
-		return nil, err
-	}
 	config.readme, err = ioutil.ReadFile(config.readmePath)
 	if err != nil {
 		return nil, err
 	}
 
 	return &config, nil
+}
+
+// Process the signing key, admin keys, and the readme
+func configProcessFiles(config *Config) error {
+	// Ingest the private key into the global config object
+	signingKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
+	if err != nil {
+		return err
+	}
+	config.signingKey, err = NewPrivateKey(signingKeyPEM)
+	if err != nil {
+		return err
+	}
+
+	// Ingest administrators
+	adminPEMBytes, err := ioutil.ReadFile(config.adminKeysPath)
+	if err != nil {
+		return err
+	}
+	config.adminUsers, err = NewUserSet(adminPEMBytes)
+	if err != nil {
+		return err
+	}
+
+	// Ingest the readme
+	config.readme, err = ioutil.ReadFile(config.readmePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (config *Config) databaseConnectionString() (connection string) {
