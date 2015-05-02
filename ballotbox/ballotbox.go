@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/davecgh/go-spew/spew"
 	"log"
 	"net/http"
 	"strconv"
@@ -119,20 +120,22 @@ func verifySignatureHeaders(r *http.Request) error {
 func syncElectionToDB(elections map[string]Election) error {
 	// Build a list of elections found in the database
 	electionsInDB := make(map[string]bool)
-	rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'ballots_'")
+	rows, err := db.Query("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'ballots_%'")
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var tablename string
-		err := rows.Scan(tablename)
+		err := rows.Scan(&tablename)
 		if err != nil {
 			return err
 		}
 		electionID := strings.TrimPrefix(tablename, "ballots_")
 		electionsInDB[electionID] = true
 	}
+
+	spew.Dump(electionsInDB)
 
 	// Compare elections in the database to elections passes in
 	// Create any missing tables
