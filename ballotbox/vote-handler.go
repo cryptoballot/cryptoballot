@@ -166,7 +166,7 @@ func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID strin
 	}
 
 	var ballotString sql.RawBytes
-	rows, err := db.Query("select ballot from ballots+_" + electionID)
+	rows, err := db.Query("select ballot from ballots_" + electionID)
 	if err != nil {
 		http.Error(w, "Database query error. "+err.Error(), http.StatusInternalServerError)
 		return
