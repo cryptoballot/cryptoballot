@@ -1,6 +1,4 @@
-
-
-@@TODO: Move to SHA256
+@@TODO: Move to SHA256 . Is this done?
 @@TODO: "create election" functionality on both ballotbox and ballotclerk
   - admin keys in config file. or just SHA256 hash of admin keys to keep it simple?
   - 
