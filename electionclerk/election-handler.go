@@ -144,7 +144,10 @@ func handleGETAllElections(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	for rows.Next() {
+	for i := 0; rows.Next(); i++ {
+		if i != 0 {
+			w.Write([]byte("\n\n\n"))
+		}
 		var rawElection []byte
 		err := rows.Scan(&rawElection) // Will this work? Can I scan into a io.Writer?
 		if err != nil {
@@ -152,7 +155,6 @@ func handleGETAllElections(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Write(rawElection)
-		w.Write([]byte("\n\n\n"))
 	}
 	return
 }
