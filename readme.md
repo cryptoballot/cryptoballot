@@ -161,10 +161,10 @@ base64 public.der -w0 > public.der.base64
 sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
 ```
 
-Paper Voting Equivilent to CryptoBallot
+Paper Voting Equivalent to CryptoBallot
 ---------------------------------------
 
-Paper Voting Equivilent                                              | CryptoBallot
+Paper Voting Equivalent                                              | CryptoBallot
 ---------------------------------------------------------------------|-----------------------------------------------------------------------------
                                                                      | User generates private / public RSA keypair
 Voters registers to vote and is put on voters list                   | User registers to vote and is put on voters list along with their public key
