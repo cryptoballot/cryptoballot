@@ -1,6 +1,6 @@
 # CryptoBallot Whitepaper - DRAFT - Work In Progress
 
-##Definitions
+## Definitions
 
  - VotersList:  Web application for managing voter information and public keys.
 
@@ -13,7 +13,7 @@
  - VotersList Administrator: A semi-trusted agent that is responsible for uploading and certifying the VotersList Document. This agent would generally be the Cheif Electoral Officer responsible for the election. 
 
 
-##VotersList
+## VotersList
 
 The CrytoBallot VotersList is a RESTful web application for managing, distributing, and tamperproofing voter identity information. 
 
