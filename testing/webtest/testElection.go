@@ -1,12 +1,13 @@
-package main
+package webtest
 
 import (
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 )
 
 func testElection() {

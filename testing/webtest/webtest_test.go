@@ -1,4 +1,4 @@
-package main
+package webtest
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -15,7 +16,8 @@ var (
 	once             sync.Once
 )
 
-func main() {
+// TestWebElection compiles and runs electionclerk and ballotbox, then tests a small election using botyh
+func TestWebElection(m *testing.T) {
 
 	// Do cleanup on panic
 	defer func() {
@@ -24,10 +26,10 @@ func main() {
 		}
 	}()
 
-	runCommandSync("go", "build", "../../electionclerk")
-	runCommandSync("go", "build", "../../ballotbox")
-	runCommandSync("createdb", "cryptoballot_webtest_electionclerk")
-	runCommandSync("createdb", "cryptoballot_webtest_ballotbox")
+	runCommandSync("go", "build", "-race", "../../electionclerk")
+	runCommandSync("go", "build", "-race", "../../ballotbox")
+	runCommandSync("createdb", "--host=localhost", "--username=postgres", "cryptoballot_webtest_electionclerk")
+	runCommandSync("createdb", "--host=localhost", "--username=postgres", "cryptoballot_webtest_ballotbox")
 	runCommandSync("./electionclerk", "--config=electionclerk.conf", "--set-up-db")
 
 	// Boot up the election-clerk
@@ -53,15 +55,16 @@ func Fail(v ...interface{}) {
 	})
 }
 
+// Success is called when we've successfully completed the test
 func Success() {
 	time.Sleep(2 * time.Second) // Give running processes a little time to fail before we declare victory
 	fmt.Println("Success!")
 	once.Do(func() {
 		Cleanup()
-		os.Exit(0)
 	})
 }
 
+// Cleanup kills electionclerk and ballotbox processes, deletes databases, and removes compiled binaries.
 func Cleanup() {
 	// Kill long-running processes
 	if electionclerkCmd != nil {
@@ -101,6 +104,7 @@ func runCommand(name string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+// runCommandSync runs a command syncronously, waiting until it is done.
 func runCommandSync(name string, args ...string) {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
