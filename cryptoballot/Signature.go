@@ -5,6 +5,9 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+
+	"github.com/cryptoballot/fdh"
+	"github.com/cryptoballot/rsablind"
 	"github.com/phayes/errors"
 )
 
@@ -15,6 +18,7 @@ var (
 	ErrSignatureBase64   = errors.New("Invalid Signature. Could not read base64 encoded bytes")
 	ErrSignatureTooShort = errors.New("Invalid Signature. Signature too short")
 	ErrSignatureVerify   = errors.New("Could not cryptographically verify signature")
+	ErrSignatureUnblind  = errors.New("Could not unblind the signature")
 )
 
 // Create a new signature from a base64 encoded item, as we would get in a PUT or POST request
@@ -33,17 +37,17 @@ func NewSignature(Base64Signature []byte) (Signature, error) {
 	return Signature(sig), nil
 }
 
-// Implements Stringer. Returns a base64 encoded string.
+// Implements Stringer interface. Returns a base64 encoded string.
 func (sig Signature) String() string {
 	return base64.StdEncoding.EncodeToString(sig)
 }
 
-// Get the signature as an array of bytes
+// Bytes gets the signature as an slice of bytes
 func (sig Signature) Bytes() []byte {
 	return []byte(sig)
 }
 
-// Verify that the signature crytpographically signs the given message using the given public key
+// VerifySignature verifies that the signature crytpographically signs the given message using the given public key
 func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
 	pubkey, err := pk.GetCryptoKey()
 	if err != nil {
@@ -59,8 +63,9 @@ func (sig Signature) VerifySignature(pk PublicKey, message []byte) error {
 	return err
 }
 
-// Verify that the signature crytpographically signs the given message using the given public key
+// VerifyRawSignature verfies that the signature crytpographically signs the given message using the given public key
 // This message does not verify using a hash function or padding but verifies using naive RSA verification
+// TODO: Remove when blinding is in place
 func (sig Signature) VerifyRawSignature(pk PublicKey, message []byte) error {
 	pubkey, err := pk.GetCryptoKey()
 	if err != nil {
@@ -72,4 +77,45 @@ func (sig Signature) VerifyRawSignature(pk PublicKey, message []byte) error {
 		return errors.Wrap(err, ErrSignatureVerify)
 	}
 	return err
+}
+
+// VerifyBlindSignature verifies that the signature blindly signed
+// the given message using the given public key
+// Note that you must call Unblind() first and use the unblided signature.
+func (sig Signature) VerifyBlindSignature(pk PublicKey, message []byte) error {
+	pubkey, err := pk.GetCryptoKey()
+	if err != nil {
+		return errors.Wrap(err, ErrSignatureVerify)
+	}
+
+	keylen, err := pk.KeyLength()
+	if err != nil {
+		return errors.Wrap(err, ErrSignatureVerify)
+	}
+
+	// We do a SHA256 full-domain-hash that is half the public key length
+	hashed := fdh.Sum(crypto.SHA256, keylen/2, message)
+
+	// Verify the blind signture
+	err = rsablind.VerifyBlindSignature(pubkey, hashed, sig.Bytes())
+	if err != nil {
+		return errors.Wrap(err, ErrSignatureVerify)
+	}
+
+	// Signature OK!
+	return nil
+}
+
+// Unblind unblinds a blind signature, returning a valid signature on the original message
+func (sig Signature) Unblind(pk PublicKey, unblinder []byte) (Signature, error) {
+	pubCryptoKey, err := pk.GetCryptoKey()
+	if err != nil {
+		return nil, errors.Wrap(err, ErrSignatureUnblind)
+	}
+
+	// Unblind the signature
+	rawUnblindedSig := rsablind.Unblind(pubCryptoKey, sig, unblinder)
+
+	// Return the unblinded signature
+	return Signature(rawUnblindedSig), nil
 }

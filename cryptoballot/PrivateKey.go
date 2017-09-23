@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"fmt"
 
+	"github.com/cryptoballot/rsablind"
 	"github.com/phayes/errors"
 )
 
@@ -22,6 +23,7 @@ var (
 	ErrPrivatKeyCryptoKey  = errors.New("Could not create from rsa.CryptoKey from PrivateKey. Could not parse PrivateKey bytes")
 	ErrPrivatKeySign       = errors.New("PrivateKey could not sign bytes")
 	ErrPrivateKeySHA256    = errors.New("Invalid SHA256 Hash checksum")
+	ErrPrivateKeyLen       = errors.New("Could not determine private key length")
 )
 
 // NewPrivateKey creates a new PrivateKey from a PEM Block bytes
@@ -128,6 +130,37 @@ func (pk PrivateKey) SignRawBytes(bytes []byte) (Signature, error) {
 	return Signature(rawSignature), nil
 }
 
+// BlindSign signs the given bytes using RSA blind signing and returns a Signature.
+// The message should be hased as a SHA256 full-domain hash that is half the size of the key.
+//
+// WARNING: Only use this method if you understand the dangers of blind signing.
+// See Caveats: https://godoc.org/github.com/cryptoballot/rsablind
+func (pk PrivateKey) BlindSign(messageHash []byte) (Signature, error) {
+	cryptoKey, err := pk.GetCryptoKey()
+	if err != nil {
+		return nil, errors.Wrap(err, ErrPrivatKeySign)
+	}
+
+	// Get the key length
+	keylen, err := pk.KeyLength()
+	if err != nil {
+		return nil, errors.Wrap(err, ErrPrivatKeySign)
+	}
+
+	// Make sure the size of messageHash is exactly the key size
+	if len(messageHash)*8 != keylen {
+		return nil, errors.Wraps(ErrPrivatKeySign, "Invalid messageHash size. The message must be full-domain-hashed to exactly half the signing key size.")
+	}
+
+	// Blind sign the blinded message
+	rawSignature, err := rsablind.BlindSign(cryptoKey, messageHash)
+	if err != nil {
+		return nil, errors.Wrap(err, ErrPrivatKeySign)
+	}
+
+	return Signature(rawSignature), nil
+}
+
 // PublicKey get the public key for the private key
 func (pk PrivateKey) PublicKey() (PublicKey, error) {
 	cryptoKey, err := pk.GetCryptoKey()
@@ -144,4 +177,13 @@ func (pk PrivateKey) String() string {
 		Bytes: pk.Bytes(),
 	}
 	return string(pem.EncodeToMemory(&pemBlock))
+}
+
+// KeyLength get the number of bits in the key
+func (pk PrivateKey) KeyLength() (int, error) {
+	privkey, err := pk.GetCryptoKey()
+	if err != nil {
+		return 0, errors.Wrap(err, ErrPrivateKeyLen)
+	}
+	return privkey.N.BitLen(), nil
 }

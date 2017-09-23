@@ -1,8 +1,12 @@
 package cryptoballot
 
 import (
+	"crypto"
 	"strings"
 	"testing"
+
+	"github.com/cryptoballot/fdh"
+	"github.com/cryptoballot/rsablind"
 )
 
 var (
@@ -88,4 +92,63 @@ func TestBadPrivateKey(t *testing.T) {
 	if err == nil {
 		t.Errorf("Zero sized private key should generate error")
 	}
+}
+
+func TestBlindSignature(t *testing.T) {
+
+	// Get the private key
+	priv, err := NewPrivateKey(goodPrivateKey)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Get the public key
+	pub, err := priv.PublicKey()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Get the public cryptoKey
+	pubcrypt, err := pub.GetCryptoKey()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Generate the message
+	message := []byte("ATTACK AT DAWN")
+
+	// Full-domain-hash that is half the key size
+	hashed := fdh.Sum(crypto.SHA256, 1024, message)
+
+	// Blind the message
+	blinded, unblinder, err := rsablind.Blind(pubcrypt, hashed)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Blind sign the blinded message
+	sig, err := priv.BlindSign(blinded)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Unblind the signature
+	unblindedSig, err := sig.Unblind(pub, unblinder)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Verify the blind signature
+	err = unblindedSig.VerifyBlindSignature(pub, message)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 }
