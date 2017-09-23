@@ -1,6 +1,9 @@
 build:
+    environment:
+            postgresql: true
     dependencies:
         before:
+            - createuser postgres --superuser
             - 'source <(curl -fsSL https://raw.githubusercontent.com/phayes/go-scrutinize/master/install-golang)'
 
     tests:
