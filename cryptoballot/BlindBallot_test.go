@@ -97,3 +97,12 @@ func TestBlindUnblind(t *testing.T) {
 	}
 
 }
+
+func TestBadBlindBallot(t *testing.T) {
+
+	_, err := NewBlindBallot([]byte("INVALID BLIND BALLOT"))
+	if err == nil {
+		t.Error("Invalid blind ballot should produce error")
+	}
+
+}
