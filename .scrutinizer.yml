@@ -17,3 +17,7 @@ build:
                 analysis:
                     file: 'checkstyle_report.xml'
                     format: 'general-checkstyle'
+
+    deployment:
+        - go get -v github.com/mattn/goveralls
+        - goveralls -coverprofile=profile.cov
