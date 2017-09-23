@@ -12,11 +12,11 @@ before_install:
  - docker-compose --file=testing/webtest/docker-compose.yml up -d
 
 script:
- - go test ./...
+ - go test ./... -coverprofile=coverage.out
 
 notifications:
   email: false
 
 after_success:
     - go get -v github.com/mattn/goveralls
-    - goveralls -coverprofile=profile.cov -service=travis-ci
+    - goveralls -coverprofile=coverage.out -service=travis-ci
