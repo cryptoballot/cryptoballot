@@ -96,6 +96,26 @@ func TestBlindUnblind(t *testing.T) {
 		return
 	}
 
+	// Run the unblinded ballot through a round-trip
+	ballotString := ballot.String()
+
+	ballot2, err := NewBallot([]byte(ballotString))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = ballot2.VerifyBlindSignature(pub)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if ballot2.String() != ballot.String() {
+		t.Error("Round trip ballot does not work")
+		return
+	}
+
 }
 
 func TestBadBlindBallot(t *testing.T) {
