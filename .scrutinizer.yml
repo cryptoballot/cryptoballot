@@ -1,10 +1,11 @@
 build:
     environment:
-            postgresql: true
+            postgresql: false
+            docker: true
     dependencies:
         before:
-            - 'psql -c "alter role postgres password null;"'
             - 'source <(curl -fsSL https://raw.githubusercontent.com/phayes/go-scrutinize/master/install-golang)'
+            - docker-compose up -d
 
     tests:
         override:
