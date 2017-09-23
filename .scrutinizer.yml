@@ -3,7 +3,7 @@ build:
             postgresql: true
     dependencies:
         before:
-            - createuser postgres --superuser
+            - 'psql -c "alter role postgres password null;"'
             - 'source <(curl -fsSL https://raw.githubusercontent.com/phayes/go-scrutinize/master/install-golang)'
 
     tests:
