@@ -2,11 +2,15 @@ package cryptoballot
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"github.com/phayes/errors"
 	"regexp"
+
+	"github.com/cryptoballot/fdh"
+	"github.com/cryptoballot/rsablind"
+	"github.com/phayes/errors"
 )
 
 const (
@@ -25,7 +29,11 @@ var (
 	ErrBallotInvalidVote   = errors.New("Cannot parse Cote in ballot")
 	ErrBallotInvalidTagSet = errors.New("Cannot parse TagSet in ballot")
 	ErrBallotInvalidSig    = errors.New("Cannot parse ballot Signature")
+	ErrBallotBadSig        = errors.New("Ballot signature does not sign this ballot")
 	ErrBallotSigNotFound   = errors.New("Could not verify ballot signature: Signature does not exist")
+	ErrBallotCannotBlind   = errors.New("Could not blind ballot")
+	ErrBallotCannotUnblind = errors.New("Could not unblind ballot")
+	ErrBallotHasSignature  = errors.New("The ballot already has a signature")
 )
 
 type Ballot struct {
@@ -138,21 +146,28 @@ func NewBallot(rawBallot []byte) (*Ballot, error) {
 	return &ballot, nil
 }
 
-// Verify that the ballot has been property cryptographically signed
+// VerifySignature verifies that the ballot has been property cryptographically signed
 func (ballot *Ballot) VerifySignature(pk PublicKey) error {
 	if !ballot.HasSignature() {
-		return ErrBallotSigNotFound
+		return errors.Wrap(ErrBallotSigNotFound, ErrBallotBadSig)
 	}
-	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
-	if ballot.HasTagSet() {
-		s += "\n\n" + ballot.TagSet.String()
-	}
+	s := ballot.StringWithoutSignature()
 	h := sha256.New()
 	h.Write([]byte(s))
 	return ballot.Signature.VerifyRawSignature(pk, h.Sum(nil))
 }
 
-// Get the (hex-encoded) SHA256 of the String value of the ballot.
+// VerifyBlindSignature verifies that the ballot has been property cryptographically signed with a blind signature
+func (ballot *Ballot) VerifyBlindSignature(pk PublicKey) error {
+	if !ballot.HasSignature() {
+		return errors.Wrap(ErrBallotSigNotFound, ErrBallotBadSig)
+	}
+
+	// Verify that the blind signature is corrrect
+	return ballot.Signature.VerifyBlindSignature(pk, []byte(ballot.StringWithoutSignature()))
+}
+
+// GetSHA256 gets the (hex-encoded) SHA256 of the String value of the ballot.
 func (ballot *Ballot) GetSHA256() []byte {
 	h := sha256.New()
 	h.Write([]byte(ballot.String()))
@@ -175,14 +190,76 @@ func (ballot *Ballot) HasSignature() bool {
 // Implements Stringer. Returns the String that would be expected in a PUT request to create the ballot
 // The returned string is the same format as expected by NewBallot
 func (ballot Ballot) String() string {
-	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
+	s := ballot.StringWithoutSignature()
 
-	if ballot.HasTagSet() {
-		s += "\n\n" + ballot.TagSet.String()
-	}
 	if ballot.HasSignature() {
 		s += "\n\n" + ballot.Signature.String()
 	}
 
 	return s
+}
+
+// StringWithoutSignature returns a string of the ballot without the signature, OK for signing.
+func (ballot *Ballot) StringWithoutSignature() string {
+	s := ballot.ElectionID + "\n\n" + ballot.BallotID + "\n\n" + ballot.Vote.String()
+	if ballot.HasTagSet() {
+		s += "\n\n" + ballot.TagSet.String()
+	}
+
+	return s
+}
+
+// Blind blinds the ballot, making it ready for signing by a signing authority
+// It will blind the ballot using a full-domain-hash that is half the size of the signing' authority's key.
+// The result is returned as a hex encoding of the blinded ballot, and a raw unblinder.
+func (ballot *Ballot) Blind(signingKey PublicKey) (blinded BlindBallot, ublinder []byte, err error) {
+	if ballot.HasSignature() {
+		return nil, nil, errors.Wrap(ErrBallotHasSignature, ErrBallotCannotBlind)
+	}
+
+	// Full-domain-hash that is half the key size
+	keylen, err := signingKey.KeyLength()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, ErrBallotCannotBlind)
+	}
+	hashed := fdh.Sum(crypto.SHA256, keylen/2, []byte(ballot.StringWithoutSignature()))
+
+	// The the cryptokey from the public key
+	pubcrypt, err := signingKey.GetCryptoKey()
+	if err != nil {
+		return nil, nil, errors.Wrap(ErrBallotCannotBlind, err)
+	}
+
+	// Blind the message
+	blindedBytes, unblinder, err := rsablind.Blind(pubcrypt, hashed)
+	if err != nil {
+		return nil, nil, errors.Wrap(ErrBallotCannotBlind, err)
+	}
+
+	return BlindBallot(blindedBytes), unblinder, nil
+}
+
+// Unblind unblinds the ballot, adding the unblinded signature to the ballot
+func (ballot *Ballot) Unblind(signingKey PublicKey, sig Signature, unblinder []byte) error {
+	if ballot.HasSignature() {
+		return errors.Wrap(ErrBallotHasSignature, ErrBallotCannotUnblind)
+	}
+
+	// Unblind the signature
+	unblindedSig, err := sig.Unblind(signingKey, unblinder)
+	if err != nil {
+		return errors.Wrap(err, ErrBallotCannotUnblind)
+	}
+
+	// Confirm that the signature signs the ballot
+	s := ballot.StringWithoutSignature()
+	err = unblindedSig.VerifyBlindSignature(signingKey, []byte(s))
+	if err != nil {
+		return errors.Wrap(err, ErrBallotCannotUnblind)
+	}
+
+	// Add the signature to the ballot
+	ballot.Signature = unblindedSig
+
+	return nil
 }
