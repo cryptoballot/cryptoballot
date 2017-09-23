@@ -2,9 +2,10 @@ package cryptoballot
 
 import (
 	"bytes"
-	"github.com/phayes/errors"
 	"regexp"
 	"time"
+
+	"github.com/phayes/errors"
 )
 
 const (
@@ -134,11 +135,7 @@ func (election *Election) VerifySignature() error {
 	if !election.HasSignature() {
 		return ErrEletionSigNotFound
 	}
-	s := election.ElectionID + "\n\n" + election.Start.Format(time.RFC1123Z) + "\n\n" + election.End.Format(time.RFC1123Z)
-	if election.HasTagSet() {
-		s += "\n\n" + election.TagSet.String()
-	}
-	s += "\n\n" + election.PublicKey.String()
+	s := election.StringWithoutSignature()
 	return election.Signature.VerifySignature(election.PublicKey, []byte(s))
 }
 
@@ -147,8 +144,8 @@ func (election *Election) HasTagSet() bool {
 	return election.TagSet != nil
 }
 
+// HasSignature hecks to see if the Election has been signed. It does not verify the signature, but merely checks to see if it exists.
 // Signatures are generally required, but are sometimes optional (for example, when working with an Election before it is signed by the admin)
-// This function checks to see if the Election has been signed. It does not verify the signature, but merely checks to see if it exists.
 func (election *Election) HasSignature() bool {
 	return election.Signature != nil
 }
@@ -156,6 +153,17 @@ func (election *Election) HasSignature() bool {
 // Implements Stringer. Returns the string that would be expected in a PUT request to create the election
 // The returned string is the same format as expected by NewElection
 func (election Election) String() string {
+	s := election.StringWithoutSignature()
+
+	if election.HasSignature() {
+		s += "\n\n" + election.Signature.String()
+	}
+
+	return s
+}
+
+// StringWithoutSignature gets a string representation of the election without the signaure
+func (election Election) StringWithoutSignature() string {
 	s := election.ElectionID + "\n\n" + election.Start.Format(time.RFC1123Z) + "\n\n" + election.End.Format(time.RFC1123Z)
 
 	if election.HasTagSet() {
@@ -163,10 +171,6 @@ func (election Election) String() string {
 	}
 
 	s += "\n\n" + election.PublicKey.String()
-
-	if election.HasSignature() {
-		s += "\n\n" + election.Signature.String()
-	}
 
 	return s
 }

@@ -37,4 +37,43 @@ func TestElectionParsing(t *testing.T) {
 		t.Errorf("Election round-trip from string and back again failed.")
 		return
 	}
+
+	withoutSigString := election.StringWithoutSignature()
+
+	election2, err := NewElection([]byte(withoutSigString))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if election2.String() != election.StringWithoutSignature() {
+		t.Error("election without signature round trip failed")
+		return
+	}
+
+	// Remove tags and test
+	election.TagSet = nil
+	election2.TagSet = nil
+
+	withoutTags1String := election.String()
+	withoutTags2String := election.String()
+
+	withoutTags1, err := NewElection([]byte(withoutTags1String))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	withoutTags2, err := NewElection([]byte(withoutTags2String))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if withoutTags1.String() != withoutTags1String {
+		t.Error("election without tags round trip failed")
+	}
+	if withoutTags2.String() != withoutTags2String {
+		t.Error("election without tags round trip failed")
+	}
+
 }
