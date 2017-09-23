@@ -43,6 +43,11 @@ func TestBallotParsing(t *testing.T) {
 		t.Error(err)
 	}
 
+	sha256 := ballot.GetSHA256()
+	if string(sha256) != "f70d3df6aafd0006c0558bd37c37bb1dbd27af9e7e9d5833a741c979ff68f0e0" {
+		t.Error("Invalid SHA256 for ballot")
+	}
+
 	if string(goodBallot) != ballot.String() {
 		t.Errorf("Ballot round-trip from string and back again failed.")
 	}
