@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 
@@ -92,7 +91,7 @@ func (pk PrivateKey) Sign(item fmt.Stringer) (Signature, error) {
 	return pk.SignBytes(bytes)
 }
 
-// Sign the given bytes and return a Signature
+// SignBytes signs the given bytes and return a Signature
 // This will use SHA256 as the signing hash function
 func (pk PrivateKey) SignBytes(bytes []byte) (Signature, error) {
 	h := sha256.New()
@@ -108,13 +107,15 @@ func (pk PrivateKey) SignBytes(bytes []byte) (Signature, error) {
 	return Signature(rawSignature), nil
 }
 
-// Sign the given string and return a Signature
+// SignString signs the given string and return a Signature
 func (pk PrivateKey) SignString(str string) (Signature, error) {
 	return pk.SignBytes([]byte(str))
 }
 
-// Sign the given bytes using naive RSA signing (no hash or padding) and return a Signature using
+// SignRawBytes signs the given bytes using naive RSA signing (no hash or padding) and return a Signature using
 // This is compatible with blinded messages and blind signatures
+//
+// WARNING: Only use this method if you understand the dangers of blind signing and are using a full domain hash.
 func (pk PrivateKey) SignRawBytes(bytes []byte) (Signature, error) {
 	cryptoKey, err := pk.GetCryptoKey()
 	if err != nil {
@@ -127,35 +128,7 @@ func (pk PrivateKey) SignRawBytes(bytes []byte) (Signature, error) {
 	return Signature(rawSignature), nil
 }
 
-// Sign the given hex-endcoded hash checksum and return a Signature
-// @@TODO Remove this -- undeeded
-func (pk PrivateKey) SignSHA256(hexbytes []byte) (Signature, error) {
-	if hex.DecodedLen(len(hexbytes)) != sha256.Size {
-		return nil, ErrPrivateKeySHA256
-	}
-
-	// Decode hex bytes into raw bytes
-	decodedBytes := make([]byte, hex.DecodedLen(len(hexbytes)))
-	_, err := hex.Decode(decodedBytes, hexbytes)
-	if err != nil {
-		return nil, errors.Wrap(err, ErrPrivateKeySHA256)
-	}
-
-	// Get the rsa cryptokey for signing
-	cryptoKey, err := pk.GetCryptoKey()
-	if err != nil {
-		return nil, errors.Wrap(err, ErrPrivatKeySign)
-	}
-
-	// Compute the signature and return the results
-	rawSignature, err := rsa.SignPKCS1v15(rand.Reader, cryptoKey, crypto.SHA256, decodedBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, ErrPrivatKeySign)
-	}
-	return Signature(rawSignature), nil
-}
-
-// Get the public key
+// PublicKey get the public key for the private key
 func (pk PrivateKey) PublicKey() (PublicKey, error) {
 	cryptoKey, err := pk.GetCryptoKey()
 	if err != nil {
@@ -164,7 +137,7 @@ func (pk PrivateKey) PublicKey() (PublicKey, error) {
 	return NewPublicKeyFromCryptoKey(&cryptoKey.PublicKey)
 }
 
-// Implements Stringer
+// String implements Stringer
 func (pk PrivateKey) String() string {
 	pemBlock := pem.Block{
 		Type:  "RSA PRIVATE KEY",
