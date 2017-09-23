@@ -2,6 +2,7 @@ package cryptoballot
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"testing"
 )
 
@@ -48,6 +49,11 @@ func TestBadPublicKey(t *testing.T) {
 	}
 	if !pk.IsEmpty() {
 		t.Errorf("Invalid public key should be empty")
+	}
+
+	_, err = NewPublicKeyFromCryptoKey(&rsa.PublicKey{})
+	if err == nil {
+		t.Errorf("Invalid public key did not return error")
 	}
 }
 
