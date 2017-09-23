@@ -3,6 +3,8 @@ CryptoBallot
 
 [![Build Status](https://api.travis-ci.org/cryptoballot/cryptoballot.svg)](https://travis-ci.org/cryptoballot/cryptoballot)
 [![Scrutinizer](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/badges/build.png?b=master)](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/build-status/master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cryptoballot/cryptoballot)](https://goreportcard.com/report/github.com/cryptoballot/cryptoballot)
+[[Scrutinizer Issues]](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/issues)
 
 Features
 --------
