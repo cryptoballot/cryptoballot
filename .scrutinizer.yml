@@ -19,5 +19,7 @@ build:
                     format: 'general-checkstyle'
 
     deployment:
-        - go get -v github.com/mattn/goveralls
-        - goveralls -coverprofile=profile.cov
+        -
+            commands:
+                - go get -v github.com/mattn/goveralls
+                - goveralls -coverprofile=profile.cov
