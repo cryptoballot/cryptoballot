@@ -11,6 +11,7 @@ var (
 	badMes  = "BAD"
 	goodSig = []byte(`gk5oTKo8NK0daXWaykT1O8HlngmLHIBnWCFIrZnYPYBzZENpQFfWa0aJ9zDmemid99AtR8CcTE6GYgEiX5EnqENg+eR88fzXvqaUeZa2sjk6tYS6/12nGYkx/FfbZF9StNKswkCNlM/hvmQpC1t49+SOu6aj8G5Y0Vu6/R1+7diTO+RXF0MbccEjz70meLo9JO+Eww5PhabbkfbMPmn9cfQbCTVFp3EWHMlalSkimV9VjkIOu6N1yu+BMLcVSTQSTZd0GBqbPS0ne17YJ4eKuCMMvKw8Vs3o9y3U27WdWRdzuQidAZCNGo9bk1aZa0koj95yc9BJE5gNLDm/ZGGo20+EBRmzshWaM1H58noNmoQye2UdxCGAQCGF4deBn8l02oXgc98ArkFCiKfK4CgZvKTPdWBInAOp8/8xPAZd/QFop8W4Jq40yiWUFIbFWumL5j+cA42eKq7AIvaaaGwkNthD8m5+HaxkyeWrs0jf1S2uk49EWvjnon5DO8qFOxu6339zh4p1fscKZoR1tUFMfvxz6t7dwlyNBYr5F4lNcRw6ylfHwYMD8QLl6HNXQ3vyXS5l9w94PGQiliTChiryPxAv8FmyCiywUdCTgXtt/PzWKaNw2pA5UCuoXYuyTbpQTD+GwK+UUet5so5rrr8ZZj1n2ao6PsYOVOiI5SOH+E4=`)
 	badSig  = []byte("IAMNOTAVALIDSIGNATURE")
+	badSig2 = []byte("YWJjMTIz")
 )
 
 func TestGoodSignature(t *testing.T) {
@@ -64,6 +65,11 @@ func TestBadSignature(t *testing.T) {
 
 	if string(sig) != "" {
 		t.Errorf("Invalid signature should return empty string")
+	}
+
+	_, err = NewSignature(badSig2)
+	if err == nil {
+		t.Errorf("Invalid signature did not throw error")
 	}
 
 	goodpk, _ := NewPublicKey(goodPublicKey)
