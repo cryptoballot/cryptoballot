@@ -53,6 +53,25 @@ func TestGoodPrivateKey(t *testing.T) {
 	if strings.TrimSpace(priv.String()) != strings.TrimSpace(string(goodPrivateKey)) {
 		t.Errorf("Private Key does not survive round trip from string and back")
 	}
+
+	message := "ATTACK AT DAWN"
+	sig, err := priv.SignString(message)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	pub, err := priv.PublicKey()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	err = sig.VerifySignature(pub, []byte(message))
+	if err != nil {
+		t.Error(err)
+		return
+	}
 }
 func TestBadPrivateKey(t *testing.T) {
 	pk, err := NewPrivateKey(badPrivateKey)
