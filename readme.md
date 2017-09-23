@@ -2,6 +2,7 @@ CryptoBallot
 ============
 
 [![Build Status](https://api.travis-ci.org/cryptoballot/cryptoballot.svg)](https://travis-ci.org/cryptoballot/cryptoballot)
+[![Scrutinizer](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/badges/build.png?b=master)](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/build-status/master)
 
 Features
 --------
