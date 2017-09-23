@@ -169,28 +169,28 @@ sha512sum public.der.base64 | awk '{printf $1}' > public.der.base64.sha512
 Paper Voting Equivilent to CryptoBallot
 ---------------------------------------
 
-Paper Voting Equivilent                                              | CryptoBallot
----------------------------------------------------------------------|-----------------------------------------------------------------------------
-                                                                     | User generates private / public RSA keypair
-Voters registers to vote and is put on voters list                   | User registers to vote and is put on voters list along with their public key
-*Election Time!*                                                     | *Election Time!*
-Voter receives blank ballot by mail with unique ID stamped in corner | Voter randomly generates unique ID for ballot
-Voter writes down vote on their ballot at home                       | Voter creates digital ballot file on personal device using the generated ID
-Voter puts ballot in an envelope along with carbon paper             | Voter creates a blinded copy of their ballot using RSA blinding
-Voter presents ID to voting-station clerk who verifies identity      | Voter asserts identity to Ballot-Clerk server using crypto-signature
-Voting-station clerk has voter sign receipt. Clerk keeps receipt.    | Ballot-Clerk server stores copy of the voter's signature-request as a receipt
-Voting-station clerk signs outside of envelope                       | Ballot-Clerk server blind-signs voter's blinded-ballot
-Voter removes ballot from envelope and discards carbon paper         | Voter unblinds digital ballot
-Voter goes to private voting booth                                   | Voter waits a random amount of time and enables Tor
-Voter places ballot in ballot-box                                    | Voter submits ballot to Ballot-Box server (which checks ballot-clerk signature on ballot)
-*Counting time!*                                                     | *Counting time!*
-Clerk's signature is published                                       | Ballot-Clerk's public-key is published
-All ballots are poured out on big counting table                     | All ballots are published in the open
-All ballots are checked for the clerk's carbon-copied signature      | All ballots are cryptographically verified against Ballot-Clerk server's public key / signature
-All ballots are checked to make sure they have a unique-id           | All ballots are checked to make sure they have a unique-id
-Count the ballot and the receipts, make sure receipts >= ballots     | Count the ballot and the signature-request receipts, make sure receipts >= ballots
-Auditors verify receipts are properly signed by a registered voter   | Auditors verify signature-request receipts are properly signed by a registered voter
-Tally the results of the election!                                   | Tally the results of the election!
+|Paper Voting Equivilent                                              | CryptoBallot
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------
+|                                                                     | User generates private / public RSA keypair
+|Voters registers to vote and is put on voters list                   | User registers to vote and is put on voters list along with their public key
+|*Election Time!*                                                     | *Election Time!*
+|Voter receives blank ballot by mail with unique ID stamped in corner | Voter randomly generates unique ID for ballot
+|Voter writes down vote on their ballot at home                       | Voter creates digital ballot file on personal device using the generated ID
+|Voter puts ballot in an envelope along with carbon paper             | Voter creates a blinded copy of their ballot using RSA blinding
+|Voter presents ID to voting-station clerk who verifies identity      | Voter asserts identity to Ballot-Clerk server using crypto-signature
+|Voting-station clerk has voter sign receipt. Clerk keeps receipt.    | Ballot-Clerk server stores copy of the voter's signature-request as a receipt
+|Voting-station clerk signs outside of envelope                       | Ballot-Clerk server blind-signs voter's blinded-ballot
+|Voter removes ballot from envelope and discards carbon paper         | Voter unblinds digital ballot
+|Voter goes to private voting booth                                   | Voter waits a random amount of time and enables Tor
+|Voter places ballot in ballot-box                                    | Voter submits ballot to Ballot-Box server (which checks ballot-clerk signature on ballot)
+|*Counting time!*                                                     | *Counting time!*
+|Clerk's signature is published                                       | Ballot-Clerk's public-key is published
+|All ballots are poured out on big counting table                     | All ballots are published in the open
+|All ballots are checked for the clerk's carbon-copied signature      | All ballots are cryptographically verified against Ballot-Clerk server's public key / signature
+|All ballots are checked to make sure they have a unique-id           | All ballots are checked to make sure they have a unique-id
+|Count the ballot and the receipts, make sure receipts >= ballots     | Count the ballot and the signature-request receipts, make sure receipts >= ballots
+|Auditors verify receipts are properly signed by a registered voter   | Auditors verify signature-request receipts are properly signed by a registered voter
+|Tally the results of the election!                                   | Tally the results of the election!
 
 Database Setup
 --------------
