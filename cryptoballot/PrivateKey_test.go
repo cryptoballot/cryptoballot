@@ -82,4 +82,10 @@ func TestBadPrivateKey(t *testing.T) {
 	if !pk.IsEmpty() {
 		t.Errorf("Invalid private key should be empty")
 	}
+
+	// Try to generate a zero length private key
+	_, err = GeneratePrivateKey(0)
+	if err == nil {
+		t.Errorf("Zero sized private key should generate error")
+	}
 }
