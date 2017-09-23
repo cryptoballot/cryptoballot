@@ -22,4 +22,4 @@ build:
         -
             commands:
                 - go get -v github.com/mattn/goveralls
-                - goveralls -coverprofile=profile.cov
+                - goveralls -coverprofile=coverage.out
