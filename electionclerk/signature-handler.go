@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"io/ioutil"
 	"net/http"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 )
 
 // Handle a signature-request coming from a user
@@ -35,7 +36,7 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 	// @@TODO: Check that this voter has not already retreived a fulfilled signature request.
 
 	// Sign the ballot
-	ballotSig, err := signatureReqest.SignBallot(conf.signingKey)
+	ballotSig, err := conf.signingKey.BlindSign(signatureReqest.BlindBallot)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
