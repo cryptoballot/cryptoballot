@@ -60,6 +60,16 @@ func TestBallotParsing(t *testing.T) {
 		t.Errorf("Failed to extract proper map from tagset")
 	}
 
+	// Remove the signature and do a round trip
+	noSigBallotString := ballot.StringWithoutSignature()
+	ballot2, err := NewBallot([]byte(noSigBallotString))
+	if err != nil {
+		t.Error(err)
+	}
+	if ballot2.String() != ballot.StringWithoutSignature() {
+		t.Errorf("Parsed ballot without signatures do not match")
+	}
+
 }
 
 // A more meaningful test that takes us all the way through ballot creation, including creating the ballot and having it signed.
