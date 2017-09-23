@@ -89,7 +89,7 @@ BallotBox Server
  - All ballots are "sealed" until the votes are ready to be counted. Some clients may choose to make their vote "public" by tagging it as such. 
  - When ballots are ready to be counted all votes are "unsealed" in their entirety and published. Any 3rd party may then count the votes and tally the results.
  - Risks include:
-    - Voter identity discovery via ip address if either ballot-box server or ssl/tls comprimise. A tor hidden service should be provided in order to mitigate this attack.
+    - Voter identity discovery via ip address if either ballot-box server or ssl/tls compromise. A tor hidden service should be provided in order to mitigate this attack.
     - Voter identity discovery though a timing attack if the user immidiately submits their ballot after having it signed by the Ballot Clerk. To mitigate this attack the voter should randomly stagger this interval.
 
 
