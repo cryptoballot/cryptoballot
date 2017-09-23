@@ -4,8 +4,9 @@ CryptoBallot
 [![Build Status](https://api.travis-ci.org/cryptoballot/cryptoballot.svg)](https://travis-ci.org/cryptoballot/cryptoballot)
 [![Scrutinizer](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/badges/build.png?b=master)](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/build-status/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cryptoballot/cryptoballot)](https://goreportcard.com/report/github.com/cryptoballot/cryptoballot)
+[![Coverage Status](https://coveralls.io/repos/github/cryptoballot/cryptoballot/badge.svg?branch=master)](https://coveralls.io/github/cryptoballot/cryptoballot?branch=master)
 [![GoDoc](https://godoc.org/github.com/cryptoballot/cryptoballot?status.svg)](https://godoc.org/github.com/cryptoballot/cryptoballot/cryptoballot)
-[![GoDoc](https://img.shields.io/badge/Scrutinizer-Issues-blue.svg)](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/issues)
+[![Scrutinizer Issues](https://img.shields.io/badge/Scrutinizer-Issues-blue.svg)](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/issues)
 
 Features
 --------
