@@ -31,6 +31,11 @@ func TestBadTags(t *testing.T) {
 		t.Error("Invalid tag produced no error")
 	}
 
+	_, err = NewTag([]byte("key="))
+	if err == nil {
+		t.Error("Invalid tag produced no error")
+	}
+
 	_, err = NewTag([]byte("ljahsdflkjhasdflkjhasdflkjhasdflkjhasdflkjhasdflkjhasdfasdfkljlksdjflkasdfadsfadsfadf=value"))
 	if err == nil {
 		t.Error("Invalid tag produced no error")
