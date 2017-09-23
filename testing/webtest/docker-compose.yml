@@ -4,4 +4,4 @@ postgres:
     POSTGRES_USER: postgres
     POSTGRES_PASSWORD: ''
   ports:
-    - "5432:5432"
+    - "9856:5432"

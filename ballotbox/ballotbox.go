@@ -4,11 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 )
 
 const (
