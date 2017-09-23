@@ -11,7 +11,7 @@ import (
 	"github.com/phayes/errors"
 )
 
-// An RSA signature. Raw bytes.
+// Signature is an RSA signature. Raw bytes.
 type Signature []byte
 
 var (

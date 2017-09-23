@@ -2,17 +2,16 @@ package cryptoballot
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
+
 	"github.com/phayes/errors"
 )
 
 type SignatureRequest struct {
-	ElectionID string
-	RequestID  []byte // SHA256 (hex) of base64 encoded public-key
-	PublicKey         // base64 encoded PEM formatted public-key
-	BallotHash []byte // SHA256 (hex-encoded) of the ballot. This would generally be blinded.
-	Signature         // Voter signature for the ballot request
+	ElectionID  string
+	RequestID   []byte // SHA256 (hex) of base64 encoded public-key
+	PublicKey          // base64 encoded PEM formatted public-key
+	BlindBallot        // Blinded ballot (blinded full-domain-hash of the ballot).
+	Signature          // Voter signature for the ballot request
 }
 
 var (
@@ -31,19 +30,20 @@ var (
 // This will also verify the signature on the SignatureRequest and return an error if the request does not pass crypto verification
 func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) {
 	var (
-		err        error
-		hasSign    bool
-		electionID string
-		requestID  []byte
-		publicKey  PublicKey
-		ballotHash []byte
-		signature  Signature
+		err         error
+		hasSign     bool
+		electionID  string
+		requestID   []byte
+		publicKey   PublicKey
+		blindBallot BlindBallot
+		signature   Signature
 	)
 
 	// The SignatureRequest is composed of individual components seperated by double linebreaks
 	parts := bytes.Split(rawSignatureRequest, []byte("\n\n"))
 
 	numParts := len(parts)
+
 	switch {
 	case numParts == 4:
 		hasSign = false
@@ -65,13 +65,9 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 		return &SignatureRequest{}, ErrSignatureRequestID
 	}
 
-	ballotHash = parts[3]
-	n, err := hex.Decode(make([]byte, hex.DecodedLen(len(ballotHash))), ballotHash)
+	blindBallot, err = NewBlindBallot(parts[3])
 	if err != nil {
-		return &SignatureRequest{}, ErrSignatureRequestBallotHash
-	}
-	if n != sha256.Size {
-		return &SignatureRequest{}, ErrSignatureRequestHashBits
+		return &SignatureRequest{}, errors.Wrap(err, ErrSignatureRequestBallotHash)
 	}
 
 	if hasSign {
@@ -87,7 +83,7 @@ func NewSignatureRequest(rawSignatureRequest []byte) (*SignatureRequest, error) 
 		electionID,
 		requestID,
 		publicKey,
-		ballotHash,
+		blindBallot,
 		signature,
 	}
 
@@ -100,26 +96,9 @@ func (sigReq *SignatureRequest) VerifySignature() error {
 	if !sigReq.HasSignature() {
 		return ErrSignatureRequestSigNotFoud
 	}
-	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
+	s := sigReq.StringWithoutSignature()
 
 	return sigReq.Signature.VerifySignature(sigReq.PublicKey, []byte(s))
-}
-
-// Sign the blinded ballot hash attached to the Signature Request.
-// Despite the fact that we sign the SHA256 hash of the ballot, we do not use RSA standard SHA256 hashing and padding
-// Instead we do use naive RSA signing to sign the raw signature on the raw hash to ensure compatibility with blinding schemes.
-func (sigReq *SignatureRequest) SignBallot(priv PrivateKey) (Signature, error) {
-	rawHash := make([]byte, hex.DecodedLen(len(sigReq.BallotHash)))
-	_, err := hex.Decode(rawHash, sigReq.BallotHash)
-	if err != nil {
-		return nil, errors.Wrap(err, ErrSignatureRequestSignBallot)
-	}
-
-	sig, err := priv.SignRawBytes(rawHash)
-	if err != nil {
-		return nil, errors.Wrap(err, ErrSignatureRequestSignBallot)
-	}
-	return sig, nil
 }
 
 // Signatures are generally required, but are sometimes optional (for example, for working with the SignatureRequest before it is signed by the voter)
@@ -131,9 +110,15 @@ func (sigReq *SignatureRequest) HasSignature() bool {
 // Implements Stringer. Outputs the same text representation we are expecting the voter to POST in their Signature Request.
 // This is also the same format that is expected in NewSignatureRequest
 func (sigReq SignatureRequest) String() string {
-	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + string(sigReq.BallotHash)
+	s := sigReq.StringWithoutSignature()
 	if sigReq.HasSignature() {
 		s += "\n\n" + sigReq.Signature.String()
 	}
+	return s
+}
+
+// StringWithoutSignature returns the SignatureRequest as a string, without the signature of the requesting client.
+func (sigReq SignatureRequest) StringWithoutSignature() string {
+	s := sigReq.ElectionID + "\n\n" + string(sigReq.RequestID) + "\n\n" + sigReq.PublicKey.String() + "\n\n" + sigReq.BlindBallot.String()
 	return s
 }

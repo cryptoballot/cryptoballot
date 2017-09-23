@@ -2,6 +2,7 @@ package cryptoballot
 
 import (
 	"bytes"
+
 	"github.com/phayes/errors"
 )
 

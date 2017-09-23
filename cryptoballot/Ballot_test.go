@@ -101,11 +101,17 @@ func TestBallotCreation(t *testing.T) {
 	}
 
 	// Create unsigned SignatureRequest
+	blinded, unblinder, err := ballot.Blind(clerkPub)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	signatureReq := SignatureRequest{
-		ElectionID: "12345",
-		RequestID:  voterPub.GetSHA256(),
-		PublicKey:  voterPub,
-		BallotHash: ballot.GetSHA256(),
+		ElectionID:  "12345",
+		RequestID:   voterPub.GetSHA256(),
+		PublicKey:   voterPub,
+		BlindBallot: blinded,
 	}
 
 	// Sign the Signature Request with the voter's key
@@ -121,13 +127,16 @@ func TestBallotCreation(t *testing.T) {
 	}
 
 	// Sign the ballot with the SignatureRequest, using the clerk's private key
-	ballot.Signature, err = signatureReq.SignBallot(clerkPriv)
+	blindSignature, err := clerkPriv.BlindSign(signatureReq.BlindBallot)
 	if err != nil {
 		t.Error(err)
 	}
 
+	// Unblind the signature
+	ballot.Unblind(clerkPub, blindSignature, unblinder)
+
 	// Verify the ballot signature
-	err = ballot.VerifySignature(clerkPub)
+	err = ballot.VerifyBlindSignature(clerkPub)
 	if err != nil {
 		t.Error(err)
 	}
