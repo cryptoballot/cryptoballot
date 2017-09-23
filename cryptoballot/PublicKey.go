@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+
 	"github.com/phayes/errors"
 )
 
@@ -14,7 +15,8 @@ const (
 )
 
 var (
-	MinPublicKeySize = 4096 // Recommended minimum public key size -- this can be changed
+	// MinPublicKeySize is the recommended minimum public key size -- this can be changed
+	MinPublicKeySize = 4096
 
 	ErrPubicMinKeySize    = errors.New("Invalid public key - too short")
 	ErrPublicKeyBase64    = errors.New("Invalid Public Key. Could not read base64 encoded bytes")
@@ -22,10 +24,10 @@ var (
 	ErrPublicKeyCryptoKey = errors.New("Could not create from rsa.PublicKey from PublicKey. Could not parse PublicKey bytes")
 )
 
-// A DER encoded public key
+// PublicKey is a DER encoded public key
 type PublicKey []byte
 
-// Create a new PublicKey from a base64 encoded item, as we would get in a PUT or POST request
+// NewPublicKey creates a new PublicKey from a base64 encoded item, as we would get in a PUT or POST request
 // This function also performs error checking to make sure the key is valid.
 func NewPublicKey(base64PublicKey []byte) (PublicKey, error) {
 	decodedLen := base64.StdEncoding.DecodedLen(len(base64PublicKey))
@@ -51,7 +53,7 @@ func NewPublicKey(base64PublicKey []byte) (PublicKey, error) {
 	return pk, nil
 }
 
-// Create a new PublicKey from an rsa.PublicKey struct
+// NewPublicKeyFromCryptoKey creates a new PublicKey from an rsa.PublicKey struct
 func NewPublicKeyFromCryptoKey(pub *rsa.PublicKey) (PublicKey, error) {
 	derBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
@@ -60,12 +62,12 @@ func NewPublicKeyFromCryptoKey(pub *rsa.PublicKey) (PublicKey, error) {
 	return PublicKey(derBytes), nil
 }
 
-// Extract the bytes out of the public key
+// Bytes extracts the bytes out of the public key
 func (pk PublicKey) Bytes() []byte {
 	return []byte(pk)
 }
 
-// Parse the PublicKey (which is stored as a der encoded key) into a rsa.PublicKey object, ready to be used for crypto functions
+// GetCryptoKey parses the PublicKey (which is stored as a der encoded key) into a rsa.PublicKey object, ready to be used for crypto functions
 func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 	pubkey, err := x509.ParsePKIXPublicKey(pk.Bytes())
 	if err != nil {
@@ -74,7 +76,7 @@ func (pk PublicKey) GetCryptoKey() (*rsa.PublicKey, error) {
 	return pubkey.(*rsa.PublicKey), nil
 }
 
-// Get the corresponding ID, which is the (hex encoded) SHA256 of the (base64 encoded) public key.
+// GetSHA256 gets the corresponding ID, which is the (hex encoded) SHA256 of the (base64 encoded) public key.
 func (pk PublicKey) GetSHA256() []byte {
 	h := sha256.New()
 	h.Write([]byte(pk.String()))
@@ -83,7 +85,7 @@ func (pk PublicKey) GetSHA256() []byte {
 	return sha256hex
 }
 
-// Get the number of bits in the key
+// KeyLength returns the number of bits in the key
 func (pk PublicKey) KeyLength() (int, error) {
 	pubkey, err := pk.GetCryptoKey()
 	if err != nil {
@@ -92,7 +94,7 @@ func (pk PublicKey) KeyLength() (int, error) {
 	return pubkey.N.BitLen(), nil
 }
 
-// Check if the public key is empty of any bytes
+// IsEmpty checks if the public key is empty of any bytes
 func (pk PublicKey) IsEmpty() bool {
 	if len(pk) == 0 {
 		return true
