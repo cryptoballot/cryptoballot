@@ -3,11 +3,12 @@ package main
 import (
 	"database/sql"
 	"errors"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
-	"github.com/lib/pq/hstore"
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/lib/pq/hstore"
 )
 
 // Main vote handler. A user may GET a single vote, a list of all votes, or PUT (cast) their vote
@@ -129,7 +130,7 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	}
 
 	// Verify the signature
-	err = ballot.VerifySignature(conf.clerkKey)
+	err = ballot.VerifyBlindSignature(conf.clerkKey)
 	if err != nil {
 		http.Error(w, "Error verifying ballot signature. "+err.Error(), http.StatusInternalServerError)
 		return

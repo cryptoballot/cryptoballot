@@ -43,6 +43,11 @@ func TestBallotParsing(t *testing.T) {
 		t.Error(err)
 	}
 
+	sha256 := ballot.GetSHA256()
+	if string(sha256) != "f70d3df6aafd0006c0558bd37c37bb1dbd27af9e7e9d5833a741c979ff68f0e0" {
+		t.Error("Invalid SHA256 for ballot")
+	}
+
 	if string(goodBallot) != ballot.String() {
 		t.Errorf("Ballot round-trip from string and back again failed.")
 	}
@@ -101,11 +106,17 @@ func TestBallotCreation(t *testing.T) {
 	}
 
 	// Create unsigned SignatureRequest
+	blinded, unblinder, err := ballot.Blind(clerkPub)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	signatureReq := SignatureRequest{
-		ElectionID: "12345",
-		RequestID:  voterPub.GetSHA256(),
-		PublicKey:  voterPub,
-		BallotHash: ballot.GetSHA256(),
+		ElectionID:  "12345",
+		RequestID:   voterPub.GetSHA256(),
+		PublicKey:   voterPub,
+		BlindBallot: blinded,
 	}
 
 	// Sign the Signature Request with the voter's key
@@ -121,13 +132,16 @@ func TestBallotCreation(t *testing.T) {
 	}
 
 	// Sign the ballot with the SignatureRequest, using the clerk's private key
-	ballot.Signature, err = signatureReq.SignBallot(clerkPriv)
+	blindSignature, err := clerkPriv.BlindSign(signatureReq.BlindBallot)
 	if err != nil {
 		t.Error(err)
 	}
 
+	// Unblind the signature
+	ballot.Unblind(clerkPub, blindSignature, unblinder)
+
 	// Verify the ballot signature
-	err = ballot.VerifySignature(clerkPub)
+	err = ballot.VerifyBlindSignature(clerkPub)
 	if err != nil {
 		t.Error(err)
 	}

@@ -2,6 +2,7 @@ package cryptoballot
 
 import (
 	"testing"
+	"time"
 )
 
 var (
@@ -74,6 +75,128 @@ func TestElectionParsing(t *testing.T) {
 	}
 	if withoutTags2.String() != withoutTags2String {
 		t.Error("election without tags round trip failed")
+	}
+
+}
+
+// Full end-to-end test of an election
+func TestEndToEnd(t *testing.T) {
+
+	// Generate all private keys
+	adminPrivateKey, err := GeneratePrivateKey(4096)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	adminPublicKey, err := adminPrivateKey.PublicKey()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	clerkPrivateKey, err := GeneratePrivateKey(4096)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	clerkPublicKey, err := clerkPrivateKey.PublicKey()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	voterPrivateKey, err := GeneratePrivateKey(4096)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	voterPublicKey, err := voterPrivateKey.PublicKey()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Admin creates election
+	election := Election{
+		ElectionID: "testelection",
+		Start:      time.Now(),
+		End:        time.Now().Add(time.Hour),
+		PublicKey:  adminPublicKey,
+	}
+
+	// Admin signs elections
+	electionSignature, err := adminPrivateKey.SignString(election.String())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	election.Signature = electionSignature
+
+	// Verify the election was signed correctly
+	err = election.VerifySignature()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Create a ballot for the election.
+	ballot := Ballot{
+		ElectionID: election.ElectionID,
+		Vote:       Vote{"Santa Clause", "Tooth Fairy", "Krampus"},
+		BallotID:   "7djfgy83hf92f93hf93hdhajdf",
+	}
+
+	// Blind the ballot
+	blindBallot, unblinder, err := ballot.Blind(clerkPublicKey)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Create a signature request
+	signatureRequest := SignatureRequest{
+		ElectionID:  election.ElectionID,
+		RequestID:   voterPublicKey.GetSHA256(),
+		PublicKey:   voterPublicKey.Bytes(),
+		BlindBallot: blindBallot,
+	}
+	signatureRequestSignature, err := voterPrivateKey.SignString(signatureRequest.String())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	signatureRequest.Signature = signatureRequestSignature
+
+	// Verify the signature request
+	err = signatureRequest.VerifySignature()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// VERIFY VOTERS IDENTITY HERE
+
+	// Blind sign the blinded ballot
+	ballotSignature, err := clerkPrivateKey.BlindSign(signatureRequest.BlindBallot)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Create a fulfilled signature request\
+	fulfilled := FulfilledSignatureRequest{
+		SignatureRequest: signatureRequest,
+		BallotSignature:  ballotSignature,
+	}
+
+	// Unblind the ballot using the FulfilledSignatureRequest
+	ballot.Unblind(clerkPublicKey, fulfilled.BallotSignature, unblinder)
+
+	// SUBMIT BALLOT HERE
+
+	// Verify the ballot
+	err = ballot.VerifyBlindSignature(clerkPublicKey)
+	if err != nil {
+		t.Error(err)
+		return
 	}
 
 }
