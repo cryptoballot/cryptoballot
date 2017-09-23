@@ -12,7 +12,8 @@ before_install:
  - docker-compose --file=testing/webtest/docker-compose.yml up -d
 
 script:
- - go test ./... -coverprofile=coverage.out
+ - go test github.com/cryptoballot/cryptoballot/cryptoballot -coverprofile=coverage.out
+ - go test ./...
 
 notifications:
   email: false
