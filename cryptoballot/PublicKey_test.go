@@ -50,3 +50,16 @@ func TestBadPublicKey(t *testing.T) {
 		t.Errorf("Invalid public key should be empty")
 	}
 }
+
+func TestMinPublicKeyLength(t *testing.T) {
+	// It's over 9000!
+	MinPublicKeySize = 9000
+
+	_, err := NewPublicKey(goodPublicKey)
+	if err == nil {
+		t.Errorf("Too small a public key should result in an error.")
+	}
+
+	// Put it back
+	MinPublicKeySize = 2048
+}

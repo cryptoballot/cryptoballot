@@ -70,6 +70,14 @@ func TestBlindUnblind(t *testing.T) {
 		return
 	}
 
+	// Round trip the blinded ballot
+	blindedString := blinded.String()
+	blinded, err = NewBlindBallot([]byte(blindedString))
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	blindSig, err := priv.BlindSign(blinded.Bytes())
 	if err != nil {
 		t.Error(err)
@@ -87,4 +95,5 @@ func TestBlindUnblind(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
 }
