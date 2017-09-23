@@ -9,10 +9,11 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
+
 	"github.com/phayes/errors"
 )
 
-// A DER encoded private key
+// PrivateKey is a DER encoded private key
 type PrivateKey []byte
 
 var (
@@ -24,7 +25,7 @@ var (
 	ErrPrivateKeySHA256    = errors.New("Invalid SHA256 Hash checksum")
 )
 
-// Create a new PrivateKey from a PEM Block bytes
+// NewPrivateKey creates a new PrivateKey from a PEM Block bytes
 func NewPrivateKey(PEMBlockBytes []byte) (PrivateKey, error) {
 	PEMBlock, _ := pem.Decode(PEMBlockBytes)
 	if PEMBlock == nil {
@@ -33,7 +34,7 @@ func NewPrivateKey(PEMBlockBytes []byte) (PrivateKey, error) {
 	return NewPrivateKeyFromBlock(PEMBlock)
 }
 
-// Create a new PrivateKey from a pem.Block
+// NewPrivateKeyFromBlock creates a new PrivateKey from a pem.Block
 // This function also performs error checking to make sure the key is valid.
 func NewPrivateKeyFromBlock(PEMBlock *pem.Block) (PrivateKey, error) {
 	if PEMBlock.Type != "RSA PRIVATE KEY" {
