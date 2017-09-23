@@ -39,7 +39,9 @@ oofx/v7+fsI+xEvjJs1Ga2JD1lY4w3OTV1GK4tJNkqAdgEBu0WDo9rWlkAy5XxTQ
 9cLZzlBw7bxoBivUvVoiAUxhWYkEQgp2eoZ1vCUQddRr3jX9ceEa/g==
 -----END RSA PRIVATE KEY-----
 `)
-	badPrivateKey = []byte("IAMNOTAKEY")
+	badPrivateKey  = []byte("IAMNOTAKEY")
+	badPrivateKey2 = []byte("-----BEGIN PRIVATE KEY-----MIIEpAIBAAKCAQE-----END PRIVATE KEY-----")
+	badPrivateKey3 = []byte("-----BEGIN RSA PRIVATE KEY-----MIIEpAIBAAKCAQE-----END RSA PRIVATE KEY-----")
 )
 
 func TestGoodPrivateKey(t *testing.T) {
@@ -85,6 +87,16 @@ func TestBadPrivateKey(t *testing.T) {
 
 	if !pk.IsEmpty() {
 		t.Errorf("Invalid private key should be empty")
+	}
+
+	_, err = NewPrivateKey(badPrivateKey2)
+	if err == nil {
+		t.Errorf("Invalid private key did not return error")
+	}
+
+	_, err = NewPrivateKey(badPrivateKey3)
+	if err == nil {
+		t.Errorf("Invalid private key did not return error")
 	}
 
 	// Try to generate a zero length private key
