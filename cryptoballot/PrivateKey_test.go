@@ -149,6 +149,13 @@ func TestBlindSignature(t *testing.T) {
 		return
 	}
 
+	// Test doing a naive PKCS1v15 signature (which adds left padding to the result)
+	_, err = priv.SignRawBytes(hashed)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
 	// Unblind the signature
 	unblindedSig, err := sig.Unblind(pub, unblinder)
 	if err != nil {

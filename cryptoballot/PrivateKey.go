@@ -115,9 +115,8 @@ func (pk PrivateKey) SignString(str string) (Signature, error) {
 }
 
 // SignRawBytes signs the given bytes using naive RSA signing (no hash or padding) and return a Signature using
-// This is compatible with blinded messages and blind signatures
 //
-// WARNING: Only use this method if you understand the dangers of blind signing and are using a full domain hash.
+// WARNING: Only use this method for interoperability.
 func (pk PrivateKey) SignRawBytes(bytes []byte) (Signature, error) {
 	cryptoKey, err := pk.GetCryptoKey()
 	if err != nil {
