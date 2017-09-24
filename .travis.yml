@@ -12,7 +12,7 @@ before_install:
  - docker-compose --file=testing/webtest/docker-compose.yml up -d
 
 script:
- - go test -race github.com/cryptoballot/cryptoballot/cryptoballot -coverprofile=coverage.out -covermode=count
+ - go test -race github.com/cryptoballot/cryptoballot/cryptoballot -coverprofile=coverage.out -covermode=atomic
  - go test -race ./...
 
 notifications:
