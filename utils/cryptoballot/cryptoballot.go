@@ -7,6 +7,8 @@ import (
 
 	"github.com/cryptoballot/cryptoballot/clients/ballotbox"
 	"github.com/cryptoballot/cryptoballot/clients/ballotclerk"
+	"github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/phayes/decryptpem"
 	"github.com/urfave/cli"
 )
 
@@ -18,6 +20,12 @@ var BallotClerkClient *ballotclerk.Client
 
 // BallotBoxClient is used to connect to ballotbox server
 var BallotBoxClient *ballotbox.Client
+
+// PrivateKey for all operations that require a private key
+var PrivateKey cryptoballot.PrivateKey
+
+// PublicKey derived from PrivateKey
+var PublicKey cryptoballot.PublicKey
 
 func main() {
 	app := cli.NewApp()
@@ -33,6 +41,10 @@ func main() {
 			Name:  "ballotbox",
 			Value: "http://localhost:8002",
 		},
+		cli.StringFlag{
+			Name:  "key",
+			Value: "",
+		},
 	}
 
 	// Commands
@@ -42,12 +54,9 @@ func main() {
 			Usage: "perform election administrative operations",
 			Subcommands: []cli.Command{
 				{
-					Name:  "create",
-					Usage: "create a new election",
-					Action: func(c *cli.Context) error {
-						fmt.Println("create: ", c.Args().First())
-						return nil
-					},
+					Name:      "create",
+					Usage:     "create a new election",
+					Action:    actionAdminCreate,
 					ArgsUsage: "[electionfile]",
 				},
 				{
@@ -103,6 +112,26 @@ func main() {
 
 		// Connect to A4D Extract
 		BallotBoxClient = ballotbox.NewClient(c.String("ballotbox"))
+
+		// Privat Key
+		if c.String("key") != "" {
+
+			// Decrypt it as needed
+			pem, err := decryptpem.DecryptFileWithPrompt(c.String("key"))
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			PrivateKey, err = cryptoballot.NewPrivateKeyFromBlock(pem)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			PublicKey, err = PrivateKey.PublicKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		return nil
 	}
