@@ -62,11 +62,8 @@ func main() {
 				{
 					Name:      "tally",
 					Usage:     "Verify and tally election results",
-					ArgsUsage: "[election-name]",
-					Action: func(c *cli.Context) error {
-						fmt.Println("tally: ", c.Args().First())
-						return nil
-					},
+					ArgsUsage: "[election-id]",
+					Action:    actionAdminTally,
 				},
 			},
 		},
