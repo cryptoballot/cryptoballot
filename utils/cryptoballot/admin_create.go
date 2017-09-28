@@ -29,6 +29,11 @@ func actionAdminCreate(c *cli.Context) error {
 		log.Fatal(err)
 	}
 
+	// Add public key if needed
+	if election.PublicKey == nil {
+		election.PublicKey = PublicKey
+	}
+
 	// Sign election if needed
 	if !election.HasSignature() {
 		election.Signature, err = PrivateKey.SignString(election.String())

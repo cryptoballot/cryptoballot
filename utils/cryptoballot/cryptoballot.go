@@ -39,7 +39,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "ballotbox",
-			Value: "http://localhost:8002",
+			Value: "http://localhost:8001",
 		},
 		cli.StringFlag{
 			Name:  "key",
@@ -75,12 +75,9 @@ func main() {
 			Usage: "vote in an election",
 			Subcommands: []cli.Command{
 				{
-					Name:  "vote",
-					Usage: "vote in an election",
-					Action: func(c *cli.Context) error {
-						fmt.Println("create: ", c.Args().First())
-						return nil
-					},
+					Name:      "vote",
+					Usage:     "vote in an election",
+					Action:    actionVoterVote,
 					ArgsUsage: "[votefile]",
 				},
 				{

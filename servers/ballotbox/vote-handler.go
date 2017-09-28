@@ -137,14 +137,15 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	}
 
 	// Check the database to see if the ballot already exists
-	err = db.QueryRow("SELECT 1 FROM ballots_"+electionID+" WHERE ballot_id = $1", ballot.BallotID).Scan()
+	var exists int
+	err = db.QueryRow("SELECT 1 FROM ballots_"+electionID+" WHERE ballot_id = $1", ballot.BallotID).Scan(&exists)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
-	if err == nil {
+	if err == nil || exists == 1 {
 		http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
 	}
 

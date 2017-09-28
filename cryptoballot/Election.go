@@ -72,7 +72,14 @@ func NewElection(rawElection []byte) (*Election, error) {
 			signSec = 4
 		}
 	case 4:
-		keySec = 3
+		// We need to determine if the public key is missing or the tagset is missing
+		if bytes.Contains(parts[3], []byte{'\n'}) {
+			// If it contains a linebreak, it's a tagset. The key is missing.
+			tagsSec = 3
+		} else {
+			// It's a public-key, there is a key but no tagset
+			keySec = 3
+		}
 	default:
 		return &Election{}, ErrEelectionInvalid
 	}
@@ -104,9 +111,11 @@ func NewElection(rawElection []byte) (*Election, error) {
 		tagSet = nil
 	}
 
-	publicKey, err = NewPublicKey(parts[keySec])
-	if err != nil {
-		return &Election{}, errors.Wrap(err, ErrElectionInvalidKey)
+	if keySec != 0 {
+		publicKey, err = NewPublicKey(parts[keySec])
+		if err != nil {
+			return &Election{}, errors.Wrap(err, ErrElectionInvalidKey)
+		}
 	}
 
 	if signSec != 0 {
