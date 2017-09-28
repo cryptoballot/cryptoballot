@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/pem"
 
 	"github.com/phayes/errors"
 )
@@ -18,10 +19,12 @@ var (
 	// MinPublicKeySize is the recommended minimum public key size -- this can be changed
 	MinPublicKeySize = 4096
 
-	ErrPubicMinKeySize    = errors.New("Invalid public key - too short")
-	ErrPublicKeyBase64    = errors.New("Invalid Public Key. Could not read base64 encoded bytes")
-	ErrPublicKeyLen       = errors.New("Could not determine PublicKey key length")
-	ErrPublicKeyCryptoKey = errors.New("Could not create from rsa.PublicKey from PublicKey. Could not parse PublicKey bytes")
+	ErrPublicKeyInvalidPEM = errors.New("Could not decode Public Key PEM Block")
+	ErrPublicKeyWrongType  = errors.New("Could not find RSA PUBLIC KEY block")
+	ErrPubicMinKeySize     = errors.New("Invalid public key - too short")
+	ErrPublicKeyBase64     = errors.New("Invalid Public Key. Could not read base64 encoded bytes")
+	ErrPublicKeyLen        = errors.New("Could not determine PublicKey key length")
+	ErrPublicKeyCryptoKey  = errors.New("Could not create from rsa.PublicKey from PublicKey. Could not parse PublicKey bytes")
 )
 
 // PublicKey is a DER encoded public key
@@ -60,6 +63,21 @@ func NewPublicKeyFromCryptoKey(pub *rsa.PublicKey) (PublicKey, error) {
 		return nil, err
 	}
 	return PublicKey(derBytes), nil
+}
+
+// NewPublicKeyFromBlock creates a new PublicKey from a pem.Block
+// This function also performs error checking to make sure the key is valid.
+func NewPublicKeyFromBlock(PEMBlock *pem.Block) (PublicKey, error) {
+	if PEMBlock.Type != "RSA PUBLIC KEY" && PEMBlock.Type != "PUBLIC KEY" {
+		return nil, errors.Wraps(ErrPublicKeyWrongType, "Found "+PEMBlock.Type)
+	}
+
+	_, err := x509.ParsePKIXPublicKey(PEMBlock.Bytes)
+	if err != nil {
+		return nil, errors.Wrap(ErrPublicKeyInvalidPEM, err)
+	}
+
+	return PublicKey(PEMBlock.Bytes), nil
 }
 
 // Bytes extracts the bytes out of the public key

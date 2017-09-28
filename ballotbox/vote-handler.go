@@ -137,14 +137,15 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	}
 
 	// Check the database to see if the ballot already exists
-	err = db.QueryRow("select 1 from ballots_"+electionID+" where ballot_id = $1", ballot.BallotID).Scan()
+	err = db.QueryRow("SELECT 1 FROM ballots_"+electionID+" WHERE ballot_id = $1", ballot.BallotID).Scan()
 	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
-		} else {
+		if err != sql.ErrNoRows {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-		return
+	}
+	if err == nil {
+		http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
 	}
 
 	err = saveBallotToDB(ballot)
@@ -173,14 +174,18 @@ func handleGETVoteBatch(w http.ResponseWriter, r *http.Request, electionID strin
 		return
 	}
 	defer rows.Close()
+	i := 0
 	for rows.Next() {
+		if i != 0 {
+			w.Write([]byte("\n\n\n"))
+		}
 		err := rows.Scan(&ballotString)
 		if err != nil {
 			http.Error(w, "\n\nDatabase error. "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Write(ballotString)
-		w.Write([]byte("\n\n\n"))
+		i++
 	}
 	err = rows.Err()
 	if err != nil {

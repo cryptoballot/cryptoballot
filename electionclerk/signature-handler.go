@@ -21,13 +21,13 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signatureReqest, err := NewSignatureRequest(body)
+	signatureRequest, err := NewSignatureRequest(body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err = signatureReqest.VerifySignature(); err != nil {
+	if err = signatureRequest.VerifySignature(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -36,16 +36,20 @@ func signHandler(w http.ResponseWriter, r *http.Request) {
 	// @@TODO: Check that this voter has not already retreived a fulfilled signature request.
 
 	// Sign the ballot
-	ballotSig, err := conf.signingKey.BlindSign(signatureReqest.BlindBallot)
+	ballotSig, err := conf.signingKey.BlindSign(signatureRequest.BlindBallot)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	fulfilledsignatureRequest := NewFulfilledSignatureRequestFromParts(*signatureReqest, ballotSig)
+	// Create a fulfilled signature request
+	fulfilled := &FulfilledSignatureRequest{
+		SignatureRequest: *signatureRequest,
+		BallotSignature:  ballotSig,
+	}
 
 	//@@TODO: store the fulfilledsignatureRequest in the database
 
-	fmt.Fprint(w, fulfilledsignatureRequest)
+	fmt.Fprint(w, fulfilled.String())
 	return
 }

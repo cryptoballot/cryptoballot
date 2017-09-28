@@ -5,10 +5,11 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 	"log"
 	"net/http"
 	"strconv"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
 )
 
 const (
@@ -98,7 +99,6 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Display the public key used to sign ballots when a user asks for "/publickey"
-// @@TODO: Cache
 func publicKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed. Only GET is allowed here.", http.StatusMethodNotAllowed)
