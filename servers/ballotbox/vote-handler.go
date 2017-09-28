@@ -147,6 +147,7 @@ func handlePUTVote(w http.ResponseWriter, r *http.Request, electionID string, ba
 	}
 	if err == nil || exists == 1 {
 		http.Error(w, "Ballot with this ID already exists", http.StatusForbidden)
+		return
 	}
 
 	err = saveBallotToDB(ballot)
