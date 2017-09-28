@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 
 	"github.com/cryptoballot/cryptoballot/clients/ballotbox"
 	"github.com/cryptoballot/cryptoballot/clients/ballotclerk"
 	"github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/cryptoballot/entropychecker"
 	"github.com/phayes/decryptpem"
 	"github.com/urfave/cli"
 )
@@ -100,6 +102,14 @@ func main() {
 
 	// Set up connections to services
 	app.Before = func(c *cli.Context) error {
+
+		// If we are on linux, ensure we have sufficient entropy.
+		if runtime.GOOS == "linux" {
+			err := entropychecker.WaitForEntropy()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		// ballotclerk
 		BallotClerkClient = ballotclerk.NewClient(c.String("ballotclerk"))

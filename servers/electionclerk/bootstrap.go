@@ -9,15 +9,27 @@ import (
 	"log"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 
 	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/cryptoballot/entropychecker"
 	"github.com/dlintw/goconf"
 	"github.com/lib/pq"
 	"github.com/phayes/decryptpem"
 )
 
 func bootstrap() {
+
+	// If we are on linux, ensure we have sufficient entropy.
+	if runtime.GOOS == "linux" {
+		err := entropychecker.WaitForEntropy()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Get configuration from file or environment
 	configPathOpt := flag.String("config", "./electionclerk.conf", "Path to config file. The config file must be owned by and only readable by this user.")
 	configEnvOpt := flag.Bool("envconfig", false, "Use environment variables (instead of an ini file) for configuration.")
 	setUpOpt := flag.Bool("set-up-db", false, "Set up fresh database tables and schema. This should be run once before normal operations can occur.")

@@ -8,20 +8,33 @@ import (
 	"encoding/pem"
 	"errors"
 	"flag"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
-	"github.com/dlintw/goconf"
-	_ "github.com/lib/pq"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/cryptoballot/entropychecker"
+	"github.com/dlintw/goconf"
+	_ "github.com/lib/pq"
 )
 
 // Bootstrap parses flags and config files, and set's up the database connection.
 func bootstrap() {
+
+	// If we are on linux, ensure we have sufficient entropy.
+	if runtime.GOOS == "linux" {
+		err := entropychecker.WaitForEntropy()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Load config file
 	configPathOpt := flag.String("config", "./test.conf", "Path to config file. The config file must be owned by and only readable by this user.")
 	configEnvOpt := flag.Bool("envconfig", false, "Use environment variables (instead of an ini file) for configuration.")
 
