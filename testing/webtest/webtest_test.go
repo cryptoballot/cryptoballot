@@ -14,8 +14,8 @@ func TestWebElection(m *testing.T) {
 		}
 	}()
 
-	runCommandSync("go", "build", "-race", "../../electionclerk")
-	runCommandSync("go", "build", "-race", "../../ballotbox")
+	runCommandSync("go", "build", "-race", "../../servers/electionclerk")
+	runCommandSync("go", "build", "-race", "../../servers/ballotbox")
 	runCommandSync("createdb", "--host=localhost", "--username=postgres", "--port=9856", "cryptoballot_webtest_electionclerk")
 	runCommandSync("createdb", "--host=localhost", "--username=postgres", "--port=9856", "cryptoballot_webtest_ballotbox")
 	runCommandSync("./electionclerk", "--config=electionclerk.conf", "--set-up-db")
