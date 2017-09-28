@@ -127,7 +127,7 @@ func scanBallots(data []byte, atEOF bool) (advance int, token []byte, err error)
 	}
 	if i := bytes.Index(data, []byte("\n\n\n")); i >= 0 {
 		// We have a full triple-newline terminated line.
-		return i + 1, dropCR(data[0:i]), nil
+		return i + 3, dropCR(data[0:i]), nil
 	}
 	// If we're at EOF, we have a final, non-terminated line. Return it.
 	if atEOF {
