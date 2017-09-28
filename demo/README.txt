@@ -24,7 +24,6 @@ CryptoBallot Demonstration
 4. Start up ballotbox server
     cd servers
     go build ../../servers/ballotbox
-    ./ballotbox --config=ballotbox.conf --set-up-db
     ./ballotbox --config=ballotbox.conf
 
 5. Create some voters:
@@ -38,4 +37,6 @@ CryptoBallot Demonstration
     cryptoballot --key=voter2.pem voter vote bestartist.2.ballot
 
 7. Examine election:
-    http://localhost:8000/election/bestartist
+    http://localhost:8001/vote/bestartist
+    ./cryptoballot admin tally bestartist
+    
