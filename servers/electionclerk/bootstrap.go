@@ -5,14 +5,16 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	. "github.com/cryptoballot/cryptoballot/cryptoballot"
-	"github.com/dlintw/goconf"
-	"github.com/lib/pq"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
 	"strconv"
+
+	. "github.com/cryptoballot/cryptoballot/cryptoballot"
+	"github.com/dlintw/goconf"
+	"github.com/lib/pq"
+	"github.com/phayes/decryptpem"
 )
 
 func bootstrap() {
@@ -233,11 +235,11 @@ func NewConfigFromEnv() (*Config, error) {
 	}
 
 	// Ingest the private key into the global config object
-	signingKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
+	signingKeyPEM, err := decryptpem.DecryptFileWithPrompt(config.signingKeyPath)
 	if err != nil {
 		return nil, err
 	}
-	config.signingKey, err = NewPrivateKey(signingKeyPEM)
+	config.signingKey, err = NewPrivateKeyFromBlock(signingKeyPEM)
 	if err != nil {
 		return nil, err
 	}
@@ -264,11 +266,11 @@ func NewConfigFromEnv() (*Config, error) {
 // Process the signing key, admin keys, and the readme
 func configProcessFiles(config *Config) error {
 	// Ingest the private key into the global config object
-	signingKeyPEM, err := ioutil.ReadFile(config.signingKeyPath)
+	signingKeyPEM, err := decryptpem.DecryptFileWithPrompt(config.signingKeyPath)
 	if err != nil {
 		return err
 	}
-	config.signingKey, err = NewPrivateKey(signingKeyPEM)
+	config.signingKey, err = NewPrivateKeyFromBlock(signingKeyPEM)
 	if err != nil {
 		return err
 	}
