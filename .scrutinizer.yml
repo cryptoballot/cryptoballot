@@ -4,7 +4,7 @@ checks:
 build:
     project_setup:
         override:
-            - go build ... -v
+            - go build ./... -v
     environment:
         go: go1.9.2
     nodes:
@@ -14,7 +14,7 @@ build:
                     - go-scrutinizer-run
                     - govet-run
                     -
-                        command: go test -race -coverprofile=cover.out
+                        command: go test ./... -race -coverprofile=cover.out
                         coverage:
                             file: 'cover.out'
                             format: 'go-cc'
