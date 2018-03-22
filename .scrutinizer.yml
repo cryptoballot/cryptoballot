@@ -1,19 +1,17 @@
+checks:
+    go: true
+
 build:
     environment:
-            postgresql: false
-            docker: true
-    dependencies:
-        before:
-            - 'source <(curl -fsSL https://raw.githubusercontent.com/phayes/go-scrutinize/master/install-golang)'
-            - docker-compose --file=testing/webtest/docker-compose.yml up -d
-
-    tests:
-        override:
-            -
-                command: 'cd $PROJECTPATH && go-scrutinize'
-                coverage:
-                    file: 'coverage.xml'
-                    format: 'clover'
-                analysis:
-                    file: 'checkstyle_report.xml'
-                    format: 'general-checkstyle'
+        go: go1.9.2
+    nodes:
+        analysis:
+            tests:
+                override:
+                    - go-scrutinizer-run
+                    - govet-run
+                    -
+                        command: go test -coverprofile=cover.out
+                        coverage:
+                            file: 'cover.out'
+                            format: 'go-cc'
