@@ -33,8 +33,10 @@ CryptoBallot Demonstration
 6. Deposit votes with blind-signing
     cat bestartist.1.ballot
     cat bestartist.2.ballot
+    cat bestartist.3.ballot
     cryptoballot --key=voter1.pem voter vote bestartist.1.ballot
     cryptoballot --key=voter2.pem voter vote bestartist.2.ballot
+    cryptoballot --key=voter3.pem voter vote bestartist.3.ballot
 
 7. Examine election:
     http://localhost:8001/vote/bestartist
