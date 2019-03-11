@@ -1,0 +1,7 @@
+[package]
+name = "ballottooth"
+version = "0.1.0"
+authors = ["phayes <patrick.d.hayes@gmail.com>"]
+edition = "2018"
+
+[dependencies]
