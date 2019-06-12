@@ -7,6 +7,8 @@ CryptoBallot
 [![Coverage Status](https://coveralls.io/repos/github/cryptoballot/cryptoballot/badge.svg?branch=master)](https://coveralls.io/github/cryptoballot/cryptoballot?branch=master)
 [![GoDoc](https://godoc.org/github.com/cryptoballot/cryptoballot?status.svg)](https://godoc.org/github.com/cryptoballot/cryptoballot/cryptoballot)
 [![Scrutinizer Issues](https://img.shields.io/badge/Scrutinizer-Issues-blue.svg)](https://scrutinizer-ci.com/g/cryptoballot/cryptoballot/issues)
+[![patreon](https://img.shields.io/badge/patreon-donate-green.svg)](https://patreon.com/phayes)
+[![flattr](https://img.shields.io/badge/flattr-donate-green.svg)](https://flattr.com/@phayes)
 
 Features
 --------
@@ -198,3 +200,8 @@ The system can build the database schema automatically. Run either of the follow
 
     ballotbox --set-up-db
     electionclerk --set-up-db
+
+
+## Contributors
+ 
+ 1. Patrick Hayes ([linkedin](https://www.linkedin.com/in/patrickdhayes/)) ([github](https://github.com/phayes)) - Available for hire.
