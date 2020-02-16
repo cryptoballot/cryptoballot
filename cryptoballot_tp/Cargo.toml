@@ -1,0 +1,8 @@
+[package]
+name = "cryptoballot_tp"
+version = "0.1.0"
+authors = ["phayes <patrick.d.hayes@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+sawtooth-sdk = { git = "https://github.com/hyperledger/sawtooth-sdk-rust.git" }
