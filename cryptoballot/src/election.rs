@@ -1,11 +1,11 @@
 use crate::*;
-use ed25519_dalek::Keypair;
+use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ElectionTransaction {
-    pub id: TransactionIdentifier,
+    pub id: Identifier,
 
     // secp256k1::PublicKey, uncompressed
     pub public_key: Vec<u8>,
@@ -74,7 +74,7 @@ impl ElectionTransaction {
 impl Default for ElectionTransaction {
     fn default() -> Self {
         return ElectionTransaction {
-            id: TransactionIdentifier::new_for_election(),
+            id: Identifier::new_for_election(),
             public_key: vec![],
             authenticators: vec![],
             ballots: vec![],
@@ -82,6 +82,17 @@ impl Default for ElectionTransaction {
             re_encryption_mixnet: None,
             threshhold_decryption: None,
         };
+    }
+}
+
+impl Signable for ElectionTransaction {
+    fn id(&self) -> Identifier {
+        self.id
+    }
+
+    // TODO: election authority public key
+    fn public(&self) -> Option<PublicKey> {
+        None
     }
 }
 
@@ -105,23 +116,18 @@ pub struct ThresholdDecryption {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Trustee {
     pub id: uuid::Uuid,
-    pub public_key: [u8; 32],
+    pub public_key: PublicKey,
 }
 
 impl Trustee {
     pub fn new() -> (Self, SecretKey) {
-        let mut csprng = rand::rngs::OsRng {};
-
-        let Keypair {
-            public: trustee_public,
-            secret: trustee_secret,
-        } = Keypair::generate(&mut csprng);
+        let (secret, public) = generate_keypair();
 
         let trustee = Trustee {
             id: Uuid::new_v4(),
-            public_key: trustee_public.to_bytes(),
+            public_key: public,
         };
-        return (trustee, trustee_secret);
+        return (trustee, secret);
     }
 }
 

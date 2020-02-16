@@ -1,6 +1,5 @@
 use crate::*;
 use ed25519_dalek::ExpandedSecretKey;
-use ed25519_dalek::Keypair;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
@@ -16,24 +15,18 @@ pub struct Authenticator {
 
 impl Authenticator {
     pub fn new() -> (Self, SecretKey) {
-        let mut csprng = rand::rngs::OsRng {};
-
-        let Keypair {
-            public: auth_public,
-            secret: auth_secret,
-        } = Keypair::generate(&mut csprng);
-
+        let (secret, public) = generate_keypair();
         let authenticator = Authenticator {
             id: Uuid::new_v4(),
-            public_key: auth_public,
+            public_key: public,
         };
-        return (authenticator, auth_secret);
+        return (authenticator, secret);
     }
 
     pub fn authenticate(
         &self,
         secret: &SecretKey,
-        election_id: TransactionIdentifier,
+        election_id: Identifier,
         ballot_id: Uuid,
         voter_public_key: &PublicKey,
     ) -> Result<Authentication, ()> {
@@ -56,7 +49,7 @@ impl Authenticator {
 
     pub fn verify(
         &self,
-        election_id: TransactionIdentifier,
+        election_id: Identifier,
         ballot_id: Uuid,
         voter_public_key: &PublicKey,
         signature: &Signature,
@@ -75,7 +68,7 @@ impl Authenticator {
 // TODO: Be smarter about lifetimes here so we don't need to clone PublicKey
 #[derive(Serialize, Deserialize, Clone)]
 struct AuthPackage {
-    election_id: TransactionIdentifier,
+    election_id: Identifier,
     ballot_id: Uuid,
     voter_public_key: PublicKey,
 }

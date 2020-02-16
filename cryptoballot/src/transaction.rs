@@ -1,23 +1,22 @@
 use crate::*;
+use ed25519_dalek::ExpandedSecretKey;
+use ed25519_dalek::PublicKey;
+use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
+use ed25519_dalek::SignatureError;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::TryInto;
 use std::str::FromStr;
 
-pub struct SignedTransaction<T> {
-    pub transaction: T,
-    pub signature: Signature,
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum Transaction {
-    Election(ElectionTransaction),
-    Vote(VoteTransaction),
-    Decryption(DecryptionTransaction),
+    Election(SignedTransaction<ElectionTransaction>),
+    Vote(SignedTransaction<VoteTransaction>),
+    Decryption(SignedTransaction<DecryptionTransaction>),
 }
 
 impl Transaction {
@@ -40,17 +39,17 @@ impl Transaction {
     }
 
     // TODO: use a macro
-    pub fn id(&self) -> TransactionIdentifier {
+    pub fn id(&self) -> Identifier {
         match self {
-            Transaction::Election(tx) => tx.id,
-            Transaction::Vote(tx) => tx.id,
-            Transaction::Decryption(tx) => tx.id,
+            Transaction::Election(tx) => tx.transaction.id,
+            Transaction::Vote(tx) => tx.transaction.id,
+            Transaction::Decryption(tx) => tx.transaction.id,
         }
     }
 }
 
 // TODO: use a macro
-impl From<Transaction> for ElectionTransaction {
+impl From<Transaction> for SignedTransaction<ElectionTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Election(tx) => tx,
@@ -60,7 +59,7 @@ impl From<Transaction> for ElectionTransaction {
 }
 
 // TODO: use a macro
-impl From<Transaction> for VoteTransaction {
+impl From<Transaction> for SignedTransaction<VoteTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Vote(tx) => tx,
@@ -70,7 +69,7 @@ impl From<Transaction> for VoteTransaction {
 }
 
 // TODO: use a macro
-impl From<Transaction> for DecryptionTransaction {
+impl From<Transaction> for SignedTransaction<DecryptionTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Decryption(tx) => tx,
@@ -80,7 +79,7 @@ impl From<Transaction> for DecryptionTransaction {
 }
 
 // TODO: use a macro
-impl From<Transaction> for Option<ElectionTransaction> {
+impl From<Transaction> for Option<SignedTransaction<ElectionTransaction>> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Election(tx) => Some(tx),
@@ -90,7 +89,7 @@ impl From<Transaction> for Option<ElectionTransaction> {
 }
 
 // TODO: use a macro
-impl From<Transaction> for Option<VoteTransaction> {
+impl From<Transaction> for Option<SignedTransaction<VoteTransaction>> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Vote(tx) => Some(tx),
@@ -100,7 +99,7 @@ impl From<Transaction> for Option<VoteTransaction> {
 }
 
 // TODO: use a macro
-impl From<Transaction> for Option<DecryptionTransaction> {
+impl From<Transaction> for Option<SignedTransaction<DecryptionTransaction>> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Decryption(tx) => Some(tx),
@@ -109,28 +108,64 @@ impl From<Transaction> for Option<DecryptionTransaction> {
     }
 }
 
-#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Clone, PartialEq)]
-#[serde(rename_all = "snake_case")]
-#[repr(u8)]
-pub enum TransactionType {
-    Election,
-    Vote,
-    Decryption,
+pub trait Signable {
+    fn id(&self) -> Identifier;
+    fn public(&self) -> Option<PublicKey>;
 }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SignedTransaction<T: Signable> {
+    pub transaction: T,
+    pub signature: Signature,
+}
+
+impl<T: Signable + Serialize> SignedTransaction<T> {
+    pub fn sign(secret: &SecretKey, public: &PublicKey, transaction: T) -> Result<Self, ()> {
+        if let Some(tx_public) = transaction.public() {
+            if *public != tx_public {
+                // TODO: Return error
+            }
+        }
+
+        let serialized =
+            serde_cbor::to_vec(&transaction).expect("cryptoballot: Unable to serialize tx");
+
+        let expanded: ExpandedSecretKey = secret.into();
+        let signature = expanded.sign(&serialized, public);
+
+        Ok(SignedTransaction {
+            transaction,
+            signature,
+        })
+    }
+
+    // TODO: Wrap error
+    pub fn verify_signature(&self) -> Result<(), SignatureError> {
+        let serialized =
+            serde_cbor::to_vec(&self.transaction).expect("cryptoballot: Unable to serialize tx");
+
+        if let Some(tx_public) = self.transaction.public() {
+            tx_public.verify(&serialized, &self.signature)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq)]
-pub struct TransactionIdentifier {
+pub struct Identifier {
     pub election_id: [u8; 15],
     pub transaction_type: TransactionType,
     pub unique_id: [u8; 16],
 }
 
-impl TransactionIdentifier {
-    pub fn new(election_id: TransactionIdentifier, transaction_type: TransactionType) -> Self {
+impl Identifier {
+    pub fn new(election_id: Identifier, transaction_type: TransactionType) -> Self {
         let mut csprng = rand::rngs::OsRng {};
 
         let election_id = election_id.election_id;
         let unique_id: [u8; 16] = csprng.gen();
-        TransactionIdentifier {
+        Identifier {
             election_id,
             transaction_type,
             unique_id,
@@ -143,7 +178,7 @@ impl TransactionIdentifier {
         let election_id: [u8; 15] = csprng.gen();
         let transaction_type = TransactionType::Election;
         let unique_id: [u8; 16] = csprng.gen();
-        TransactionIdentifier {
+        Identifier {
             election_id,
             transaction_type,
             unique_id,
@@ -151,7 +186,7 @@ impl TransactionIdentifier {
     }
 }
 
-impl ToString for TransactionIdentifier {
+impl ToString for Identifier {
     fn to_string(&self) -> String {
         let election_id = hex::encode(self.election_id);
         let transaction_type = hex::encode([self.transaction_type as u8]);
@@ -161,7 +196,7 @@ impl ToString for TransactionIdentifier {
     }
 }
 
-impl FromStr for TransactionIdentifier {
+impl FromStr for Identifier {
     type Err = hex::FromHexError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -172,7 +207,7 @@ impl FromStr for TransactionIdentifier {
         let transaction_type = TransactionType::try_from_primitive(bytes[15]).unwrap();
         let unique_id: [u8; 16] = bytes[16..].try_into().unwrap();
 
-        Ok(TransactionIdentifier {
+        Ok(Identifier {
             election_id,
             transaction_type,
             unique_id,
@@ -180,7 +215,7 @@ impl FromStr for TransactionIdentifier {
     }
 }
 
-impl<'de> Deserialize<'de> for TransactionIdentifier {
+impl<'de> Deserialize<'de> for Identifier {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -190,11 +225,20 @@ impl<'de> Deserialize<'de> for TransactionIdentifier {
     }
 }
 
-impl Serialize for TransactionIdentifier {
+impl Serialize for Identifier {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         serializer.serialize_str(&self.to_string())
     }
+}
+
+#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[repr(u8)]
+pub enum TransactionType {
+    Election,
+    Vote,
+    Decryption,
 }

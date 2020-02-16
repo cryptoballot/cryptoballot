@@ -1,5 +1,6 @@
 use cryptoballot::*;
 use digest::Digest;
+use lazy_static::lazy_static;
 use sawtooth_sdk::messages::processor::TpProcessRequest;
 use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
@@ -7,10 +8,12 @@ use sawtooth_sdk::processor::handler::TransactionHandler;
 use sha2::Sha512;
 use std::convert::Into;
 
-pub fn get_cb_prefix() -> String {
-    let mut sha = Sha512::new();
-    sha.input("cryptoballot");
-    hex::encode(&sha.result()[..6])
+lazy_static! {
+    static ref CB_PREFIX: String = {
+        let mut sha = Sha512::new();
+        sha.input("cryptoballot");
+        hex::encode(&sha.result()[..6])
+    };
 }
 
 pub struct CbTransactionHandler {
@@ -24,7 +27,7 @@ impl CbTransactionHandler {
         CbTransactionHandler {
             family_name: String::from("cryptoballot"),
             family_versions: vec![String::from("1.0")],
-            namespaces: vec![String::from(get_cb_prefix().to_string())],
+            namespaces: vec![CB_PREFIX.clone()],
         }
     }
 }
@@ -62,20 +65,25 @@ impl TransactionHandler for CbTransactionHandler {
 
         match &transaction {
             Transaction::Election(tx) => {
-                tx.validate().unwrap();
+                tx.transaction.validate().unwrap();
             }
             Transaction::Vote(tx) => {
-                let election: ElectionTransaction = state.get_inner(tx.election).unwrap();
-                tx.validate(&election).unwrap();
+                let election: SignedTransaction<ElectionTransaction> =
+                    state.get_inner(tx.transaction.election).unwrap();
+                tx.transaction.validate(&election.transaction).unwrap();
             }
             Transaction::Decryption(tx) => {
-                tx.validate().unwrap();
+                tx.transaction.validate().unwrap();
             }
         }
 
         // Validation passed
         state.set(&transaction)
     }
+}
+
+fn cb_address(transaction_id: &Identifier) -> String {
+    format!("{}{}", CB_PREFIX.as_str(), transaction_id.to_string())
 }
 
 pub struct CbState<'a> {
@@ -87,41 +95,37 @@ impl<'a> CbState<'a> {
         CbState { context }
     }
 
-    pub fn get(
-        &self,
-        transaction_id: TransactionIdentifier,
-    ) -> Result<Option<Transaction>, ApplyError> {
-        let transaction_id = transaction_id.to_string();
-        let d = self.context.get_state_entry(&transaction_id)?;
+    pub fn get(&self, transaction_id: Identifier) -> Result<Option<Transaction>, ApplyError> {
+        let address = cb_address(&transaction_id);
+        let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => match Transaction::unpack(&packed) {
                 Ok(t) => return Ok(Some(t)),
                 Err(e) => Err(ApplyError::InternalError(format!(
                     "Unable to parse transaction {}: {}",
-                    transaction_id, e
+                    transaction_id.to_string(),
+                    e
                 ))),
             },
             None => Ok(None),
         }
     }
 
-    pub fn get_inner<T: From<Transaction>>(
-        &self,
-        transaction_id: TransactionIdentifier,
-    ) -> Result<T, ()> {
+    pub fn get_inner<T: From<Transaction>>(&self, transaction_id: Identifier) -> Result<T, ()> {
         let tx: T = self.get(transaction_id).unwrap().unwrap().into();
         Ok(tx)
     }
 
     pub fn set(&self, transaction: &Transaction) -> Result<(), ApplyError> {
-        let transaction_id = transaction.id().to_string();
+        let address = cb_address(&transaction.id());
         let packed = transaction.pack();
         self.context
-            .set_state_entry(transaction_id.clone(), packed)
+            .set_state_entry(address, packed)
             .map_err(|err| {
                 ApplyError::InternalError(format!(
                     "Error storing transaction {}: {}",
-                    transaction_id, err
+                    transaction.id().to_string(),
+                    err
                 ))
             })?;
         Ok(())

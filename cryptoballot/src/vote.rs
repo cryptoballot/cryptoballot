@@ -5,8 +5,8 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VoteTransaction {
-    pub id: TransactionIdentifier,
-    pub election: TransactionIdentifier,
+    pub id: Identifier,
+    pub election: Identifier,
     pub encrypted_vote: Vec<u8>,
     pub ballot_id: Uuid,
     pub public_key: PublicKey,
@@ -14,10 +14,10 @@ pub struct VoteTransaction {
 }
 
 impl VoteTransaction {
-    pub fn new(election_id: TransactionIdentifier, ballot_id: Uuid) -> (Self, SecretKey) {
+    pub fn new(election_id: Identifier, ballot_id: Uuid) -> (Self, SecretKey) {
         let (secret_key, public_key) = generate_keypair();
         let vote = VoteTransaction {
-            id: TransactionIdentifier::new(election_id, TransactionType::Vote),
+            id: Identifier::new(election_id, TransactionType::Vote),
             election: election_id,
             encrypted_vote: vec![],
             ballot_id: ballot_id,
@@ -52,6 +52,17 @@ impl VoteTransaction {
         }
 
         Ok(())
+    }
+}
+
+impl Signable for VoteTransaction {
+    fn id(&self) -> Identifier {
+        self.id
+    }
+
+    // TODO: election authority public key
+    fn public(&self) -> Option<PublicKey> {
+        Some(self.public_key)
     }
 }
 

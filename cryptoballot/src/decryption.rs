@@ -1,24 +1,25 @@
 use crate::*;
+use ed25519_dalek::PublicKey;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DecryptionTransaction {
-    pub id: TransactionIdentifier,
-    pub election: TransactionIdentifier,
-    pub vote: TransactionIdentifier,
+    pub id: Identifier,
+    pub election: Identifier,
+    pub vote: Identifier,
     pub decrypted_vote: Vec<u8>,
 }
 
 impl DecryptionTransaction {
     pub fn new(
-        election: TransactionIdentifier,
-        vote: TransactionIdentifier,
+        election: Identifier,
+        vote: Identifier,
         decrypted_vote: Vec<u8>,
     ) -> DecryptionTransaction {
         // TODO: sanity check to make sure election and vote are in same election
         // This could be a debug assert
 
         DecryptionTransaction {
-            id: TransactionIdentifier::new(election, TransactionType::Decryption),
+            id: Identifier::new(election, TransactionType::Decryption),
             election: election,
             vote: vote,
             decrypted_vote,
@@ -31,6 +32,17 @@ impl DecryptionTransaction {
     //  - validates that the decrypted vote is the same
     pub fn validate(&self) -> Result<(), ()> {
         Ok(())
+    }
+}
+
+impl Signable for DecryptionTransaction {
+    fn id(&self) -> Identifier {
+        self.id
+    }
+
+    // TODO: election authority public key
+    fn public(&self) -> Option<PublicKey> {
+        None
     }
 }
 
