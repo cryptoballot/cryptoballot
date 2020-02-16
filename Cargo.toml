@@ -2,4 +2,7 @@
 name = 'cryptoballot'
 authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
-members = ['cryptoballot']
+members = [
+    'cryptoballot',
+    'cryptoballot_tp',
+]

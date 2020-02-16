@@ -22,10 +22,89 @@ pub enum Transaction {
 
 impl Transaction {
     pub fn transaction_type(&self) -> TransactionType {
+        // TODO: use a macro
         match self {
             Transaction::Election(_) => TransactionType::Election,
             Transaction::Vote(_) => TransactionType::Vote,
             Transaction::Decryption(_) => TransactionType::Decryption,
+        }
+    }
+
+    pub fn pack(&self) -> Vec<u8> {
+        serde_cbor::to_vec(self).expect("Unexpected error packing transaction")
+    }
+
+    pub fn unpack(packed: &[u8]) -> Result<Self, serde_cbor::error::Error> {
+        // TODO: translate this error
+        serde_cbor::from_slice(packed)
+    }
+
+    // TODO: use a macro
+    pub fn id(&self) -> TransactionIdentifier {
+        match self {
+            Transaction::Election(tx) => tx.id,
+            Transaction::Vote(tx) => tx.id,
+            Transaction::Decryption(tx) => tx.id,
+        }
+    }
+}
+
+// TODO: use a macro
+impl From<Transaction> for ElectionTransaction {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Election(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+// TODO: use a macro
+impl From<Transaction> for VoteTransaction {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Vote(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+// TODO: use a macro
+impl From<Transaction> for DecryptionTransaction {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Decryption(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+// TODO: use a macro
+impl From<Transaction> for Option<ElectionTransaction> {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Election(tx) => Some(tx),
+            _ => None,
+        }
+    }
+}
+
+// TODO: use a macro
+impl From<Transaction> for Option<VoteTransaction> {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Vote(tx) => Some(tx),
+            _ => None,
+        }
+    }
+}
+
+// TODO: use a macro
+impl From<Transaction> for Option<DecryptionTransaction> {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Decryption(tx) => Some(tx),
+            _ => None,
         }
     }
 }
