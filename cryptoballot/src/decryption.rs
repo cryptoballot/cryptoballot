@@ -1,20 +1,26 @@
 use crate::*;
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DecryptionTransaction {
-    pub id: Uuid,
-    pub election: Uuid,
-    pub vote: Uuid,
+    pub id: TransactionIdentifier,
+    pub election: TransactionIdentifier,
+    pub vote: TransactionIdentifier,
     pub decrypted_vote: Vec<u8>,
 }
 
 impl DecryptionTransaction {
-    pub fn new(vote: &VoteTransaction, decrypted_vote: Vec<u8>) -> DecryptionTransaction {
+    pub fn new(
+        election: TransactionIdentifier,
+        vote: TransactionIdentifier,
+        decrypted_vote: Vec<u8>,
+    ) -> DecryptionTransaction {
+        // TODO: sanity check to make sure election and vote are in same election
+        // This could be a debug assert
+
         DecryptionTransaction {
-            id: Uuid::new_v4(),
-            election: vote.election,
-            vote: vote.id,
+            id: TransactionIdentifier::new(election, TransactionType::Decryption),
+            election: election,
+            vote: vote,
             decrypted_vote,
         }
     }

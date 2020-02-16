@@ -1,6 +1,7 @@
 use crate::*;
 use ed25519_dalek::Signature;
 use num_enum::TryFromPrimitive;
+use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::TryInto;
 use std::str::FromStr;
@@ -29,7 +30,7 @@ impl Transaction {
     }
 }
 
-#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Clone)]
+#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum TransactionType {
@@ -37,10 +38,38 @@ pub enum TransactionType {
     Vote,
     Decryption,
 }
+#[derive(Copy, Clone, PartialEq)]
 pub struct TransactionIdentifier {
     pub election_id: [u8; 15],
     pub transaction_type: TransactionType,
     pub unique_id: [u8; 16],
+}
+
+impl TransactionIdentifier {
+    pub fn new(election_id: TransactionIdentifier, transaction_type: TransactionType) -> Self {
+        let mut csprng = rand::rngs::OsRng {};
+
+        let election_id = election_id.election_id;
+        let unique_id: [u8; 16] = csprng.gen();
+        TransactionIdentifier {
+            election_id,
+            transaction_type,
+            unique_id,
+        }
+    }
+
+    pub fn new_for_election() -> Self {
+        let mut csprng = rand::rngs::OsRng {};
+
+        let election_id: [u8; 15] = csprng.gen();
+        let transaction_type = TransactionType::Election;
+        let unique_id: [u8; 16] = csprng.gen();
+        TransactionIdentifier {
+            election_id,
+            transaction_type,
+            unique_id,
+        }
+    }
 }
 
 impl ToString for TransactionIdentifier {

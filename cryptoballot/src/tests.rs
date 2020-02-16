@@ -19,28 +19,20 @@ fn basic_end_to_end_election() {
     // Validate the election transaction
     election.validate().unwrap();
 
-    // Generate keypairs for the voter
-    let (voter_secret, voter_public) = generate_keypair();
+    // Generate an empty vote transaction
+    let (mut vote, voter_secret) = VoteTransaction::new(election.id, ballot_id);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)
     let authentication = authenticator
-        .authenticate(&authn_secret, election.id, ballot_id, &voter_public)
+        .authenticate(&authn_secret, election.id, ballot_id, &vote.public_key)
         .unwrap();
+    vote.authentication.push(authentication);
 
-    // Create a vote transaction
+    // Create a  vote transaction
     let secret_vote = "Barak Obama";
 
     // Encrypt the secret vote
-    let encrypted_vote = encrypt_vote(&election.public_key, secret_vote.as_bytes()).unwrap();
-
-    let vote = VoteTransaction {
-        id: Uuid::new_v4(),
-        election: election.id,
-        encrypted_vote: encrypted_vote,
-        ballot_id: ballot_id,
-        public_key: voter_public,
-        authentication: vec![authentication],
-    };
+    vote.encrypted_vote = encrypt_vote(&election.public_key, secret_vote.as_bytes()).unwrap();
 
     // Validate the vote transaction
     vote.validate(&election).unwrap();
@@ -55,7 +47,7 @@ fn basic_end_to_end_election() {
     let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote).unwrap();
 
     // Create decryption transaction
-    let decryption = DecryptionTransaction::new(&vote, decrypted_vote);
+    let decryption = DecryptionTransaction::new(election.id, vote.id, decrypted_vote);
 
     // Validate decryption transaction
     decryption.validate().unwrap();

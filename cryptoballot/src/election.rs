@@ -1,11 +1,11 @@
-use crate::authn::*;
+use crate::*;
 use ed25519_dalek::Keypair;
 use ed25519_dalek::SecretKey;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ElectionTransaction {
-    pub id: Uuid,
+    pub id: TransactionIdentifier,
 
     // secp256k1::PublicKey, uncompressed
     pub public_key: Vec<u8>,
@@ -74,7 +74,7 @@ impl ElectionTransaction {
 impl Default for ElectionTransaction {
     fn default() -> Self {
         return ElectionTransaction {
-            id: Uuid::new_v4(),
+            id: TransactionIdentifier::new_for_election(),
             public_key: vec![],
             authenticators: vec![],
             ballots: vec![],

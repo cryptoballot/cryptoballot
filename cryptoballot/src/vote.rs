@@ -1,11 +1,12 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
+use ed25519_dalek::SecretKey;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct VoteTransaction {
-    pub id: Uuid,
-    pub election: Uuid,
+    pub id: TransactionIdentifier,
+    pub election: TransactionIdentifier,
     pub encrypted_vote: Vec<u8>,
     pub ballot_id: Uuid,
     pub public_key: PublicKey,
@@ -13,6 +14,20 @@ pub struct VoteTransaction {
 }
 
 impl VoteTransaction {
+    pub fn new(election_id: TransactionIdentifier, ballot_id: Uuid) -> (Self, SecretKey) {
+        let (secret_key, public_key) = generate_keypair();
+        let vote = VoteTransaction {
+            id: TransactionIdentifier::new(election_id, TransactionType::Vote),
+            election: election_id,
+            encrypted_vote: vec![],
+            ballot_id: ballot_id,
+            public_key: public_key,
+            authentication: vec![],
+        };
+
+        (vote, secret_key)
+    }
+
     pub fn validate(&self, election: &ElectionTransaction) -> Result<(), ()> {
         if self.election != election.id {
             // TODO: return error
