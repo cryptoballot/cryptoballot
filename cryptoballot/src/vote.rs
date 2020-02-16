@@ -2,6 +2,7 @@ use crate::*;
 use ed25519_dalek::PublicKey;
 use uuid::Uuid;
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct VoteTransaction {
     pub id: Uuid,
     pub election: Uuid,

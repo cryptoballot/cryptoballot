@@ -1,5 +1,7 @@
 use crate::*;
 use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct DecryptionTransaction {
     pub id: Uuid,
     pub election: Uuid,
