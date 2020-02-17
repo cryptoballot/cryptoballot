@@ -7,7 +7,7 @@ fn end_to_end_election() {
     let (authority_secret, authority_public) = generate_keypair();
 
     // Create an authenticator
-    let (authenticator, authn_secret) = Authenticator::new();
+    let (authenticator, authn_secret) = Authenticator::new(256).unwrap();
 
     // Create 3 trustees
     let (trustee_1, trustee_1_secret) = Trustee::new();
@@ -45,12 +45,16 @@ fn end_to_end_election() {
     // Generate an empty vote transaction
     let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id);
 
+    // Create an auth package and blind it
+    let auth_package = AuthPackage::new(election.id(), ballot_id, vote.public_key);
+    let (blinded_auth_package, unblinder) = auth_package.blind(&authenticator.public_key);
+
     // Authenticate the voter (for a real election the voter would pass additional auth info)
-    let authentication =
-        authenticator.authenticate(&authn_secret, election.id(), ballot_id, &vote.public_key);
+    let authentication = authenticator.authenticate(&authn_secret, &blinded_auth_package);
+    let authentication = authentication.unblind(&authenticator.public_key, unblinder);
     vote.authentication.push(authentication);
 
-    // Create a  vote transaction
+    // Create a vote transaction
     let secret_vote = "Barak Obama";
 
     // Encrypt the secret vote

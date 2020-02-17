@@ -12,6 +12,9 @@ pub enum Error {
     #[fail(display = "cryptoballot: decryption error: {}", 0)]
     DecryptionError(secp256k1::Error),
 
+    #[fail(display = "cryptoballot: RSA error: {}", 0)]
+    RSAError(rsa::errors::Error),
+
     #[fail(display = "cryptoballot: mismatched public keys")]
     MismatchedPublicKeys,
 
@@ -40,6 +43,12 @@ impl From<ed25519_dalek::SignatureError> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(err: secp256k1::Error) -> Self {
         Error::DecryptionError(err)
+    }
+}
+
+impl From<rsa::errors::Error> for Error {
+    fn from(err: rsa::errors::Error) -> Self {
+        Error::RSAError(err)
     }
 }
 
@@ -77,6 +86,9 @@ pub enum ValidationError {
 
     #[fail(display = "cryptoballot: mismatched decrypted vote")]
     MismatchedDecryptedVote,
+
+    #[fail(display = "cryptoballot: auth signature verification failed")]
+    AuthSignatureVerificationFailed,
 
     #[fail(display = "cryptoballot validation: signature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),

@@ -122,7 +122,7 @@ mod tests {
         election.trustees.push(trustee);
 
         // Create an authenticator and add it to the election
-        let (authn, _authn_secret) = Authenticator::new();
+        let (authn, _authn_secret) = Authenticator::new(256).unwrap();
         election.authenticators.push(authn);
 
         // Verify the election transaction

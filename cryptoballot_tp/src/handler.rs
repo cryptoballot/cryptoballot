@@ -51,7 +51,7 @@ impl TransactionHandler for CbTransactionHandler {
         context: &mut dyn TransactionContext,
     ) -> Result<(), ApplyError> {
         let header = &request.header;
-        let signer = match &header.as_ref() {
+        let _signer = match &header.as_ref() {
             Some(s) => &s.signer_public_key,
             None => {
                 return Err(ApplyError::InvalidTransaction(String::from(
@@ -59,6 +59,7 @@ impl TransactionHandler for CbTransactionHandler {
                 )))
             }
         };
+        // TODO: validate _signer
 
         let transaction: Transaction = serde_json::from_slice(&request.payload).unwrap();
         let state = CbState::new(context);
@@ -98,6 +99,7 @@ impl TransactionHandler for CbTransactionHandler {
                 let secret_shares: Vec<Signed<SecretShareTransaction>> = state
                     .get_all_type(decrypt.election, TransactionType::SecretShare)
                     .unwrap();
+
                 let secret_shares: Vec<SecretShareTransaction> =
                     secret_shares.iter().map(|e| e.inner().to_owned()).collect();
 
