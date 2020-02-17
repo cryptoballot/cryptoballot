@@ -1,7 +1,7 @@
 CryptoBallot
 ============
 
-CryptoBallot is a cryptographically secure decentralized E2E voting system meant for real-world elections.
+CryptoBallot is a cryptographically secure decentralized E2E voting system meant for real-world elections. It is a "backend" service providing vote storage, cryptographic operations, and an API. It does not provide a user interface.
 
 It uses  Shamir Secret Sharing for election decryption keys, blind-signing for voter anonymity, and an optional blockchain backend for distributed transaction storage and verification.  It supports all tally methods including write-in candidates. 
 
