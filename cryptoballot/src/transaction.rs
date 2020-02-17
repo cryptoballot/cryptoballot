@@ -3,7 +3,6 @@ use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
-use ed25519_dalek::SignatureError;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -30,12 +29,11 @@ impl Transaction {
     }
 
     pub fn pack(&self) -> Vec<u8> {
-        serde_cbor::to_vec(self).expect("Unexpected error packing transaction")
+        serde_cbor::to_vec(self).expect("cryptoballot: Unexpected error packing transaction")
     }
 
-    pub fn unpack(packed: &[u8]) -> Result<Self, serde_cbor::error::Error> {
-        // TODO: translate this error
-        serde_cbor::from_slice(packed)
+    pub fn unpack(packed: &[u8]) -> Result<Self, Error> {
+        Ok(serde_cbor::from_slice(packed)?)
     }
 
     // TODO: use a macro
@@ -108,9 +106,13 @@ impl From<Transaction> for Option<SignedTransaction<DecryptionTransaction>> {
     }
 }
 
-pub trait Signable {
+pub trait Signable: Serialize {
     fn id(&self) -> Identifier;
     fn public(&self) -> Option<PublicKey>;
+
+    fn as_bytes(&self) -> Vec<u8> {
+        serde_cbor::to_vec(&self).expect("cryptoballot: Unexpected error serializing transaction")
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -120,15 +122,14 @@ pub struct SignedTransaction<T: Signable> {
 }
 
 impl<T: Signable + Serialize> SignedTransaction<T> {
-    pub fn sign(secret: &SecretKey, public: &PublicKey, transaction: T) -> Result<Self, ()> {
+    pub fn sign(secret: &SecretKey, public: &PublicKey, transaction: T) -> Result<Self, Error> {
         if let Some(tx_public) = transaction.public() {
             if *public != tx_public {
-                // TODO: Return error
+                return Err(Error::MismatchedPublicKeys);
             }
         }
 
-        let serialized =
-            serde_cbor::to_vec(&transaction).expect("cryptoballot: Unable to serialize tx");
+        let serialized = transaction.as_bytes();
 
         let expanded: ExpandedSecretKey = secret.into();
         let signature = expanded.sign(&serialized, public);
@@ -139,13 +140,11 @@ impl<T: Signable + Serialize> SignedTransaction<T> {
         })
     }
 
-    // TODO: Wrap error
-    pub fn verify_signature(&self) -> Result<(), SignatureError> {
-        let serialized =
-            serde_cbor::to_vec(&self.transaction).expect("cryptoballot: Unable to serialize tx");
+    pub fn verify_signature(&self) -> Result<(), ValidationError> {
+        let serialized = self.transaction.as_bytes();
 
         if let Some(tx_public) = self.transaction.public() {
-            tx_public.verify(&serialized, &self.signature)
+            Ok(tx_public.verify(&serialized, &self.signature)?)
         } else {
             Ok(())
         }
@@ -197,12 +196,16 @@ impl ToString for Identifier {
 }
 
 impl FromStr for Identifier {
-    type Err = hex::FromHexError;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes = hex::decode(s)?;
+        let bytes = hex::decode(s).map_err(|_| Error::IdentifierBadHex)?;
 
-        // TODO use an error type
+        if bytes.len() != 32 {
+            return Err(Error::IdentifierBadLen);
+        }
+
+        // These unwraps are OK - we know the length is valid
         let election_id: [u8; 15] = bytes[0..15].try_into().unwrap();
         let transaction_type = TransactionType::try_from_primitive(bytes[15]).unwrap();
         let unique_id: [u8; 16] = bytes[16..].try_into().unwrap();

@@ -30,7 +30,7 @@ impl ElectionTransaction {
         return false;
     }
 
-    pub fn validate(&self) -> Result<(), ()> {
+    pub fn validate(&self) -> Result<(), ValidationError> {
         // Make sure the public-key is well-formed
         if self.public_key.len() != 65 {
             // TODO: return error
@@ -39,10 +39,13 @@ impl ElectionTransaction {
 
         // Make sure threshold-decryption parameters are sane
         if self.has_feature(Feature::ThresholdDecryption) {
-            let threshhold_decryption = self.threshhold_decryption.as_ref().ok_or(())?;
+            let threshhold_decryption = self
+                .threshhold_decryption
+                .as_ref()
+                .ok_or(ValidationError::ThresholdDecryptionError)?;
 
             if threshhold_decryption.threshold == 0 {
-                // return error
+                // TODO: return error
             }
             if threshhold_decryption.threshold as usize > threshhold_decryption.trustees.len() {
                 // TODO: return error
@@ -61,7 +64,7 @@ impl ElectionTransaction {
         None
     }
 
-    pub fn get_authenticatort(&self, authn_id: Uuid) -> Option<&Authenticator> {
+    pub fn get_authenticator(&self, authn_id: Uuid) -> Option<&Authenticator> {
         for authn in self.authenticators.iter() {
             if authn_id == authn.id {
                 return Some(authn);

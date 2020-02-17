@@ -29,13 +29,13 @@ impl Authenticator {
         election_id: Identifier,
         ballot_id: Uuid,
         voter_public_key: &PublicKey,
-    ) -> Result<Authentication, ()> {
+    ) -> Authentication {
         let package = AuthPackage {
             election_id,
             ballot_id,
             voter_public_key: voter_public_key.clone(),
         };
-        let serialized = serde_cbor::to_vec(&package).unwrap();
+        let serialized = serde_cbor::to_vec(&package).expect("cryptoballot: Unable to serialize");
 
         let expanded: ExpandedSecretKey = secret.into();
         let signature = expanded.sign(&serialized, &self.public_key);
@@ -44,7 +44,7 @@ impl Authenticator {
             signature: signature,
         };
 
-        Ok(authentication)
+        authentication
     }
 
     pub fn verify(
@@ -53,15 +53,15 @@ impl Authenticator {
         ballot_id: Uuid,
         voter_public_key: &PublicKey,
         signature: &Signature,
-    ) -> Result<(), ed25519_dalek::SignatureError> {
+    ) -> Result<(), Error> {
         let package = AuthPackage {
             election_id,
             ballot_id,
             voter_public_key: voter_public_key.clone(),
         };
-        let serialized = serde_cbor::to_vec(&package).unwrap();
+        let serialized = serde_cbor::to_vec(&package).expect("cryptoballot: Serialization failure");
 
-        self.public_key.verify_strict(&serialized, signature)
+        Ok(self.public_key.verify_strict(&serialized, signature)?)
     }
 }
 

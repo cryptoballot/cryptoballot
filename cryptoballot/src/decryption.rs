@@ -46,6 +46,6 @@ impl Signable for DecryptionTransaction {
     }
 }
 
-pub fn decrypt_vote(election_key: &[u8], vote: &[u8]) -> Result<Vec<u8>, secp256k1::Error> {
-    ecies::decrypt(election_key, vote)
+pub fn decrypt_vote(election_key: &[u8], vote: &[u8]) -> Result<Vec<u8>, Error> {
+    Ok(ecies::decrypt(election_key, vote)?)
 }

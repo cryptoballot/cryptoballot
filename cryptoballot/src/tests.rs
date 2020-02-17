@@ -23,9 +23,8 @@ fn basic_end_to_end_election() {
     let (mut vote, voter_secret) = VoteTransaction::new(election.id, ballot_id);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)
-    let authentication = authenticator
-        .authenticate(&authn_secret, election.id, ballot_id, &vote.public_key)
-        .unwrap();
+    let authentication =
+        authenticator.authenticate(&authn_secret, election.id, ballot_id, &vote.public_key);
     vote.authentication.push(authentication);
 
     // Create a  vote transaction

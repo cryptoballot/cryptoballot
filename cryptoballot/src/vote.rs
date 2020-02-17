@@ -28,18 +28,20 @@ impl VoteTransaction {
         (vote, secret_key)
     }
 
-    pub fn validate(&self, election: &ElectionTransaction) -> Result<(), ()> {
+    pub fn validate(&self, election: &ElectionTransaction) -> Result<(), ValidationError> {
+        // TODO: check self.id.election_id vs self.election_id
         if self.election != election.id {
-            // TODO: return error
+            return Err(ValidationError::ElectionMismatch);
         }
         if election.get_ballot(self.ballot_id).is_none() {
-            // TODO: return error
+            return Err(ValidationError::BallotDoesNotExist);
         }
 
-        // TODO: minimum authentication needed
+        // TODO: minimum authentication needed to be defined in election
         for authn in self.authentication.iter() {
-            // TODO: ok_or
-            let authenticator = election.get_authenticatort(authn.authenticator).unwrap();
+            let authenticator = election
+                .get_authenticator(authn.authenticator)
+                .ok_or(ValidationError::AuthDoesNotExist)?;
 
             authenticator
                 .verify(
@@ -48,7 +50,7 @@ impl VoteTransaction {
                     &self.public_key,
                     &authn.signature,
                 )
-                .unwrap();
+                .map_err(|_| ValidationError::AuthFailed)?;
         }
 
         Ok(())

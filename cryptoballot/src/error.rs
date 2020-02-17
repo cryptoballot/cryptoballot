@@ -1,0 +1,68 @@
+use failure::Fail;
+
+/// Error types
+#[derive(Debug, Fail)]
+pub enum Error {
+    #[fail(display = "cryptoballot: transaction failed to unpack: {}", 0)]
+    UnpackError(serde_cbor::error::Error),
+
+    #[fail(display = "cryptoballot: sinature error: {}", 0)]
+    SignatureError(ed25519_dalek::SignatureError),
+
+    #[fail(display = "cryptoballot: decryption error: {}", 0)]
+    DecryptionError(secp256k1::Error),
+
+    #[fail(display = "cryptoballot: mismatched public keys")]
+    MismatchedPublicKeys,
+
+    #[fail(display = "cryptoballot: invalid identifier - invalid hexidecimal")]
+    IdentifierBadHex,
+
+    #[fail(display = "cryptoballot: invalid identifier - wrong length")]
+    IdentifierBadLen,
+}
+
+impl From<serde_cbor::error::Error> for Error {
+    fn from(err: serde_cbor::error::Error) -> Self {
+        Error::UnpackError(err)
+    }
+}
+
+impl From<ed25519_dalek::SignatureError> for Error {
+    fn from(err: ed25519_dalek::SignatureError) -> Self {
+        Error::SignatureError(err)
+    }
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(err: secp256k1::Error) -> Self {
+        Error::DecryptionError(err)
+    }
+}
+
+#[derive(Debug, Fail)]
+pub enum ValidationError {
+    #[fail(display = "cryptoballot validation error: threshold decryption error")]
+    ThresholdDecryptionError,
+
+    #[fail(display = "cryptoballot validation error: election mismatch")]
+    ElectionMismatch,
+
+    #[fail(display = "cryptoballot validation error: ballot does not exist in election")]
+    BallotDoesNotExist,
+
+    #[fail(display = "cryptoballot validation error: authentication does not exist in election")]
+    AuthDoesNotExist,
+
+    #[fail(display = "cryptoballot validation error: authentication failed")]
+    AuthFailed,
+
+    #[fail(display = "cryptoballot validation error: signature error: {}", 0)]
+    SignatureError(ed25519_dalek::SignatureError),
+}
+
+impl From<ed25519_dalek::SignatureError> for ValidationError {
+    fn from(err: ed25519_dalek::SignatureError) -> Self {
+        ValidationError::SignatureError(err)
+    }
+}
