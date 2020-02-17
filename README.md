@@ -21,11 +21,11 @@ Under active development. Not ready for production use!
 
 | Status¹ | Feature                           | Notes                                                          |
 | ------- | --------------------------------- | -------------------------------------------------------------- |
-| ✓       | Migrate from Go to Rust           | 🦀
+| ✓       | Migrate from Go to Rust           | 🦀                                                             |
 | ⚠       | Blind-Signing (RSA)               | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
 |         | Blind-Signing (ed25519)           | Will replace current RSA bling-signing                         |
 | ✓       | Shamir Secret Sharing             | Uses [Sharks](https://docs.rs/sharks/)                         |
-| ⚠       | Blockchain backend                | Uses [Sawtooth](https://sawtooth.hyperledger.org/)             |
+| ⚠       | Blockchain backend                | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
 | ⚠       | Support all tally methods         | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 |         | REST frontend                     |                                                                |
 |         | Distributed key generation        | Replace Shamir, uses ElGamal, fully verifiable and distributed |
