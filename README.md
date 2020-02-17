@@ -29,7 +29,7 @@ Under active development. Not ready for production use!
 | ⚠       | Support all tally methods         | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 |         | REST frontend                     |                                                                |
 |         | Distributed key generation        | Replace Shamir, uses ElGamal, fully verifiable and distributed |
-|         | Sphinx mixnet                     | Strengthened voter anonymity - Depends on REST frontend        |
+|         | Onion mixnet (liekly Sphinx)      | Strengthened voter anonymity - Depends on REST frontend        |
 |         | Re-encryption mixnet              | Strengthened voter anonymity - far future if ever              |
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
