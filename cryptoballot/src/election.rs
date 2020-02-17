@@ -1,6 +1,5 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
-use ed25519_dalek::SecretKey;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -10,47 +9,55 @@ pub struct ElectionTransaction {
     // secp256k1::PublicKey, uncompressed
     pub public_key: Vec<u8>,
 
-    pub authenticators: Vec<Authenticator>,
-    pub ballots: Vec<uuid::Uuid>, //TODO: Define ballot struct
-    pub features: Vec<Feature>,
+    // List of ballots that can be cast in this election
+    // TODO: Define ballot struct
+    pub ballots: Vec<uuid::Uuid>,
 
-    // Optional feature-based fields
-    pub re_encryption_mixnet: Option<ReEncryptionMixnet>,
-    pub threshhold_decryption: Option<ThresholdDecryption>,
+    // Trustees
+    pub trustees: Vec<Trustee>,
+    pub trustees_threshold: u8,
+
+    // Authenticators
+    pub authenticators: Vec<Authenticator>,
+    pub authenticators_threshold: u8,
 }
 
 impl ElectionTransaction {
-    /// Check if the election has the given feature
-    pub fn has_feature(&self, feature: Feature) -> bool {
-        for feat in self.features.iter() {
-            if feature == *feat {
-                return true;
-            }
-        }
-        return false;
+    pub fn new() -> (Self, secp256k1::SecretKey) {
+        let (secret, public) = ecies::utils::generate_keypair();
+
+        let election = ElectionTransaction {
+            id: Identifier::new_for_election(),
+            public_key: public.serialize().to_vec(),
+            ballots: vec![],
+            trustees: vec![],
+            trustees_threshold: 1,
+            authenticators: vec![],
+            authenticators_threshold: 1,
+        };
+
+        (election, secret)
     }
 
     pub fn validate(&self) -> Result<(), ValidationError> {
         // Make sure the public-key is well-formed
         if self.public_key.len() != 65 {
-            // TODO: return error
+            return Err(ValidationError::InvalidPublicKey);
         }
-        // TODO check parsing
+        // TODO: check parsing of public key
 
-        // Make sure threshold-decryption parameters are sane
-        if self.has_feature(Feature::ThresholdDecryption) {
-            let threshhold_decryption = self
-                .threshhold_decryption
-                .as_ref()
-                .ok_or(ValidationError::ThresholdDecryptionError)?;
-
-            if threshhold_decryption.threshold == 0 {
-                // TODO: return error
-            }
-            if threshhold_decryption.threshold as usize > threshhold_decryption.trustees.len() {
-                // TODO: return error
-            }
+        // Make sure trustees settings are sane
+        if self.trustees_threshold > self.trustees.len() as u8 {
+            return Err(ValidationError::InvalidTrusteeThreshold);
         }
+        // TODO: check that we have at least 1 trustee
+
+        // Make sure authenticator settings are sane
+        if self.authenticators_threshold > self.authenticators.len() as u8 {
+            return Err(ValidationError::InvalidAuthThreshold);
+        }
+        // TODO: check that we have at least 1 authenticator
+
         Ok(())
     }
 
@@ -72,19 +79,14 @@ impl ElectionTransaction {
         }
         None
     }
-}
 
-impl Default for ElectionTransaction {
-    fn default() -> Self {
-        return ElectionTransaction {
-            id: Identifier::new_for_election(),
-            public_key: vec![],
-            authenticators: vec![],
-            ballots: vec![],
-            features: vec![],
-            re_encryption_mixnet: None,
-            threshhold_decryption: None,
-        };
+    pub fn get_trustee(&self, trustee_id: Uuid) -> Option<&Trustee> {
+        for trustee in self.trustees.iter() {
+            if trustee_id == trustee.id {
+                return Some(trustee);
+            }
+        }
+        None
     }
 }
 
@@ -99,47 +101,6 @@ impl Signable for ElectionTransaction {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
-pub enum Feature {
-    ReEncryptionMixnet,
-    ThresholdDecryption,
-    HomomorphicTally,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ReEncryptionMixnet {
-    mixers: Vec<Mixer>,
-}
-#[derive(Serialize, Deserialize, Clone)]
-pub struct ThresholdDecryption {
-    threshold: u8,
-    trustees: Vec<Trustee>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Trustee {
-    pub id: uuid::Uuid,
-    pub public_key: PublicKey,
-}
-
-impl Trustee {
-    pub fn new() -> (Self, SecretKey) {
-        let (secret, public) = generate_keypair();
-
-        let trustee = Trustee {
-            id: Uuid::new_v4(),
-            public_key: public,
-        };
-        return (trustee, secret);
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Mixer {
-    pub id: uuid::Uuid,
-    pub public_key: [u8; 32],
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -147,15 +108,15 @@ mod tests {
 
     #[test]
     fn create_new_election() {
-        let mut election = ElectionTransaction::default();
+        let (mut election, _election_secret) = ElectionTransaction::new();
 
         // Create a trustee and add it to the election
         let (trustee, _trustee_secret) = Trustee::new();
-        election.features.push(Feature::ThresholdDecryption);
-        election.threshhold_decryption = Some(ThresholdDecryption {
-            threshold: 1,
-            trustees: vec![trustee],
-        });
+        election.trustees.push(trustee);
+
+        // Create an authenticator and add it to the election
+        let (authn, _authn_secret) = Authenticator::new();
+        election.authenticators.push(authn);
 
         // Verify the election transaction
         election.validate().expect("Election did not verify");

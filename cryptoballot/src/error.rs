@@ -15,6 +15,9 @@ pub enum Error {
     #[fail(display = "cryptoballot: mismatched public keys")]
     MismatchedPublicKeys,
 
+    #[fail(display = "cryptoballot: secret recovery failed")]
+    SecretRecoveryFailed,
+
     #[fail(display = "cryptoballot: invalid identifier - invalid hexidecimal")]
     IdentifierBadHex,
 
@@ -42,22 +45,31 @@ impl From<secp256k1::Error> for Error {
 
 #[derive(Debug, Fail)]
 pub enum ValidationError {
-    #[fail(display = "cryptoballot validation error: threshold decryption error")]
-    ThresholdDecryptionError,
+    #[fail(display = "cryptoballot validation: threshold is invalid for number of trustees")]
+    InvalidTrusteeThreshold,
 
-    #[fail(display = "cryptoballot validation error: election mismatch")]
+    #[fail(display = "cryptoballot validation: threshold is invalid for number of authenticators")]
+    InvalidAuthThreshold,
+
+    #[fail(display = "cryptoballot validation: invalid public key")]
+    InvalidPublicKey,
+
+    #[fail(display = "cryptoballot validation: election mismatch")]
     ElectionMismatch,
 
-    #[fail(display = "cryptoballot validation error: ballot does not exist in election")]
+    #[fail(display = "cryptoballot validation: ballot does not exist in election")]
     BallotDoesNotExist,
 
-    #[fail(display = "cryptoballot validation error: authentication does not exist in election")]
+    #[fail(display = "cryptoballot validation: authentication does not exist in election")]
     AuthDoesNotExist,
 
-    #[fail(display = "cryptoballot validation error: authentication failed")]
+    #[fail(display = "cryptoballot validation: trustee does not exist in election")]
+    TrusteeDoesNotExist,
+
+    #[fail(display = "cryptoballot validation: authentication failed")]
     AuthFailed,
 
-    #[fail(display = "cryptoballot validation error: signature error: {}", 0)]
+    #[fail(display = "cryptoballot validation: signature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
 }
 

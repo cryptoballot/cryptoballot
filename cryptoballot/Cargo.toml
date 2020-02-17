@@ -5,8 +5,7 @@ authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
 
 [dependencies]
-paillier = '0.2.0'
-threshold-secret-sharing = '0.2.2'
+sharks = "0.3"
 rand = '0.7.3'
 libsecp256k1 = "0.3.5"
 ed25519-dalek = { version ="1.0.0-pre.3", features = ["serde"] }

@@ -1,7 +1,5 @@
 use crate::*;
-use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
-use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
@@ -15,6 +13,7 @@ use std::str::FromStr;
 pub enum Transaction {
     Election(SignedTransaction<ElectionTransaction>),
     Vote(SignedTransaction<VoteTransaction>),
+    SecretShare(SignedTransaction<SecretShareTransaction>),
     Decryption(SignedTransaction<DecryptionTransaction>),
 }
 
@@ -24,6 +23,7 @@ impl Transaction {
         match self {
             Transaction::Election(_) => TransactionType::Election,
             Transaction::Vote(_) => TransactionType::Vote,
+            Transaction::SecretShare(_) => TransactionType::SecretShare,
             Transaction::Decryption(_) => TransactionType::Decryption,
         }
     }
@@ -41,6 +41,7 @@ impl Transaction {
         match self {
             Transaction::Election(tx) => tx.transaction.id,
             Transaction::Vote(tx) => tx.transaction.id,
+            Transaction::SecretShare(tx) => tx.transaction.id,
             Transaction::Decryption(tx) => tx.transaction.id,
         }
     }
@@ -77,31 +78,11 @@ impl From<Transaction> for SignedTransaction<DecryptionTransaction> {
 }
 
 // TODO: use a macro
-impl From<Transaction> for Option<SignedTransaction<ElectionTransaction>> {
+impl From<Transaction> for SignedTransaction<SecretShareTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
-            Transaction::Election(tx) => Some(tx),
-            _ => None,
-        }
-    }
-}
-
-// TODO: use a macro
-impl From<Transaction> for Option<SignedTransaction<VoteTransaction>> {
-    fn from(tx: Transaction) -> Self {
-        match tx {
-            Transaction::Vote(tx) => Some(tx),
-            _ => None,
-        }
-    }
-}
-
-// TODO: use a macro
-impl From<Transaction> for Option<SignedTransaction<DecryptionTransaction>> {
-    fn from(tx: Transaction) -> Self {
-        match tx {
-            Transaction::Decryption(tx) => Some(tx),
-            _ => None,
+            Transaction::SecretShare(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
         }
     }
 }
@@ -122,24 +103,6 @@ pub struct SignedTransaction<T: Signable> {
 }
 
 impl<T: Signable + Serialize> SignedTransaction<T> {
-    pub fn sign(secret: &SecretKey, public: &PublicKey, transaction: T) -> Result<Self, Error> {
-        if let Some(tx_public) = transaction.public() {
-            if *public != tx_public {
-                return Err(Error::MismatchedPublicKeys);
-            }
-        }
-
-        let serialized = transaction.as_bytes();
-
-        let expanded: ExpandedSecretKey = secret.into();
-        let signature = expanded.sign(&serialized, public);
-
-        Ok(SignedTransaction {
-            transaction,
-            signature,
-        })
-    }
-
     pub fn verify_signature(&self) -> Result<(), ValidationError> {
         let serialized = self.transaction.as_bytes();
 
@@ -243,5 +206,6 @@ impl Serialize for Identifier {
 pub enum TransactionType {
     Election,
     Vote,
+    SecretShare,
     Decryption,
 }
