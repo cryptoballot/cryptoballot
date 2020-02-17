@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn create_new_election() {
-        let (authority_secret, authority_public) = generate_keypair();
+        let (_authority_secret, authority_public) = generate_keypair();
 
         let (mut election, _election_secret) = ElectionTransaction::new(authority_public);
 
