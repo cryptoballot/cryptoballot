@@ -1,9 +1,13 @@
 use crate::*;
+use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
+use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::convert::AsRef;
+use std::convert::From;
 use std::convert::TryInto;
 use std::str::FromStr;
 
@@ -11,10 +15,10 @@ use std::str::FromStr;
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum Transaction {
-    Election(SignedTransaction<ElectionTransaction>),
-    Vote(SignedTransaction<VoteTransaction>),
-    SecretShare(SignedTransaction<SecretShareTransaction>),
-    Decryption(SignedTransaction<DecryptionTransaction>),
+    Election(Signed<ElectionTransaction>),
+    Vote(Signed<VoteTransaction>),
+    SecretShare(Signed<SecretShareTransaction>),
+    Decryption(Signed<DecryptionTransaction>),
 }
 
 impl Transaction {
@@ -39,16 +43,16 @@ impl Transaction {
     // TODO: use a macro
     pub fn id(&self) -> Identifier {
         match self {
-            Transaction::Election(tx) => tx.transaction.id,
-            Transaction::Vote(tx) => tx.transaction.id,
-            Transaction::SecretShare(tx) => tx.transaction.id,
-            Transaction::Decryption(tx) => tx.transaction.id,
+            Transaction::Election(signed) => signed.tx.id,
+            Transaction::Vote(signed) => signed.tx.id,
+            Transaction::SecretShare(signed) => signed.tx.id,
+            Transaction::Decryption(signed) => signed.tx.id,
         }
     }
 }
 
 // TODO: use a macro
-impl From<Transaction> for SignedTransaction<ElectionTransaction> {
+impl From<Transaction> for Signed<ElectionTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Election(tx) => tx,
@@ -58,7 +62,7 @@ impl From<Transaction> for SignedTransaction<ElectionTransaction> {
 }
 
 // TODO: use a macro
-impl From<Transaction> for SignedTransaction<VoteTransaction> {
+impl From<Transaction> for Signed<VoteTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Vote(tx) => tx,
@@ -68,7 +72,7 @@ impl From<Transaction> for SignedTransaction<VoteTransaction> {
 }
 
 // TODO: use a macro
-impl From<Transaction> for SignedTransaction<DecryptionTransaction> {
+impl From<Transaction> for Signed<DecryptionTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Decryption(tx) => tx,
@@ -78,7 +82,7 @@ impl From<Transaction> for SignedTransaction<DecryptionTransaction> {
 }
 
 // TODO: use a macro
-impl From<Transaction> for SignedTransaction<SecretShareTransaction> {
+impl From<Transaction> for Signed<SecretShareTransaction> {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::SecretShare(tx) => tx,
@@ -97,20 +101,53 @@ pub trait Signable: Serialize {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct SignedTransaction<T: Signable> {
-    pub transaction: T,
-    pub signature: Signature,
+pub struct Signed<T: Signable> {
+    pub tx: T,
+    pub sig: Signature,
 }
 
-impl<T: Signable + Serialize> SignedTransaction<T> {
-    pub fn verify_signature(&self) -> Result<(), ValidationError> {
-        let serialized = self.transaction.as_bytes();
+impl<T: Signable + Serialize> Signed<T> {
+    pub fn sign(secret: &SecretKey, transaction: T) -> Result<Self, Error> {
+        let public_key = PublicKey::from(secret);
+        if let Some(tx_public) = transaction.public() {
+            if public_key != tx_public {
+                return Err(Error::MismatchedPublicKeys);
+            }
+        }
 
-        if let Some(tx_public) = self.transaction.public() {
-            Ok(tx_public.verify(&serialized, &self.signature)?)
+        let serialized = transaction.as_bytes();
+
+        let expanded: ExpandedSecretKey = secret.into();
+        let signature = expanded.sign(&serialized, &public_key);
+
+        Ok(Signed {
+            tx: transaction,
+            sig: signature,
+        })
+    }
+
+    pub fn verify_signature(&self) -> Result<(), ValidationError> {
+        let serialized = self.tx.as_bytes();
+
+        if let Some(tx_public) = self.tx.public() {
+            Ok(tx_public.verify(&serialized, &self.sig)?)
         } else {
             Ok(())
         }
+    }
+
+    pub fn inner(&self) -> &T {
+        &self.tx
+    }
+
+    pub fn id(&self) -> Identifier {
+        self.tx.id()
+    }
+}
+
+impl<T: Signable + Serialize> AsRef<T> for Signed<T> {
+    fn as_ref(&self) -> &T {
+        &self.tx
     }
 }
 

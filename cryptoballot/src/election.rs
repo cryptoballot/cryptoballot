@@ -6,8 +6,12 @@ use uuid::Uuid;
 pub struct ElectionTransaction {
     pub id: Identifier,
 
-    // secp256k1::PublicKey, uncompressed
-    pub public_key: Vec<u8>,
+    /// Election authority PublicKey
+    pub authority_public: PublicKey,
+
+    /// Election public key for encrypting votes
+    /// secp256k1::PublicKey, uncompressed
+    pub encryption_public: Vec<u8>,
 
     // List of ballots that can be cast in this election
     // TODO: Define ballot struct
@@ -23,12 +27,13 @@ pub struct ElectionTransaction {
 }
 
 impl ElectionTransaction {
-    pub fn new() -> (Self, secp256k1::SecretKey) {
+    pub fn new(authority_public: PublicKey) -> (Self, secp256k1::SecretKey) {
         let (secret, public) = ecies::utils::generate_keypair();
 
         let election = ElectionTransaction {
             id: Identifier::new_for_election(),
-            public_key: public.serialize().to_vec(),
+            authority_public: authority_public,
+            encryption_public: public.serialize().to_vec(),
             ballots: vec![],
             trustees: vec![],
             trustees_threshold: 1,
@@ -40,8 +45,8 @@ impl ElectionTransaction {
     }
 
     pub fn validate(&self) -> Result<(), ValidationError> {
-        // Make sure the public-key is well-formed
-        if self.public_key.len() != 65 {
+        // Make sure the encryption public-key is well-formed
+        if self.encryption_public.len() != 65 {
             return Err(ValidationError::InvalidPublicKey);
         }
         // TODO: check parsing of public key
@@ -108,7 +113,9 @@ mod tests {
 
     #[test]
     fn create_new_election() {
-        let (mut election, _election_secret) = ElectionTransaction::new();
+        let (authority_secret, authority_public) = generate_keypair();
+
+        let (mut election, _election_secret) = ElectionTransaction::new(authority_public);
 
         // Create a trustee and add it to the election
         let (trustee, _trustee_secret) = Trustee::new();

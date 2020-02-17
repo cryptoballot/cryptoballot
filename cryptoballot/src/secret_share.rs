@@ -35,7 +35,9 @@ impl SecretShareTransaction {
             .get_trustee(self.trustee_id)
             .ok_or(ValidationError::TrusteeDoesNotExist)?;
 
-        if trustee.public_key != self.public_key {}
+        if trustee.public_key != self.public_key {
+            return Err(ValidationError::InvalidPublicKey);
+        }
 
         Ok(())
     }
