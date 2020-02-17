@@ -21,6 +21,7 @@ Under active development. Not ready for production use!
 
 | Status¹ | Feature                           | Notes                                                          |
 | ------- | --------------------------------- | -------------------------------------------------------------- |
+| ✓       | Migrate from Go to Rust           | 🦀
 | ⚠       | Blind-Signing (RSA)               | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
 |         | Blind-Signing (ed25519)           | Will replace current RSA bling-signing                         |
 | ✓       | Shamir Secret Sharing             | Uses [Sharks](https://docs.rs/sharks/)                         |
