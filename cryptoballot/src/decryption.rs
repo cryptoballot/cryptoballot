@@ -30,7 +30,28 @@ impl DecryptionTransaction {
     //  - Takes vote transaction
     //  - Takes all secret-share stransactions
     //  - validates that the decrypted vote is the same
-    pub fn validate(&self) -> Result<(), ()> {
+    pub fn validate(
+        &self,
+        election: &ElectionTransaction,
+        vote: &VoteTransaction,
+        secret_shares: &[SecretShareTransaction],
+    ) -> Result<(), ValidationError> {
+        let mut shares = Vec::with_capacity(election.trustees_threshold as usize);
+        for secret_share_tx in secret_shares.iter() {
+            shares.push(secret_share_tx.secret_share.clone());
+        }
+
+        // Recover election key from two trustees
+        let election_key = recover_secret_from_shares(election.trustees_threshold, shares)
+            .map_err(|_| ValidationError::SecretRecoveryFailed)?;
+
+        let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote)
+            .map_err(|_| ValidationError::DecryptVoteFailed)?;
+
+        if decrypted_vote != self.decrypted_vote {
+            return Err(ValidationError::MismatchedDecryptedVote);
+        }
+
         Ok(())
     }
 }

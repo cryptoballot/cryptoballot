@@ -64,16 +64,48 @@ impl TransactionHandler for CbTransactionHandler {
         let state = CbState::new(context);
 
         match &transaction {
-            Transaction::Election(tx) => {
-                tx.transaction.validate().unwrap();
+            Transaction::Election(signed) => {
+                // TODO: check election authority stored in sawset settings
+                signed.verify_signature().unwrap();
+                signed.inner().validate().unwrap();
             }
-            Transaction::Vote(tx) => {
-                let election: SignedTransaction<ElectionTransaction> =
-                    state.get_inner(tx.transaction.election).unwrap();
-                tx.transaction.validate(&election.transaction).unwrap();
+
+            Transaction::Vote(signed) => {
+                let election: Signed<ElectionTransaction> =
+                    state.get_inner(signed.tx.election).unwrap();
+
+                signed.verify_signature().unwrap();
+                signed.inner().validate(election.inner()).unwrap();
             }
-            Transaction::Decryption(tx) => {
-                tx.transaction.validate().unwrap();
+
+            Transaction::SecretShare(signed) => {
+                let election: Signed<ElectionTransaction> =
+                    state.get_inner(signed.tx.election).unwrap();
+
+                signed.verify_signature().unwrap();
+                signed.inner().validate(election.inner()).unwrap();
+            }
+
+            Transaction::Decryption(signed) => {
+                signed.verify_signature().unwrap();
+                let decrypt = signed.inner();
+
+                let election: Signed<ElectionTransaction> =
+                    state.get_inner(decrypt.election).unwrap();
+
+                let vote: Signed<VoteTransaction> = state.get_inner(decrypt.vote).unwrap();
+
+                let secret_shares: Vec<Signed<SecretShareTransaction>> = state
+                    .get_all_type(decrypt.election, TransactionType::SecretShare)
+                    .unwrap();
+                let secret_shares: Vec<SecretShareTransaction> =
+                    secret_shares.iter().map(|e| e.inner().to_owned()).collect();
+
+                signed.verify_signature().unwrap();
+                signed
+                    .inner()
+                    .validate(election.inner(), vote.inner(), &secret_shares)
+                    .unwrap();
             }
         }
 
@@ -82,8 +114,18 @@ impl TransactionHandler for CbTransactionHandler {
     }
 }
 
+// Get the full address prefix for the given transaction
 fn cb_address(transaction_id: &Identifier) -> String {
     format!("{}{}", CB_PREFIX.as_str(), transaction_id.to_string())
+}
+
+// Get the address prefix for the given type
+// Querying by this address will return all transactions of this type for this election.
+fn cb_address_type(election_id: &Identifier, tx_type: TransactionType) -> String {
+    let mut ident = election_id.clone();
+    ident.transaction_type = tx_type;
+    let address = ident.to_string();
+    format!("{}{}", CB_PREFIX.as_str(), &address[0..16])
 }
 
 pub struct CbState<'a> {
@@ -109,6 +151,22 @@ impl<'a> CbState<'a> {
             },
             None => Ok(None),
         }
+    }
+
+    pub fn get_all_type<T: From<Transaction>>(
+        &self,
+        election_id: Identifier,
+        tx_type: TransactionType,
+    ) -> Result<Vec<T>, ApplyError> {
+        let address_prefix = cb_address_type(&election_id, tx_type);
+        let d = self.context.get_state_entries(&[address_prefix])?;
+
+        // TODO: fix this unwrap
+        let transactions = d
+            .iter()
+            .map(|e| Transaction::unpack(&e.1).unwrap().into())
+            .collect();
+        Ok(transactions)
     }
 
     pub fn get_inner<T: From<Transaction>>(&self, transaction_id: Identifier) -> Result<T, ()> {

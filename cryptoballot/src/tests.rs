@@ -74,7 +74,7 @@ fn end_to_end_election() {
 
     // Recover election key from two trustees
     let shares = vec![secret_share_1.secret_share, secret_share_2.secret_share];
-    let election_key = recover_secret_shares(election.tx.trustees_threshold, shares).unwrap();
+    let election_key = recover_secret_from_shares(election.tx.trustees_threshold, shares).unwrap();
 
     // Decrypt the votes
     let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote).unwrap();

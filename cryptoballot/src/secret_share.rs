@@ -84,7 +84,7 @@ pub fn deal_secret_shares(theshold: u8, num_trustees: usize, secret: &[u8]) -> V
     all_shares
 }
 
-pub fn recover_secret_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result<Vec<u8>, Error> {
+pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result<Vec<u8>, Error> {
     let shares: Vec<Share> = shares.iter().map(|s| Share::from(s.as_slice())).collect();
 
     let sharks = Sharks(threshold);

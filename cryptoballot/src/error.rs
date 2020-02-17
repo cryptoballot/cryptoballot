@@ -69,6 +69,15 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot validation: authentication failed")]
     AuthFailed,
 
+    #[fail(display = "cryptoballot: secret recovery failed")]
+    SecretRecoveryFailed,
+
+    #[fail(display = "cryptoballot: decrypt vote failed")]
+    DecryptVoteFailed,
+
+    #[fail(display = "cryptoballot: mismatched decrypted vote")]
+    MismatchedDecryptedVote,
+
     #[fail(display = "cryptoballot validation: signature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
 }
