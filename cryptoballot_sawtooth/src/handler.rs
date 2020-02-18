@@ -61,17 +61,17 @@ impl TransactionHandler for CbTransactionHandler {
         };
         // TODO: validate _signer
 
-        let transaction: Transaction = serde_json::from_slice(&request.payload).unwrap();
+        let transaction: SignedTransaction = serde_json::from_slice(&request.payload).unwrap();
         let state = CbState::new(context);
 
         match &transaction {
-            Transaction::Election(signed) => {
+            SignedTransaction::Election(signed) => {
                 // TODO: check election authority stored in sawset settings
                 signed.verify_signature().unwrap();
                 signed.inner().validate().unwrap();
             }
 
-            Transaction::Vote(signed) => {
+            SignedTransaction::Vote(signed) => {
                 let election: Signed<ElectionTransaction> =
                     state.get_inner(signed.tx.election).unwrap();
 
@@ -79,7 +79,7 @@ impl TransactionHandler for CbTransactionHandler {
                 signed.inner().validate(election.inner()).unwrap();
             }
 
-            Transaction::SecretShare(signed) => {
+            SignedTransaction::SecretShare(signed) => {
                 let election: Signed<ElectionTransaction> =
                     state.get_inner(signed.tx.election).unwrap();
 
@@ -87,7 +87,7 @@ impl TransactionHandler for CbTransactionHandler {
                 signed.inner().validate(election.inner()).unwrap();
             }
 
-            Transaction::Decryption(signed) => {
+            SignedTransaction::Decryption(signed) => {
                 signed.verify_signature().unwrap();
                 let decrypt = signed.inner();
 
@@ -139,11 +139,11 @@ impl<'a> CbState<'a> {
         CbState { context }
     }
 
-    pub fn get(&self, transaction_id: Identifier) -> Result<Option<Transaction>, ApplyError> {
+    pub fn get(&self, transaction_id: Identifier) -> Result<Option<SignedTransaction>, ApplyError> {
         let address = cb_address(&transaction_id);
         let d = self.context.get_state_entry(&address)?;
         match d {
-            Some(packed) => match Transaction::unpack(&packed) {
+            Some(packed) => match SignedTransaction::unpack(&packed) {
                 Ok(t) => return Ok(Some(t)),
                 Err(e) => Err(ApplyError::InternalError(format!(
                     "Unable to parse transaction {}: {}",
@@ -155,7 +155,7 @@ impl<'a> CbState<'a> {
         }
     }
 
-    pub fn get_all_type<T: From<Transaction>>(
+    pub fn get_all_type<T: From<SignedTransaction>>(
         &self,
         election_id: Identifier,
         tx_type: TransactionType,
@@ -166,17 +166,20 @@ impl<'a> CbState<'a> {
         // TODO: fix this unwrap
         let transactions = d
             .iter()
-            .map(|e| Transaction::unpack(&e.1).unwrap().into())
+            .map(|e| SignedTransaction::unpack(&e.1).unwrap().into())
             .collect();
         Ok(transactions)
     }
 
-    pub fn get_inner<T: From<Transaction>>(&self, transaction_id: Identifier) -> Result<T, ()> {
+    pub fn get_inner<T: From<SignedTransaction>>(
+        &self,
+        transaction_id: Identifier,
+    ) -> Result<T, ()> {
         let tx: T = self.get(transaction_id).unwrap().unwrap().into();
         Ok(tx)
     }
 
-    pub fn set(&self, transaction: &Transaction) -> Result<(), ApplyError> {
+    pub fn set(&self, transaction: &SignedTransaction) -> Result<(), ApplyError> {
         let address = cb_address(&transaction.id());
         let packed = transaction.pack();
         self.context

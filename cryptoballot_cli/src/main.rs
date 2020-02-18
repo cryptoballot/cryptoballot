@@ -32,14 +32,20 @@ fn main() {
                 .help("Sets the level of verbosity"),
         )
         .subcommand(
-            SubCommand::with_name("post")
-                .about("Post transaction(s)")
-                .arg(
-                    Arg::with_name("INPUT")
-                        .index(1)
-                        .required(true) // TODO: allow stdin
-                        .help("Transaction file in JSON or CBOR format"),
-                ),
+            SubCommand::with_name("sign").about("Sign transaction").arg(
+                Arg::with_name("INPUT")
+                    .index(1)
+                    .required(true) // TODO: allow stdin
+                    .help("Transaction file in JSON or CBOR format"),
+            ),
+        )
+        .subcommand(
+            SubCommand::with_name("post").about("Post transaction").arg(
+                Arg::with_name("INPUT")
+                    .index(1)
+                    .required(true) // TODO: allow stdin
+                    .help("Transaction file in JSON or CBOR format"),
+            ),
         )
         .get_matches();
 
@@ -53,7 +59,7 @@ fn main() {
     let env_var = std::env::var("CRYPTOBALLOT_URI");
     let uri = match matches.value_of("uri") {
         Some(uri) => uri,
-        None => env_var.as_deref().unwrap_or("http://localhost:4692"),
+        None => env_var.as_deref().unwrap_or("http://localhost:8008"),
     };
     if verbosity as u8 >= 3 {
         println!("URI: {}", uri);
@@ -63,6 +69,41 @@ fn main() {
     if let Some(matches) = matches.subcommand_matches("post") {
         command_post_transaction(matches, uri, verbosity);
     }
+}
+
+fn command_sign_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Verbosity) {
+    use content_inspector::ContentType;
+
+    let filename = match matches.value_of("INPUT") {
+        Some(filename) => filename,
+        None => {
+            eprintln!("cryptoballot post: input filename required");
+            std::process::exit(1);
+        }
+    };
+
+    let file_bytes = match std::fs::read(filename) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
+            std::process::exit(1);
+        }
+    };
+
+    let tx: cryptoballot::Transaction = match content_inspector::inspect(&file_bytes) {
+        ContentType::UTF_8 => serde_json::from_slice(&file_bytes).unwrap_or_else(|e| {
+            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
+            std::process::exit(1);
+        }),
+        ContentType::BINARY => serde_cbor::from_slice(&file_bytes).unwrap_or_else(|e| {
+            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
+            std::process::exit(1);
+        }),
+        _ => {
+            eprintln!("cryptoballot post: invalid file format for {}", filename);
+            std::process::exit(1);
+        }
+    };
 }
 
 fn command_post_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Verbosity) {
@@ -84,7 +125,7 @@ fn command_post_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Ve
         }
     };
 
-    let tx: cryptoballot::Transaction = match content_inspector::inspect(&file_bytes) {
+    let tx: cryptoballot::SignedTransaction = match content_inspector::inspect(&file_bytes) {
         ContentType::UTF_8 => serde_json::from_slice(&file_bytes).unwrap_or_else(|e| {
             eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
             std::process::exit(1);

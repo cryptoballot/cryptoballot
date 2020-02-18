@@ -14,21 +14,31 @@ use std::str::FromStr;
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum Transaction {
+pub enum SignedTransaction {
     Election(Signed<ElectionTransaction>),
     Vote(Signed<VoteTransaction>),
     SecretShare(Signed<SecretShareTransaction>),
     Decryption(Signed<DecryptionTransaction>),
 }
 
-impl Transaction {
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum Transaction {
+    Election(ElectionTransaction),
+    Vote(VoteTransaction),
+    SecretShare(SecretShareTransaction),
+    Decryption(DecryptionTransaction),
+}
+
+impl SignedTransaction {
     pub fn transaction_type(&self) -> TransactionType {
         // TODO: use a macro
         match self {
-            Transaction::Election(_) => TransactionType::Election,
-            Transaction::Vote(_) => TransactionType::Vote,
-            Transaction::SecretShare(_) => TransactionType::SecretShare,
-            Transaction::Decryption(_) => TransactionType::Decryption,
+            SignedTransaction::Election(_) => TransactionType::Election,
+            SignedTransaction::Vote(_) => TransactionType::Vote,
+            SignedTransaction::SecretShare(_) => TransactionType::SecretShare,
+            SignedTransaction::Decryption(_) => TransactionType::Decryption,
         }
     }
 
@@ -43,49 +53,49 @@ impl Transaction {
     // TODO: use a macro
     pub fn id(&self) -> Identifier {
         match self {
-            Transaction::Election(signed) => signed.tx.id,
-            Transaction::Vote(signed) => signed.tx.id,
-            Transaction::SecretShare(signed) => signed.tx.id,
-            Transaction::Decryption(signed) => signed.tx.id,
+            SignedTransaction::Election(signed) => signed.tx.id,
+            SignedTransaction::Vote(signed) => signed.tx.id,
+            SignedTransaction::SecretShare(signed) => signed.tx.id,
+            SignedTransaction::Decryption(signed) => signed.tx.id,
         }
     }
 }
 
 // TODO: use a macro
-impl From<Transaction> for Signed<ElectionTransaction> {
-    fn from(tx: Transaction) -> Self {
+impl From<SignedTransaction> for Signed<ElectionTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
         match tx {
-            Transaction::Election(tx) => tx,
+            SignedTransaction::Election(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
 }
 
 // TODO: use a macro
-impl From<Transaction> for Signed<VoteTransaction> {
-    fn from(tx: Transaction) -> Self {
+impl From<SignedTransaction> for Signed<VoteTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
         match tx {
-            Transaction::Vote(tx) => tx,
+            SignedTransaction::Vote(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
 }
 
 // TODO: use a macro
-impl From<Transaction> for Signed<DecryptionTransaction> {
-    fn from(tx: Transaction) -> Self {
+impl From<SignedTransaction> for Signed<DecryptionTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
         match tx {
-            Transaction::Decryption(tx) => tx,
+            SignedTransaction::Decryption(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
 }
 
 // TODO: use a macro
-impl From<Transaction> for Signed<SecretShareTransaction> {
-    fn from(tx: Transaction) -> Self {
+impl From<SignedTransaction> for Signed<SecretShareTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
         match tx {
-            Transaction::SecretShare(tx) => tx,
+            SignedTransaction::SecretShare(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }

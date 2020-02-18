@@ -10,7 +10,7 @@ use sawtooth_sdk::signing::Signer;
 use sha2::Digest;
 use sha2::Sha512;
 
-pub fn create_tx(signer: &Signer, tx: &cryptoballot::Transaction) -> Transaction {
+pub fn create_tx(signer: &Signer, tx: &cryptoballot::SignedTransaction) -> Transaction {
     let payload_bytes = tx.pack();
     let tx_header_bytes = create_header(signer, &payload_bytes);
 
