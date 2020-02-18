@@ -1,5 +1,6 @@
 [workspace]
 members = [
     'cryptoballot',
-    'cryptoballot_tp',
+    'cryptoballot_sawtooth',
+    'cryptoballot_cli',
 ]

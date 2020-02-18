@@ -10,9 +10,10 @@ digest = '0.8.1'
 serde_json = '1.0.48'
 hex = '0.4.1'
 lazy_static = "1.4.0"
+sawtooth-sdk = "0.4.1"
+
+[dev-dependencies]
+transact = { version = "0.1.7", features = ["sawtooth-compat"] }
 
 [dependencies.cryptoballot]
 path = '../cryptoballot'
-
-[dependencies.sawtooth-sdk]
-git = 'https://github.com/hyperledger/sawtooth-sdk-rust.git'
