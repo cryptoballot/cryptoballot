@@ -6,16 +6,18 @@ fn end_to_end_election() {
     // Create election authority public and private key
     let (authority_secret, authority_public) = generate_keypair();
 
+    // Create a ballot (TODO: make this a proper struct)
+    let ballot_id = Uuid::new_v4();
+
     // Create an authenticator
-    let (authenticator, authn_secret) = Authenticator::new(256).unwrap();
+    let (authenticator, authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
+    let authn_secret = authn_secrets.get(&ballot_id).unwrap();
+    let authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
 
     // Create 3 trustees
     let (trustee_1, trustee_1_secret) = Trustee::new();
     let (trustee_2, trustee_2_secret) = Trustee::new();
     let (trustee_3, _trustee_3_secret) = Trustee::new();
-
-    // Create a ballot (TODO: make this a proper struct)
-    let ballot_id = Uuid::new_v4();
 
     // Create an election transaction with a single ballot
     let (mut election, election_secret) = ElectionTransaction::new(authority_public);
@@ -47,11 +49,11 @@ fn end_to_end_election() {
 
     // Create an auth package and blind it
     let auth_package = AuthPackage::new(election.id(), ballot_id, vote.public_key);
-    let (blinded_auth_package, unblinder) = auth_package.blind(&authenticator.public_key);
+    let (blinded_auth_package, unblinder) = auth_package.blind(&authn_public);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)
     let authentication = authenticator.authenticate(&authn_secret, &blinded_auth_package);
-    let authentication = authentication.unblind(&authenticator.public_key, unblinder);
+    let authentication = authentication.unblind(&authn_public, unblinder);
     vote.authentication.push(authentication);
 
     // Create a vote transaction
@@ -99,15 +101,42 @@ fn end_to_end_election() {
 
     // Create decryption transaction
     let decryption = DecryptionTransaction::new(election.id(), vote.id(), decrypted_vote);
+    let decryption = Signed::sign(&authority_secret, decryption).unwrap();
 
     // Validate decryption transaction
     let secret_share_transactions = vec![
         secret_share_1.inner().to_owned(),
         secret_share_2.inner().to_owned(),
     ];
+
+    // Validate the vote transaction
+    decryption.verify_signature().unwrap();
     decryption
+        .inner()
         .validate(election.inner(), vote.inner(), &secret_share_transactions)
         .unwrap();
+
+    // To print out the transactions, do `cargo test -- --nocapture`
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&SignedTransaction::from(election)).unwrap()
+    );
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&SignedTransaction::from(vote)).unwrap()
+    );
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&SignedTransaction::from(secret_share_1)).unwrap()
+    );
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&SignedTransaction::from(secret_share_2)).unwrap()
+    );
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&SignedTransaction::from(decryption)).unwrap()
+    );
 
     // TODO: tally!
 }

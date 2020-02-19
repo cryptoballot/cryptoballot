@@ -6,6 +6,8 @@ pub struct DecryptionTransaction {
     pub id: Identifier,
     pub election: Identifier,
     pub vote: Identifier,
+
+    #[serde(with = "hex_serde")]
     pub decrypted_vote: Vec<u8>,
 }
 

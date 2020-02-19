@@ -7,10 +7,12 @@ pub struct ElectionTransaction {
     pub id: Identifier,
 
     /// Election authority PublicKey
+    #[serde(with = "EdPublicKeyHex")]
     pub authority_public: PublicKey,
 
     /// Election public key for encrypting votes
     /// secp256k1::PublicKey, uncompressed
+    #[serde(with = "hex_serde")]
     pub encryption_public: Vec<u8>,
 
     // List of ballots that can be cast in this election
@@ -122,7 +124,8 @@ mod tests {
         election.trustees.push(trustee);
 
         // Create an authenticator and add it to the election
-        let (authn, _authn_secret) = Authenticator::new(256).unwrap();
+        let ballot_id = Uuid::new_v4();
+        let (authn, _authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
         election.authenticators.push(authn);
 
         // Verify the election transaction

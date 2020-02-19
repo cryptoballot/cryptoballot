@@ -1,0 +1,34 @@
+{
+    "type": "election",
+    "tx": {
+        "id": "f7daf561b3505332109866dc76f79e000e2e69e2811625a235bd7a2162b980c5",
+        "authority_public": "a31dde7d4340bb6a9bcf4349bdf5775df5fdbcbc606b28a73b1cf2d564393213",
+        "encryption_public": "04064d870a49edac978e369c0a57230a4ede533941177022ed6e6c1824e24956063dbe466058b222ddb44b523d507f35554ef0df0338586ecb03afadd2f667b332",
+        "ballots": [
+            "99745dc6-dfa5-4efa-aefa-d0309c7b4956"
+        ],
+        "trustees": [
+            {
+                "id": "5a52771f-ce02-422a-9e6e-df1ea3915f29",
+                "public_key": "e334a7f984be076a6dd13fb61e1716ca1f13c600abfffefdd91ed1b82a2e67ba"
+            },
+            {
+                "id": "3c2b6243-5b85-4e37-8d4e-cce335998d9d",
+                "public_key": "07f49425b6e3c24d99d503c28a022e2de46f6ed45164458ce4e59cbaaf06233c"
+            },
+            {
+                "id": "eab5e160-ea3f-4059-bf4d-04b82cdb8771",
+                "public_key": "b597914e8c03c7a5b478a5256ccb98e717e9c87de5e0ac27448e3ff2365ee106"
+            }
+        ],
+        "trustees_threshold": 2,
+        "authenticators": [
+            {
+                "id": "598a1fd5-19dc-4cc6-af96-815c12204772",
+                "public_key": "a2616e881a9304ea611a5b9f6f051a029b7ceb1a6b86dba71a78352c481a65efd9d51a86f6ccdc1ac0be5e436165811a00010001"
+            }
+        ],
+        "authenticators_threshold": 1
+    },
+    "sig": "1919a8696f0922678d4ce4d936cd512b6dd5ba532ee06d7c30eaf7d461f02ff943293f4b541a0b1d02d5e48899b67349eeb96143b88bc63f848b68c629004401"
+}

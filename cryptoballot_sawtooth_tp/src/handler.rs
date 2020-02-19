@@ -61,7 +61,7 @@ impl TransactionHandler for CbTransactionHandler {
         };
         // TODO: validate _signer
 
-        let transaction: SignedTransaction = serde_json::from_slice(&request.payload).unwrap();
+        let transaction: SignedTransaction = serde_cbor::from_slice(&request.payload).unwrap();
         let state = CbState::new(context);
 
         match &transaction {

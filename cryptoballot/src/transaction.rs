@@ -14,21 +14,51 @@ use std::str::FromStr;
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
-pub enum SignedTransaction {
-    Election(Signed<ElectionTransaction>),
-    Vote(Signed<VoteTransaction>),
-    SecretShare(Signed<SecretShareTransaction>),
-    Decryption(Signed<DecryptionTransaction>),
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(tag = "type")]
-#[serde(rename_all = "snake_case")]
 pub enum Transaction {
     Election(ElectionTransaction),
     Vote(VoteTransaction),
     SecretShare(SecretShareTransaction),
     Decryption(DecryptionTransaction),
+}
+
+impl Transaction {
+    pub fn transaction_type(&self) -> TransactionType {
+        // TODO: use a macro
+        match self {
+            Transaction::Election(_) => TransactionType::Election,
+            Transaction::Vote(_) => TransactionType::Vote,
+            Transaction::SecretShare(_) => TransactionType::SecretShare,
+            Transaction::Decryption(_) => TransactionType::Decryption,
+        }
+    }
+
+    pub fn pack(&self) -> Vec<u8> {
+        serde_cbor::to_vec(self).expect("cryptoballot: Unexpected error packing transaction")
+    }
+
+    pub fn unpack(packed: &[u8]) -> Result<Self, Error> {
+        Ok(serde_cbor::from_slice(packed)?)
+    }
+
+    // TODO: use a macro
+    pub fn id(&self) -> Identifier {
+        match self {
+            Transaction::Election(tx) => tx.id,
+            Transaction::Vote(tx) => tx.id,
+            Transaction::SecretShare(tx) => tx.id,
+            Transaction::Decryption(tx) => tx.id,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum SignedTransaction {
+    Election(Signed<ElectionTransaction>),
+    Vote(Signed<VoteTransaction>),
+    SecretShare(Signed<SecretShareTransaction>),
+    Decryption(Signed<DecryptionTransaction>),
 }
 
 impl SignedTransaction {
@@ -61,46 +91,6 @@ impl SignedTransaction {
     }
 }
 
-// TODO: use a macro
-impl From<SignedTransaction> for Signed<ElectionTransaction> {
-    fn from(tx: SignedTransaction) -> Self {
-        match tx {
-            SignedTransaction::Election(tx) => tx,
-            _ => panic!("wrong transaction type expected"),
-        }
-    }
-}
-
-// TODO: use a macro
-impl From<SignedTransaction> for Signed<VoteTransaction> {
-    fn from(tx: SignedTransaction) -> Self {
-        match tx {
-            SignedTransaction::Vote(tx) => tx,
-            _ => panic!("wrong transaction type expected"),
-        }
-    }
-}
-
-// TODO: use a macro
-impl From<SignedTransaction> for Signed<DecryptionTransaction> {
-    fn from(tx: SignedTransaction) -> Self {
-        match tx {
-            SignedTransaction::Decryption(tx) => tx,
-            _ => panic!("wrong transaction type expected"),
-        }
-    }
-}
-
-// TODO: use a macro
-impl From<SignedTransaction> for Signed<SecretShareTransaction> {
-    fn from(tx: SignedTransaction) -> Self {
-        match tx {
-            SignedTransaction::SecretShare(tx) => tx,
-            _ => panic!("wrong transaction type expected"),
-        }
-    }
-}
-
 pub trait Signable: Serialize {
     fn id(&self) -> Identifier;
     fn public(&self) -> Option<PublicKey>;
@@ -113,6 +103,8 @@ pub trait Signable: Serialize {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Signed<T: Signable> {
     pub tx: T,
+
+    #[serde(with = "EdSignatureHex")]
     pub sig: Signature,
 }
 
@@ -255,4 +247,68 @@ pub enum TransactionType {
     Vote,
     SecretShare,
     Decryption,
+}
+
+// Automatic translation between types
+// TODO: Use a macro for all of these
+// ----------------------------------
+
+impl From<SignedTransaction> for Signed<ElectionTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
+        match tx {
+            SignedTransaction::Election(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl From<SignedTransaction> for Signed<VoteTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
+        match tx {
+            SignedTransaction::Vote(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl From<SignedTransaction> for Signed<DecryptionTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
+        match tx {
+            SignedTransaction::Decryption(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl From<SignedTransaction> for Signed<SecretShareTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
+        match tx {
+            SignedTransaction::SecretShare(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl From<Signed<ElectionTransaction>> for SignedTransaction {
+    fn from(tx: Signed<ElectionTransaction>) -> Self {
+        SignedTransaction::Election(tx)
+    }
+}
+
+impl From<Signed<VoteTransaction>> for SignedTransaction {
+    fn from(tx: Signed<VoteTransaction>) -> Self {
+        SignedTransaction::Vote(tx)
+    }
+}
+
+impl From<Signed<SecretShareTransaction>> for SignedTransaction {
+    fn from(tx: Signed<SecretShareTransaction>) -> Self {
+        SignedTransaction::SecretShare(tx)
+    }
+}
+
+impl From<Signed<DecryptionTransaction>> for SignedTransaction {
+    fn from(tx: Signed<DecryptionTransaction>) -> Self {
+        SignedTransaction::Decryption(tx)
+    }
 }

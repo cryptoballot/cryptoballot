@@ -9,7 +9,11 @@ pub struct SecretShareTransaction {
     pub id: Identifier,
     pub election: Identifier,
     pub trustee_id: Uuid,
+
+    #[serde(with = "EdPublicKeyHex")]
     pub public_key: PublicKey,
+
+    #[serde(with = "hex_serde")]
     pub secret_share: Vec<u8>,
 }
 
@@ -57,6 +61,8 @@ impl Signable for SecretShareTransaction {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Trustee {
     pub id: uuid::Uuid,
+
+    #[serde(with = "EdPublicKeyHex")]
     pub public_key: PublicKey,
 }
 

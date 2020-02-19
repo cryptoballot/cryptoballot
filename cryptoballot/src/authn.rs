@@ -3,27 +3,53 @@ use ed25519_dalek::PublicKey;
 use rsa::{RSAPrivateKey, RSAPublicKey};
 use rsa_fdh::blind;
 use sha2::Sha256;
+use std::collections::BTreeMap;
+use std::collections::HashMap;
 use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct AuthPublicKey(#[serde(with = "RSAPublicKeyHex")] RSAPublicKey);
+
+impl AsRef<RSAPublicKey> for AuthPublicKey {
+    fn as_ref(&self) -> &RSAPublicKey {
+        &self.0
+    }
+}
+
+/// An Authenticator is responsible for authenticating a voter as allowed to vote a specific ballot in an election.
+///
+/// An authenticator receives a blinded triplit of (`election-id`, `ballot-id`, `voter-public-key`) and checks
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Authenticator {
     pub id: uuid::Uuid,
-    pub public_key: RSAPublicKey,
-    // TODO: Enum of type of auth provided.
-    // pub auth_type: AuthType,
+
+    pub public_keys: BTreeMap<Uuid, AuthPublicKey>,
 }
 
 impl Authenticator {
-    pub fn new(keysize: usize) -> Result<(Self, RSAPrivateKey), Error> {
+    pub fn new(
+        keysize: usize,
+        ballot_ids: &[Uuid],
+    ) -> Result<(Self, HashMap<Uuid, RSAPrivateKey>), Error> {
         // Create the keys
         let mut rng = rand::rngs::OsRng {};
-        let secret = RSAPrivateKey::new(&mut rng, keysize)?;
-        let public: RSAPublicKey = secret.clone().into();
+        let mut public_keys = BTreeMap::<Uuid, AuthPublicKey>::new();
+        let mut secret_keys = HashMap::<Uuid, RSAPrivateKey>::with_capacity(ballot_ids.len());
+
+        for ballot_id in ballot_ids {
+            let secret = RSAPrivateKey::new(&mut rng, keysize)?;
+            let public: RSAPublicKey = secret.clone().into();
+
+            public_keys.insert(*ballot_id, AuthPublicKey(public));
+            secret_keys.insert(*ballot_id, secret);
+        }
+
         let authenticator = Authenticator {
             id: Uuid::new_v4(),
-            public_key: public,
+            public_keys: public_keys,
         };
 
-        Ok((authenticator, secret))
+        Ok((authenticator, secret_keys))
     }
 
     pub fn authenticate(
@@ -54,10 +80,15 @@ impl Authenticator {
             ballot_id,
             voter_public_key: voter_public_key.clone(),
         };
-        let digest = package.digest(&self.public_key);
+        let public_key = self
+            .public_keys
+            .get(&ballot_id)
+            .ok_or(ValidationError::BallotDoesNotExist)?;
+
+        let digest = package.digest(&public_key.0);
 
         // Verify the signature
-        blind::verify(&self.public_key, &digest, &signature)
+        blind::verify(&public_key.0, &digest, &signature)
             .map_err(|_| ValidationError::AuthSignatureVerificationFailed)
     }
 }
@@ -108,6 +139,8 @@ impl AuthPackage {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Authentication {
     pub authenticator: Uuid,
+
+    #[serde(with = "hex_serde")]
     pub signature: Vec<u8>,
 }
 
@@ -135,17 +168,19 @@ mod tests {
         let (_voter_secret, voter_public) = generate_keypair();
 
         // Create authenticator - using insecure 256 bit key for testing purposes
-        let (authenticator, auth_secret) = Authenticator::new(256).unwrap();
+        let (authenticator, auth_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
 
         // Create the auth package
         let auth_package = AuthPackage::new(election_id, ballot_id, voter_public);
 
         // Blind the auth package
-        let (blinded, unblinder) = auth_package.blind(&authenticator.public_key);
+        let public_key = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
+        let (blinded, unblinder) = auth_package.blind(&public_key);
 
         // Get it signed by the authenticator and unblind it
+        let auth_secret = auth_secrets.get(&ballot_id).unwrap();
         let auth = authenticator.authenticate(&auth_secret, &blinded);
-        let auth = auth.unblind(&authenticator.public_key, unblinder);
+        let auth = auth.unblind(public_key, unblinder);
 
         // Check that it's still valid even after unblinding
         authenticator

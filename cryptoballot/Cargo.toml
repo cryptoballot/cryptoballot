@@ -19,6 +19,10 @@ digest = "0.8.1"
 rsa-fdh = "0.2.0"
 rsa = { version = "0.2.0", features = ["serde1"] }
 
+# TODO: Replace these with something better (that use is_human_readable()) 
+hex-serde = "0.1.0" 
+hex-buffer-serde = "0.2"
+
 [dependencies.uuid]
 version = '0.8.1'
 features = [

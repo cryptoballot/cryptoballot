@@ -7,8 +7,12 @@ use uuid::Uuid;
 pub struct VoteTransaction {
     pub id: Identifier,
     pub election: Identifier,
+
+    #[serde(with = "hex_serde")]
     pub encrypted_vote: Vec<u8>,
     pub ballot_id: Uuid,
+
+    #[serde(with = "EdPublicKeyHex")]
     pub public_key: PublicKey,
     pub authentication: Vec<Authentication>,
 }
