@@ -14,9 +14,9 @@ It uses  Shamir Secret Sharing for election decryption keys, blind-signing for v
 
 1. **Verifiable** - the entire voting process should be end-to-end verifiable.
 2. **Ergonomic** - Easy to use.
-3. **Fast** - 1,000 votes per second.
+3. **Fast** - 1,000 votes per second
 4. **Scalable** - Millions of voters.
-5. **Secure** - Rock solid security guarantees.
+5. **Secure** - Rock solid security guarantees, byzantine fault tolerance. 
 
 ## Current State
 
@@ -35,6 +35,7 @@ Under active development. Not ready for production use!
 |         | REST frontend                     |                                                                |
 |         | Distributed key generation        | Replace Shamir, uses ElGamal, fully verifiable and distributed |
 |         | Onion mixnet (likely Sphinx)      | Strengthened voter anonymity - Depends on REST frontend        |
-|         | Re-encryption mixnet              | Strengthened voter anonymity - far future if ever              |
+|         | Re-encryption mixnet              | Provides coercion resistance                                   |
+| ⚠       | End-User Device Verification      | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
