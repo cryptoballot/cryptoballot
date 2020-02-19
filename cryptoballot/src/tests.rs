@@ -31,8 +31,8 @@ fn end_to_end_election() {
 
     // Deal the secret shares to the trustees
     let mut shares = deal_secret_shares(
-        election.tx.trustees_threshold,
-        election.tx.trustees.len(),
+        election.trustees_threshold,
+        election.trustees.len(),
         &election_secret.serialize(),
     );
     let trustee_1_share = shares.pop().unwrap();
@@ -42,7 +42,7 @@ fn end_to_end_election() {
 
     // Validate the election transaction
     election.verify_signature().unwrap();
-    election.inner().validate().unwrap();
+    election.validate().unwrap();
 
     // Generate an empty vote transaction
     let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id);
@@ -61,14 +61,14 @@ fn end_to_end_election() {
 
     // Encrypt the secret vote
     vote.encrypted_vote =
-        encrypt_vote(&election.tx.encryption_public, secret_vote.as_bytes()).unwrap();
+        encrypt_vote(&election.encryption_public, secret_vote.as_bytes()).unwrap();
 
     // Sign and seal the vote transaction
     let vote = Signed::sign(&voter_secret, vote).unwrap();
 
     // Validate the vote transaction
     vote.verify_signature().unwrap();
-    vote.inner().validate(&election.tx).unwrap();
+    vote.validate(&election).unwrap();
 
     // Voting is over
     // ----------------
@@ -83,21 +83,21 @@ fn end_to_end_election() {
 
     // Validate SecretShare transactions
     secret_share_1.verify_signature().unwrap();
-    secret_share_1.inner().validate(&election.tx).unwrap();
+    secret_share_1.validate(&election).unwrap();
     secret_share_2.verify_signature().unwrap();
-    secret_share_2.inner().validate(&election.tx).unwrap();
+    secret_share_2.validate(&election).unwrap();
 
     // Sign the secret-share transaction
 
     // Recover election key from two trustees
     let shares = vec![
-        secret_share_1.inner().secret_share.clone(),
-        secret_share_2.inner().secret_share.clone(),
+        secret_share_1.secret_share.clone(),
+        secret_share_2.secret_share.clone(),
     ];
-    let election_key = recover_secret_from_shares(election.tx.trustees_threshold, shares).unwrap();
+    let election_key = recover_secret_from_shares(election.trustees_threshold, shares).unwrap();
 
     // Decrypt the votes
-    let decrypted_vote = decrypt_vote(&election_key, &vote.inner().encrypted_vote).unwrap();
+    let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote).unwrap();
 
     // Create decryption transaction
     let decryption = DecryptionTransaction::new(election.id(), vote.id(), decrypted_vote);
@@ -112,8 +112,7 @@ fn end_to_end_election() {
     // Validate the vote transaction
     decryption.verify_signature().unwrap();
     decryption
-        .inner()
-        .validate(election.inner(), vote.inner(), &secret_share_transactions)
+        .validate(&election, &vote, &secret_share_transactions)
         .unwrap();
 
     // To print out the transactions, do `cargo test -- --nocapture`

@@ -9,6 +9,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::AsRef;
 use std::convert::From;
 use std::convert::TryInto;
+use std::ops::Deref;
 use std::str::FromStr;
 
 /// An unsigned transaction
@@ -156,6 +157,14 @@ impl<T: Signable + Serialize> Signed<T> {
 
 impl<T: Signable + Serialize> AsRef<T> for Signed<T> {
     fn as_ref(&self) -> &T {
+        &self.tx
+    }
+}
+
+impl<T: Signable + Serialize> Deref for Signed<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
         &self.tx
     }
 }
@@ -323,5 +332,41 @@ impl From<Signed<SecretShareTransaction>> for SignedTransaction {
 impl From<Signed<DecryptionTransaction>> for SignedTransaction {
     fn from(tx: Signed<DecryptionTransaction>) -> Self {
         SignedTransaction::Decryption(tx)
+    }
+}
+
+impl AsRef<ElectionTransaction> for SignedTransaction {
+    fn as_ref(&self) -> &ElectionTransaction {
+        match self {
+            SignedTransaction::Election(signed) => &signed.tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl AsRef<VoteTransaction> for SignedTransaction {
+    fn as_ref(&self) -> &VoteTransaction {
+        match self {
+            SignedTransaction::Vote(signed) => &signed.tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl AsRef<SecretShareTransaction> for SignedTransaction {
+    fn as_ref(&self) -> &SecretShareTransaction {
+        match self {
+            SignedTransaction::SecretShare(signed) => &signed.tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl AsRef<DecryptionTransaction> for SignedTransaction {
+    fn as_ref(&self) -> &DecryptionTransaction {
+        match self {
+            SignedTransaction::Decryption(signed) => &signed.tx,
+            _ => panic!("wrong transaction type expected"),
+        }
     }
 }
