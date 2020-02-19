@@ -35,6 +35,6 @@ Under active development. Not ready for production use!
 |         | REST frontend                     |                                                                |
 |         | Distributed key generation        | Replace Shamir, uses ElGamal, fully verifiable and distributed |
 |         | Onion mixnet (likely Sphinx)      | Strengthened voter anonymity - Depends on REST frontend        |
-|         | Re-encryption mixnet              | Strengthened voter anonymity                                   |
+|         | Re-encryption mixnet              | Provides coercion resistance                                   |
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
