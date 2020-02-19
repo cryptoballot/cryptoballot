@@ -6,6 +6,8 @@ edition = '2018'
 description = 'Cryotgraphically secure end-to-end verifiable online voting'
 readme = 'README.md'
 license = "Apache-2.0"
+repository = "https://github.com/cryptoballot/cryptoballot"
+homepage = "https://cryptoballot.com"
 
 [dependencies]
 sharks = "0.3"
