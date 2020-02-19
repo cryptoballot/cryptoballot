@@ -1,0 +1,17 @@
+{
+    "type": "vote",
+    "tx": {
+        "id": "f7daf561b3505332109866dc76f79e01ccb6747a560f4f4e9cd9b428c1a01d2d",
+        "election": "f7daf561b3505332109866dc76f79e000e2e69e2811625a235bd7a2162b980c5",
+        "encrypted_vote": "04192a75e532fec455a41cb36af1b228e73172a7c2c1a1564fcee6bcc0e39f07e083abe7a52e732770f35e0ee21a61a4327959a7e8071775409af417674e5e55af035787f091719108c3d5832b79a0b2556761eda5919e9cfc81960b031d431561812107f6ca63602addfe4c",
+        "ballot_id": "99745dc6-dfa5-4efa-aefa-d0309c7b4956",
+        "public_key": "5de243c5ec5709133cd57220e8117565c941a8b0d8d3ba8eb5471dc9d4f7e08a",
+        "authentication": [
+            {
+                "authenticator": "598a1fd5-19dc-4cc6-af96-815c12204772",
+                "signature": "4e8c96735eb5ed6f57f782a6e659bad31401826374db15bc81cae73ae871a12d"
+            }
+        ]
+    },
+    "sig": "a009b030bc01c3001016efb6caac18619017b4010d5fbd2edad8f4bcc041c9cd4fd285772665ec6bb58d75e936a092229906ef62f37d1ff87e938e10a2124706"
+}

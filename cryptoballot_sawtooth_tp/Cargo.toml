@@ -1,0 +1,17 @@
+[package]
+name = 'cryptoballot_sawtooth_tp'
+version = '0.1.0'
+authors = ['phayes <patrick.d.hayes@gmail.com>']
+edition = '2018'
+
+[dependencies]
+sha2 = '0.8.1'
+digest = '0.8.1'
+serde_json = '1.0.48'
+hex = '0.4.2'
+lazy_static = "1.4.0"
+sawtooth-sdk = "0.4.1"
+serde_cbor = "0.11.1"
+
+[dependencies.cryptoballot]
+path = '../cryptoballot'

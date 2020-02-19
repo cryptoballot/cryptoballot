@@ -1,0 +1,1 @@
+cargo run --bin="cryptoballot_cli" -- post test_election_1/transaction_1.election.json

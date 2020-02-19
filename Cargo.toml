@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    'cryptoballot',
+    'cryptoballot_sawtooth_tp',
+    'cryptoballot_cli',
+]
