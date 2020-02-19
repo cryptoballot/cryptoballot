@@ -1,6 +1,11 @@
 CryptoBallot
 ============
 
+[![docs](https://docs.rs/cryptoballot/badge.svg)](https://docs.rs/cryptoballot)
+[![crates.io](https://meritbadge.herokuapp.com/cryptoballot)](https://crates.io/crates/cryptoballot)
+[![patreon](https://img.shields.io/badge/patreon-donate-green.svg)](https://patreon.com/phayes)
+[![flattr](https://img.shields.io/badge/flattr-donate-green.svg)](https://flattr.com/@phayes)
+
 CryptoBallot is a cryptographically secure decentralized E2E voting system meant for real-world elections. It is a "backend" service providing vote storage, cryptographic operations, and an API. It does not provide a user interface - although it is built to make creating a UI that interfaces with it easy.
 
 It uses  Shamir Secret Sharing for election decryption keys, blind-signing for voter anonymity, and an optional blockchain backend for distributed transaction storage and verification.  It supports all tally methods including write-in candidates. 
