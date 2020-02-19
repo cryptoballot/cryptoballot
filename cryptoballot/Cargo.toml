@@ -3,8 +3,9 @@ name = 'cryptoballot'
 version = '0.2.0'
 authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
-decription = 'Cryotgraphically secure online voting. Not production ready'
+description = 'Cryotgraphically secure end-to-end verifiable online voting'
 readme = 'README.md'
+license = "Apache-2.0"
 
 [dependencies]
 sharks = "0.3"
