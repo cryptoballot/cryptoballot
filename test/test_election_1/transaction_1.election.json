@@ -1,34 +1,36 @@
 {
     "type": "election",
     "tx": {
-        "id": "f7daf561b3505332109866dc76f79e000e2e69e2811625a235bd7a2162b980c5",
-        "authority_public": "a31dde7d4340bb6a9bcf4349bdf5775df5fdbcbc606b28a73b1cf2d564393213",
-        "encryption_public": "04064d870a49edac978e369c0a57230a4ede533941177022ed6e6c1824e24956063dbe466058b222ddb44b523d507f35554ef0df0338586ecb03afadd2f667b332",
+        "id": "90e336d5f2f73f70acfa7fbc9d00080000000000000000000000000000000000",
+        "authority_public": "2f605c9babebbf4516d6b9b6d608bc5ff71cdb1d4f11103c4135fa14fa746b3c",
+        "encryption_public": "0451b87fc939c54efab07d2a708ef651967e2b1a02683ba7cfe3f0afd73b7e76ad8fe6272f592438c8dde21cceefc76c8b1f06578b5769950daeb39cbdd44c7bc6",
         "ballots": [
-            "99745dc6-dfa5-4efa-aefa-d0309c7b4956"
+            "782bbad9-272d-4972-b70e-19b5079f38b1"
         ],
         "trustees": [
             {
-                "id": "5a52771f-ce02-422a-9e6e-df1ea3915f29",
-                "public_key": "e334a7f984be076a6dd13fb61e1716ca1f13c600abfffefdd91ed1b82a2e67ba"
+                "id": "f67a1ad4-a9a6-443a-b4d9-f61f68fd98e5",
+                "public_key": "cde11c1bb397cd0113136d78bbfe52617166de292341d009a41041b44af200b4"
             },
             {
-                "id": "3c2b6243-5b85-4e37-8d4e-cce335998d9d",
-                "public_key": "07f49425b6e3c24d99d503c28a022e2de46f6ed45164458ce4e59cbaaf06233c"
+                "id": "f8c7250e-556c-4cc9-975d-359118971413",
+                "public_key": "62c2d0a35f17d8c8ef9d5934620383200420d7e15ac90bd84d12c780b132546b"
             },
             {
-                "id": "eab5e160-ea3f-4059-bf4d-04b82cdb8771",
-                "public_key": "b597914e8c03c7a5b478a5256ccb98e717e9c87de5e0ac27448e3ff2365ee106"
+                "id": "e29d0602-220b-4e61-b10f-c151eef3819c",
+                "public_key": "e18ec157ff1000b4c68e08c709e7d098ef9dc9bb2efca0c59298a01121515360"
             }
         ],
         "trustees_threshold": 2,
         "authenticators": [
             {
-                "id": "598a1fd5-19dc-4cc6-af96-815c12204772",
-                "public_key": "a2616e881a9304ea611a5b9f6f051a029b7ceb1a6b86dba71a78352c481a65efd9d51a86f6ccdc1ac0be5e436165811a00010001"
+                "id": "77739a1f-5841-4cc5-9d85-d418059f1744",
+                "public_keys": {
+                    "782bbad9-272d-4972-b70e-19b5079f38b1": "a2616e881a507582d71aca51f3861ab0f269d71a2043ccf71a7554a6501af11a11791aa14ffb0e1ac525bb746165811a00010001"
+                }
             }
         ],
         "authenticators_threshold": 1
     },
-    "sig": "1919a8696f0922678d4ce4d936cd512b6dd5ba532ee06d7c30eaf7d461f02ff943293f4b541a0b1d02d5e48899b67349eeb96143b88bc63f848b68c629004401"
+    "sig": "882dea8f075d4d2535b7c3d71419454aea4931abf53566f174171e6583804b2336cdf9f6bfd351e078e51093e4ee4bb8966212d1618f6747363e6272c33d8c0c"
 }

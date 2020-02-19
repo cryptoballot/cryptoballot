@@ -16,7 +16,7 @@ lazy_static! {
     static ref CB_PREFIX: String = {
         let mut sha = Sha512::new();
         sha.input("cryptoballot");
-        hex::encode(&sha.result()[..6])
+        hex::encode(&sha.result()[..3])
     };
 }
 
@@ -162,4 +162,18 @@ pub fn send_batch_list(batch_list_bytes: Vec<u8>) {
         .send();
 
     dbg!(res);
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_address_translation() {
+        let identifier = cryptoballot::Identifier::new_for_election();
+        let address = identifier_to_address(identifier);
+
+        assert!(address.len() == 70);
+    }
 }
