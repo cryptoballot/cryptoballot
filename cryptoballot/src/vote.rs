@@ -85,6 +85,11 @@ impl Signable for VoteTransaction {
     fn public(&self) -> Option<PublicKey> {
         Some(self.anonymous_key)
     }
+
+    fn input(&self) -> Vec<Identifier> {
+        // Only requires election as input
+        vec![self.election]
+    }
 }
 
 /// Encrypt a vote with the public key provided by the election transaction (ElectionTransaction.encryption_key)

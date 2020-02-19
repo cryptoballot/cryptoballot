@@ -97,6 +97,7 @@ impl SignedTransaction {
 pub trait Signable: Serialize {
     fn id(&self) -> Identifier;
     fn public(&self) -> Option<PublicKey>;
+    fn input(&self) -> Vec<Identifier>;
 
     fn as_bytes(&self) -> Vec<u8> {
         serde_cbor::to_vec(&self).expect("cryptoballot: Unexpected error serializing transaction")
@@ -176,7 +177,7 @@ impl<T: Signable + Serialize> Deref for Signed<T> {
 pub struct Identifier {
     pub election_id: [u8; 15],
     pub transaction_type: TransactionType,
-    pub unique_id: [u8; 16],
+    pub unique_id: Option<[u8; 16]>,
 }
 
 impl Identifier {
@@ -189,7 +190,7 @@ impl Identifier {
         Identifier {
             election_id,
             transaction_type,
-            unique_id,
+            unique_id: Some(unique_id),
         }
     }
 
@@ -203,7 +204,7 @@ impl Identifier {
         Identifier {
             election_id,
             transaction_type,
-            unique_id,
+            unique_id: Some(unique_id),
         }
     }
 }
@@ -212,7 +213,10 @@ impl ToString for Identifier {
     fn to_string(&self) -> String {
         let election_id = hex::encode(self.election_id);
         let transaction_type = hex::encode([self.transaction_type as u8]);
-        let unique_id = hex::encode(self.unique_id);
+        let unique_id = match self.unique_id {
+            Some(unique_id) => hex::encode(unique_id),
+            None => "".to_string(),
+        };
 
         format!("{}{}{}", election_id, transaction_type, unique_id)
     }
@@ -224,14 +228,21 @@ impl FromStr for Identifier {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let bytes = hex::decode(s).map_err(|_| Error::IdentifierBadHex)?;
 
-        if bytes.len() != 32 {
+        if bytes.len() != 32 && bytes.len() != 16 {
             return Err(Error::IdentifierBadLen);
         }
+        let has_unique_id = bytes.len() == 32;
 
         // These unwraps are OK - we know the length is valid
         let election_id: [u8; 15] = bytes[0..15].try_into().unwrap();
         let transaction_type = TransactionType::try_from_primitive(bytes[15]).unwrap();
-        let unique_id: [u8; 16] = bytes[16..].try_into().unwrap();
+
+        let unique_id = if has_unique_id {
+            let unique_id: [u8; 16] = bytes[16..].try_into().unwrap();
+            Some(unique_id)
+        } else {
+            None
+        };
 
         Ok(Identifier {
             election_id,

@@ -63,6 +63,11 @@ impl Signable for SecretShareTransaction {
     fn public(&self) -> Option<PublicKey> {
         Some(self.public_key)
     }
+
+    fn input(&self) -> Vec<Identifier> {
+        // Only requires election as input
+        vec![self.election]
+    }
 }
 
 /// A trustee is responsible for safeguarding a secret share (a portion of the secret vote decryption key),

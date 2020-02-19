@@ -74,6 +74,16 @@ impl Signable for DecryptionTransaction {
     fn public(&self) -> Option<PublicKey> {
         None
     }
+
+    fn input(&self) -> Vec<Identifier> {
+        let all_secret_shares = Identifier {
+            election_id: self.election.election_id,
+            transaction_type: TransactionType::SecretShare,
+            unique_id: None,
+        };
+
+        vec![self.election, self.vote, all_secret_shares]
+    }
 }
 
 /// Given a set of secret shares recovered from all SecretShareTransaction, reconstruct

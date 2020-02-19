@@ -135,6 +135,11 @@ impl Signable for ElectionTransaction {
     fn public(&self) -> Option<PublicKey> {
         Some(self.authority_public)
     }
+
+    fn input(&self) -> Vec<Identifier> {
+        // No inputs requires for election
+        vec![]
+    }
 }
 
 /// Deal the election secret into shares, ready to be distributed to trustees.
