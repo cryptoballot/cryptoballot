@@ -2,33 +2,56 @@ use crate::*;
 use ed25519_dalek::PublicKey;
 use uuid::Uuid;
 
+/// An ElectionTransaction defines an election.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ElectionTransaction {
     pub id: Identifier,
 
-    /// Election authority PublicKey
+    /// Election Authority Public Key
+    ///
+    /// The election authority's public key should be posted in a trusted and well-known location.
+    ///
+    /// If using sawtooth, before you can post an Election transation,
+    /// you must register an Election Authority's public key via `sawset`.
     #[serde(with = "EdPublicKeyHex")]
     pub authority_public: PublicKey,
 
-    /// Election public key for encrypting votes
-    /// secp256k1::PublicKey, uncompressed
+    /// Election public key for encrypting votes. It is an uncompressed `secp256k1::PublicKey`.
+    ///
+    /// This public key is used to encrypt all votes using ECIES encryption. This keeps
+    /// all the votes secret until the trustees post SecretShare transaction to allow
+    /// decryption of the voters after the election is over.
+    ///
+    /// After generating the keypair, the secret should be distributed to the trustees using
+    /// Shamir Secret Sharing and then destroyed.
+    ///
+    /// Future plans include moving to Distributed key generation, so no one entity ever has
+    /// the secret key, even temporarily.
     #[serde(with = "hex_serde")]
     pub encryption_public: Vec<u8>,
 
-    // List of ballots that can be cast in this election
+    /// List of ballots that can be cast in this election
     // TODO: Define ballot struct
     pub ballots: Vec<uuid::Uuid>,
 
-    // Trustees
+    /// List of trustees that have been given a secret key share
     pub trustees: Vec<Trustee>,
+
+    /// Minimum number of trustees needed to reconstruct the secret key and decrypt votes.
     pub trustees_threshold: u8,
 
-    // Authenticators
+    /// Authenticators who can authenticate voters
     pub authenticators: Vec<Authenticator>,
+
+    /// Mininum number of authenticators that might provide a signature for a voter
+    /// for that voter to post a Vote transaction.
     pub authenticators_threshold: u8,
 }
 
 impl ElectionTransaction {
+    /// Create a new ElectionTransaction
+    ///
+    /// The returned SecretKey should be distributed to the trustees using Shamir Secret Sharing
     pub fn new(authority_public: PublicKey) -> (Self, secp256k1::SecretKey) {
         let (secret, public) = ecies::utils::generate_keypair();
 
@@ -46,6 +69,7 @@ impl ElectionTransaction {
         (election, secret)
     }
 
+    /// Validate the election transaction
     pub fn validate(&self) -> Result<(), ValidationError> {
         // Make sure the encryption public-key is well-formed
         if self.encryption_public.len() != 65 {
@@ -65,10 +89,13 @@ impl ElectionTransaction {
         }
         // TODO: check that we have at least 1 authenticator
 
+        // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
+
         Ok(())
     }
 
     // TODO: return a ballot struct when we have it defined
+    /// Get a ballot with the given ID
     pub fn get_ballot(&self, ballot_id: Uuid) -> Option<()> {
         for ballot in self.ballots.iter() {
             if ballot_id == *ballot {
@@ -78,6 +105,7 @@ impl ElectionTransaction {
         None
     }
 
+    /// Get an authenticator with the given ID
     pub fn get_authenticator(&self, authn_id: Uuid) -> Option<&Authenticator> {
         for authn in self.authenticators.iter() {
             if authn_id == authn.id {
@@ -87,6 +115,7 @@ impl ElectionTransaction {
         None
     }
 
+    /// Get a trustee with the given ID
     pub fn get_trustee(&self, trustee_id: Uuid) -> Option<&Trustee> {
         for trustee in self.trustees.iter() {
             if trustee_id == trustee.id {
@@ -102,9 +131,8 @@ impl Signable for ElectionTransaction {
         self.id
     }
 
-    // TODO: election authority public key
     fn public(&self) -> Option<PublicKey> {
-        None
+        Some(self.authority_public)
     }
 }
 

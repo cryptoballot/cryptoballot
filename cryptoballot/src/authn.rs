@@ -18,7 +18,21 @@ impl AsRef<RSAPublicKey> for AuthPublicKey {
 
 /// An Authenticator is responsible for authenticating a voter as allowed to vote a specific ballot in an election.
 ///
-/// An authenticator receives a blinded triplit of (`election-id`, `ballot-id`, `voter-public-key`) and checks
+/// An authenticator receives the following from a voter:
+///   1. Voter's bonefides (government-id, security-code, password etc).
+///   2. Election ID and Ballot ID
+///   3. blinded auth-package triplet of (`election-id`, `ballot-id`, `voter-public-key`)
+///
+/// The authenticator first checks the election-id and ballot-id against the voter's bonefides
+/// (this is implementation specific and out of scope of CryptoBallot). After satisfied that the voter
+/// is allowed to vote this election and ballot, the authenticator blind-signs the blinded triplet and
+/// returns the signature to the voter who will unblind it.
+///
+/// Before the election, the authenticator will generate a signing keypair for each ballot-id. Having
+/// on key per ballot ensures that the blinded triplet matches the correct election and ballot.
+///
+/// WARNING: The secret keys used to sign blinded triplets must NOT be used for any other purpose.
+/// Doing so can result in secret key disclosure.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Authenticator {
     pub id: uuid::Uuid,
@@ -27,10 +41,23 @@ pub struct Authenticator {
 }
 
 impl Authenticator {
+    /// Create a new Authenticator, generating keys for provided ballot-ids.
+    ///
+    /// For good security, keysize should be at least 2048 bits, and ideally 4096 bits.
+    ///
+    /// WARNING: The secret keys generated here must NOT be used for any other purpose.
+    /// Doing so can result in secret key disclosure.
     pub fn new(
         keysize: usize,
         ballot_ids: &[Uuid],
     ) -> Result<(Self, HashMap<Uuid, RSAPrivateKey>), Error> {
+        // If we are in release mode, make sure we are at least 2048 bits
+        #[cfg(not(debug_assertions))]
+        assert!(
+            keysize >= 2048,
+            "keysize must be at least 2048 bits in release mode"
+        );
+
         // Create the keys
         let mut rng = rand::rngs::OsRng {};
         let mut public_keys = BTreeMap::<Uuid, AuthPublicKey>::new();
@@ -52,6 +79,10 @@ impl Authenticator {
         Ok((authenticator, secret_keys))
     }
 
+    /// Sign the blinded (`election-id`, `ballot-id`, `voter-public-key`) auth-package triplet.
+    ///
+    /// This should only be called after verifying the voter's bonefides (eg government-id, security-code, password etc)
+    /// and that they are authorized to vote the requested election and ballot.
     pub fn authenticate(
         &self,
         secret: &RSAPrivateKey,
@@ -68,6 +99,7 @@ impl Authenticator {
         authentication
     }
 
+    /// Verify the authenticator signature
     pub fn verify(
         &self,
         election_id: Identifier,
@@ -93,6 +125,10 @@ impl Authenticator {
     }
 }
 
+/// The Auth Package triplet of election-id, ballot-id, and voter public key
+///
+/// Make sure this package is blinded before being sent to the authenticator to keep the voter's
+/// public-key secret from the authenticator.
 // TODO: Be smarter about lifetimes here so we don't need to clone PublicKey
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AuthPackage {
@@ -102,6 +138,7 @@ pub struct AuthPackage {
 }
 
 impl AuthPackage {
+    /// Create a new authentication package
     pub fn new(election_id: Identifier, ballot_id: Uuid, voter_public_key: PublicKey) -> Self {
         AuthPackage {
             election_id,
@@ -110,20 +147,7 @@ impl AuthPackage {
         }
     }
 
-    pub fn pack(&self) -> Vec<u8> {
-        serde_cbor::to_vec(self).expect("cryptoballot: error packing auth package")
-    }
-
-    pub fn digest(&self, signer_pub_key: &RSAPublicKey) -> Vec<u8> {
-        let packed = self.pack();
-
-        // Hash the contents of the message with a Full Domain Hash, getting the digest
-        let digest = blind::hash_message::<Sha256, _>(&signer_pub_key, &packed)
-            .expect("Error getting auth package digest");
-
-        digest
-    }
-
+    /// Blind the authentication package, readiying it to be send to the authenticator
     pub fn blind(&self, signer_pub_key: &RSAPublicKey) -> (Vec<u8>, Vec<u8>) {
         let mut csprng = rand::rngs::OsRng {};
 
@@ -134,8 +158,25 @@ impl AuthPackage {
 
         (blinded_digest, unblinder)
     }
+
+    fn pack(&self) -> Vec<u8> {
+        serde_cbor::to_vec(self).expect("cryptoballot: error packing auth package")
+    }
+
+    fn digest(&self, signer_pub_key: &RSAPublicKey) -> Vec<u8> {
+        let packed = self.pack();
+
+        // Hash the contents of the message with a Full Domain Hash, getting the digest
+        let digest = blind::hash_message::<Sha256, _>(&signer_pub_key, &packed)
+            .expect("Error getting auth package digest");
+
+        digest
+    }
 }
 
+/// An Authentication is returned by an authenticator, clearing the voter to vote.
+///
+/// The sigature returned by the authenticator is blind, and must be unblinded by the voter before use.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Authentication {
     pub authenticator: Uuid,
@@ -145,6 +186,7 @@ pub struct Authentication {
 }
 
 impl Authentication {
+    /// Unblind the signature, reading it for use in a Vote transaction.
     pub fn unblind(self, signer_pub_key: &RSAPublicKey, unblinder: Vec<u8>) -> Self {
         // Unblind the signature
         let unblinded = blind::unblind(signer_pub_key, &self.signature, &unblinder);

@@ -1,6 +1,11 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
 
+/// Transaction 4: Decryption
+///
+/// After a quorum of Trustees have posted SharedSecret transactions (#3), any node may produce
+/// a DecryptionTransaction. One DecryptionTransaction is produced for each Vote (#2) transaction,
+/// decrypting the vote using the secret recovered from the SharedSecret transactions.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DecryptionTransaction {
     pub id: Identifier,
@@ -12,6 +17,7 @@ pub struct DecryptionTransaction {
 }
 
 impl DecryptionTransaction {
+    /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
         election: Identifier,
         vote: Identifier,
@@ -28,10 +34,11 @@ impl DecryptionTransaction {
         }
     }
 
-    // TOOD: add validation:
-    //  - Takes vote transaction
-    //  - Takes all secret-share stransactions
-    //  - validates that the decrypted vote is the same
+    /// Validate the transaction
+    ///
+    /// The validation does the following:
+    ///  - Takes vote transaction and all secret-share stransactions
+    ///  - validates that the decrypted vote is the same
     pub fn validate(
         &self,
         election: &ElectionTransaction,
@@ -69,6 +76,9 @@ impl Signable for DecryptionTransaction {
     }
 }
 
-pub fn decrypt_vote(election_key: &[u8], vote: &[u8]) -> Result<Vec<u8>, Error> {
-    Ok(ecies::decrypt(election_key, vote)?)
+/// Decrypt the vote from the given recovered election key.
+///
+/// `encrypted_vote` is taken from `VoteTransaction::encrypted_vote`.
+pub fn decrypt_vote(election_key: &[u8], encrypted_vote: &[u8]) -> Result<Vec<u8>, Error> {
+    Ok(ecies::decrypt(election_key, encrypted_vote)?)
 }
