@@ -1,9 +1,9 @@
 [package]
 name = 'cryptoballot'
-version = '0.2.0'
+version = '0.2.1'
 authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
-description = 'Cryotgraphically secure end-to-end verifiable online voting'
+description = 'Cryptographically secure end-to-end verifiable online voting'
 readme = 'README.md'
 license = "Apache-2.0"
 repository = "https://github.com/cryptoballot/cryptoballot"
