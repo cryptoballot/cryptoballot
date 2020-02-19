@@ -36,5 +36,6 @@ Under active development. Not ready for production use!
 |         | Distributed key generation        | Replace Shamir, uses ElGamal, fully verifiable and distributed |
 |         | Onion mixnet (likely Sphinx)      | Strengthened voter anonymity - Depends on REST frontend        |
 |         | Re-encryption mixnet              | Provides coercion resistance                                   |
+| ⚠       | User Device Verification          | Will use [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
