@@ -3,7 +3,6 @@ CryptoBallot
 
 [![docs](https://docs.rs/cryptoballot/badge.svg)](https://docs.rs/cryptoballot)
 [![crates.io](https://meritbadge.herokuapp.com/cryptoballot)](https://crates.io/crates/cryptoballot)
-[![docs](https://docs.rs/cryptoballot/badge.svg)](https://docs.rs/cryptoballot)
 [![patreon](https://img.shields.io/badge/patreon-donate-green.svg)](https://patreon.com/phayes)
 [![flattr](https://img.shields.io/badge/flattr-donate-green.svg)](https://flattr.com/@phayes)
 
