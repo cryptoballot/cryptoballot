@@ -68,45 +68,42 @@ impl TransactionHandler for CbTransactionHandler {
             SignedTransaction::Election(signed) => {
                 // TODO: check election authority stored in sawset settings
                 signed.verify_signature().unwrap();
-                signed.inner().validate().unwrap();
+                signed.validate().unwrap();
             }
 
-            SignedTransaction::Vote(signed) => {
-                let election: Signed<ElectionTransaction> =
-                    state.get_inner(signed.tx.election).unwrap();
+            SignedTransaction::Vote(vote) => {
+                let election: Signed<ElectionTransaction> = state.get_inner(vote.election).unwrap();
 
-                signed.verify_signature().unwrap();
-                signed.inner().validate(election.inner()).unwrap();
+                vote.verify_signature().unwrap();
+                vote.validate(&election).unwrap();
             }
 
-            SignedTransaction::SecretShare(signed) => {
+            SignedTransaction::SecretShare(secret_share) => {
                 let election: Signed<ElectionTransaction> =
-                    state.get_inner(signed.tx.election).unwrap();
+                    state.get_inner(secret_share.election).unwrap();
 
-                signed.verify_signature().unwrap();
-                signed.inner().validate(election.inner()).unwrap();
+                secret_share.verify_signature().unwrap();
+                secret_share.validate(&election).unwrap();
             }
 
-            SignedTransaction::Decryption(signed) => {
-                signed.verify_signature().unwrap();
-                let decrypt = signed.inner();
+            SignedTransaction::Decryption(decryption) => {
+                decryption.verify_signature().unwrap();
 
                 let election: Signed<ElectionTransaction> =
-                    state.get_inner(decrypt.election).unwrap();
+                    state.get_inner(decryption.election).unwrap();
 
-                let vote: Signed<VoteTransaction> = state.get_inner(decrypt.vote).unwrap();
+                let vote: Signed<VoteTransaction> = state.get_inner(decryption.vote).unwrap();
 
                 let secret_shares: Vec<Signed<SecretShareTransaction>> = state
-                    .get_all_type(decrypt.election, TransactionType::SecretShare)
+                    .get_all_type(decryption.election, TransactionType::SecretShare)
                     .unwrap();
 
                 let secret_shares: Vec<SecretShareTransaction> =
                     secret_shares.iter().map(|e| e.inner().to_owned()).collect();
 
-                signed.verify_signature().unwrap();
-                signed
-                    .inner()
-                    .validate(election.inner(), vote.inner(), &secret_shares)
+                decryption.verify_signature().unwrap();
+                decryption
+                    .validate(&election, &vote, &secret_shares)
                     .unwrap();
             }
         }
