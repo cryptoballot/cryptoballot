@@ -16,7 +16,7 @@ It uses  Shamir Secret Sharing for election decryption keys, blind-signing for v
 2. **Ergonomic** - Easy to use.
 3. **Fast** - 1,000 votes per second.
 4. **Scalable** - Millions of voters.
-5. **Secure** - Rock solid security guaruntees.
+5. **Secure** - Rock solid security guarantees.
 
 ## Current State
 
