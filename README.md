@@ -14,7 +14,7 @@ It uses  Shamir Secret Sharing for election decryption keys, blind-signing for v
 
 1. **Verifiable** - the entire voting process should be end-to-end verifiable.
 2. **Ergonomic** - Easy to use.
-3. **Fast** - 1,000 votes per second.
+3. **Fast** - 1,000 votes per second on sawtooth, 30,000 votes per second on TiKV/Raft.
 4. **Scalable** - Millions of voters.
 5. **Secure** - Rock solid security guarantees.
 
