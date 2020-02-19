@@ -11,6 +11,7 @@ use std::convert::From;
 use std::convert::TryInto;
 use std::str::FromStr;
 
+/// An unsigned transaction
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -22,6 +23,7 @@ pub enum Transaction {
 }
 
 impl Transaction {
+    /// Get the transaction type
     pub fn transaction_type(&self) -> TransactionType {
         // TODO: use a macro
         match self {
@@ -32,14 +34,7 @@ impl Transaction {
         }
     }
 
-    pub fn pack(&self) -> Vec<u8> {
-        serde_cbor::to_vec(self).expect("cryptoballot: Unexpected error packing transaction")
-    }
-
-    pub fn unpack(packed: &[u8]) -> Result<Self, Error> {
-        Ok(serde_cbor::from_slice(packed)?)
-    }
-
+    /// Get the transaction ID
     // TODO: use a macro
     pub fn id(&self) -> Identifier {
         match self {
@@ -51,6 +46,7 @@ impl Transaction {
     }
 }
 
+/// A signed transaction
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
@@ -62,6 +58,7 @@ pub enum SignedTransaction {
 }
 
 impl SignedTransaction {
+    /// Get the transaction type
     pub fn transaction_type(&self) -> TransactionType {
         // TODO: use a macro
         match self {
@@ -72,14 +69,17 @@ impl SignedTransaction {
         }
     }
 
-    pub fn pack(&self) -> Vec<u8> {
+    /// Pack into bytes
+    pub fn as_bytes(&self) -> Vec<u8> {
         serde_cbor::to_vec(self).expect("cryptoballot: Unexpected error packing transaction")
     }
 
-    pub fn unpack(packed: &[u8]) -> Result<Self, Error> {
+    /// Unpack from bytes
+    pub fn from_bytes(packed: &[u8]) -> Result<Self, Error> {
         Ok(serde_cbor::from_slice(packed)?)
     }
 
+    /// Get the transaction ID
     // TODO: use a macro
     pub fn id(&self) -> Identifier {
         match self {
@@ -91,6 +91,8 @@ impl SignedTransaction {
     }
 }
 
+/// This trait should be considered sealed and should not be implemented outside this crate
+#[doc(hidden)]
 pub trait Signable: Serialize {
     fn id(&self) -> Identifier;
     fn public(&self) -> Option<PublicKey>;
@@ -100,6 +102,7 @@ pub trait Signable: Serialize {
     }
 }
 
+/// A generic signed transaction
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Signed<T: Signable> {
     pub tx: T,
@@ -109,6 +112,7 @@ pub struct Signed<T: Signable> {
 }
 
 impl<T: Signable + Serialize> Signed<T> {
+    /// Sign a transaction, producing a Signed<T>
     pub fn sign(secret: &SecretKey, transaction: T) -> Result<Self, Error> {
         let public_key = PublicKey::from(secret);
         if let Some(tx_public) = transaction.public() {
@@ -128,6 +132,7 @@ impl<T: Signable + Serialize> Signed<T> {
         })
     }
 
+    /// Verify the signature on a signed transaction
     pub fn verify_signature(&self) -> Result<(), ValidationError> {
         let serialized = self.tx.as_bytes();
 
@@ -138,10 +143,12 @@ impl<T: Signable + Serialize> Signed<T> {
         }
     }
 
+    /// Get the inner unsigned transaction
     pub fn inner(&self) -> &T {
         &self.tx
     }
 
+    /// Get the transaction ID
     pub fn id(&self) -> Identifier {
         self.tx.id()
     }
@@ -153,6 +160,9 @@ impl<T: Signable + Serialize> AsRef<T> for Signed<T> {
     }
 }
 
+/// Transaction identifier
+///
+/// The identifier defines the election, transction-type, and a unique identifier.
 #[derive(Copy, Clone, PartialEq)]
 pub struct Identifier {
     pub election_id: [u8; 15],
@@ -161,6 +171,7 @@ pub struct Identifier {
 }
 
 impl Identifier {
+    /// Creat a new Identifier
     pub fn new(election_id: Identifier, transaction_type: TransactionType) -> Self {
         let mut csprng = rand::rngs::OsRng {};
 
@@ -173,12 +184,13 @@ impl Identifier {
         }
     }
 
+    /// Create a new identifier for an election
     pub fn new_for_election() -> Self {
         let mut csprng = rand::rngs::OsRng {};
 
         let election_id: [u8; 15] = csprng.gen();
         let transaction_type = TransactionType::Election;
-        let unique_id: [u8; 16] = csprng.gen();
+        let unique_id: [u8; 16] = [0; 16]; // All zeroes
         Identifier {
             election_id,
             transaction_type,
@@ -239,6 +251,7 @@ impl Serialize for Identifier {
     }
 }
 
+/// A transaction type
 #[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]

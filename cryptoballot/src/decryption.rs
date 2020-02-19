@@ -1,6 +1,6 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
-
+use sharks::{Share, Sharks};
 /// Transaction 4: Decryption
 ///
 /// After a quorum of Trustees have posted SharedSecret transactions (#3), any node may produce
@@ -76,7 +76,22 @@ impl Signable for DecryptionTransaction {
     }
 }
 
-/// Decrypt the vote from the given recovered election key.
+/// Given a set of secret shares recovered from all SecretShareTransaction, reconstruct
+/// the secret decryption key. The decryption key can then be used to decrypt votes and create
+/// a DecryptionTransaction.
+pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result<Vec<u8>, Error> {
+    let shares: Vec<Share> = shares.iter().map(|s| Share::from(s.as_slice())).collect();
+
+    let sharks = Sharks(threshold);
+
+    let secret = sharks
+        .recover(&shares)
+        .map_err(|_| Error::SecretRecoveryFailed)?;
+
+    Ok(secret)
+}
+
+/// Decrypt the vote from the given recovered decryption key.
 ///
 /// `encrypted_vote` is taken from `VoteTransaction::encrypted_vote`.
 pub fn decrypt_vote(election_key: &[u8], encrypted_vote: &[u8]) -> Result<Vec<u8>, Error> {

@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use uuid::Uuid;
 
+/// RSA Public Key for blind signing
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AuthPublicKey(#[serde(with = "RSAPublicKeyHex")] RSAPublicKey);
 
@@ -104,13 +105,13 @@ impl Authenticator {
         &self,
         election_id: Identifier,
         ballot_id: Uuid,
-        voter_public_key: &PublicKey,
+        anonymous_key: &PublicKey,
         signature: &[u8],
     ) -> Result<(), ValidationError> {
         let package = AuthPackage {
             election_id,
             ballot_id,
-            voter_public_key: voter_public_key.clone(),
+            anonymous_key: anonymous_key.clone(),
         };
         let public_key = self
             .public_keys
@@ -134,16 +135,16 @@ impl Authenticator {
 pub struct AuthPackage {
     election_id: Identifier,
     ballot_id: Uuid,
-    voter_public_key: PublicKey,
+    anonymous_key: PublicKey,
 }
 
 impl AuthPackage {
     /// Create a new authentication package
-    pub fn new(election_id: Identifier, ballot_id: Uuid, voter_public_key: PublicKey) -> Self {
+    pub fn new(election_id: Identifier, ballot_id: Uuid, anonymous_key: PublicKey) -> Self {
         AuthPackage {
             election_id,
             ballot_id,
-            voter_public_key,
+            anonymous_key,
         }
     }
 

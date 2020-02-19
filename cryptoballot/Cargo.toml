@@ -3,6 +3,8 @@ name = 'cryptoballot'
 version = '2.0.0-alpha'
 authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
+decription = 'Cryotgraphically secure online voting. Not production ready'
+readme = 'README.md'
 
 [dependencies]
 sharks = "0.3"

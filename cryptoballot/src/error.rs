@@ -52,6 +52,7 @@ impl From<rsa::errors::Error> for Error {
     }
 }
 
+/// Transaction Validation errors
 #[derive(Debug, Fail)]
 pub enum ValidationError {
     #[fail(display = "cryptoballot validation: threshold is invalid for number of trustees")]

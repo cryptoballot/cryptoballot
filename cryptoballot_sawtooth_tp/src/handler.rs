@@ -143,7 +143,7 @@ impl<'a> CbState<'a> {
         let address = cb_address(&transaction_id);
         let d = self.context.get_state_entry(&address)?;
         match d {
-            Some(packed) => match SignedTransaction::unpack(&packed) {
+            Some(packed) => match SignedTransaction::from_bytes(&packed) {
                 Ok(t) => return Ok(Some(t)),
                 Err(e) => Err(ApplyError::InternalError(format!(
                     "Unable to parse transaction {}: {}",
@@ -166,7 +166,7 @@ impl<'a> CbState<'a> {
         // TODO: fix this unwrap
         let transactions = d
             .iter()
-            .map(|e| SignedTransaction::unpack(&e.1).unwrap().into())
+            .map(|e| SignedTransaction::from_bytes(&e.1).unwrap().into())
             .collect();
         Ok(transactions)
     }
@@ -181,7 +181,7 @@ impl<'a> CbState<'a> {
 
     pub fn set(&self, transaction: &SignedTransaction) -> Result<(), ApplyError> {
         let address = cb_address(&transaction.id());
-        let packed = transaction.pack();
+        let packed = transaction.as_bytes();
         self.context
             .set_state_entry(address, packed)
             .map_err(|err| {

@@ -48,7 +48,7 @@ fn end_to_end_election() {
     let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id);
 
     // Create an auth package and blind it
-    let auth_package = AuthPackage::new(election.id(), ballot_id, vote.public_key);
+    let auth_package = AuthPackage::new(election.id(), ballot_id, vote.anonymous_key);
     let (blinded_auth_package, unblinder) = auth_package.blind(&authn_public);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)

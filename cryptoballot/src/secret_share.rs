@@ -1,9 +1,14 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
-use sharks::{Share, Sharks};
 use uuid::Uuid;
 
+/// Transaction 3: SecretShare
+///
+/// The SecretShareTransaction is published by trustees, with one transaction created per trustee.
+///
+/// After the trustee determins that voting is over and all votes may be decrypted, they publish
+/// a SecretShareTransaction, revealing the secret-share that was delt to them by the election authority.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SecretShareTransaction {
     pub id: Identifier,
@@ -18,6 +23,7 @@ pub struct SecretShareTransaction {
 }
 
 impl SecretShareTransaction {
+    /// Create a new SecretShare Transaction
     pub fn new(election_id: Identifier, trustee: Trustee, secret_share: Vec<u8>) -> Self {
         let secret_share = SecretShareTransaction {
             id: Identifier::new(election_id, TransactionType::SecretShare),
@@ -30,6 +36,7 @@ impl SecretShareTransaction {
         secret_share
     }
 
+    /// Validate the transaction
     pub fn validate(&self, election: &ElectionTransaction) -> Result<(), ValidationError> {
         // TODO: check self.id.election_id vs self.election_id
         if self.election != election.id {
@@ -58,6 +65,11 @@ impl Signable for SecretShareTransaction {
     }
 }
 
+/// A trustee is responsible for safeguarding a secret share (a portion of the secret vote decryption key),
+/// distributed by the election authority via Shamir Secret Sharing.
+///
+/// Most elections will have a handful of trustees (between 3 and 30), with a quorum being set to about 2/3
+/// the total number of trustees. Any quorum of trustees may decrypt the votes.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Trustee {
     pub id: uuid::Uuid,
@@ -67,6 +79,7 @@ pub struct Trustee {
 }
 
 impl Trustee {
+    /// Create a new trustee
     pub fn new() -> (Self, SecretKey) {
         let (secret, public) = generate_keypair();
 
@@ -76,28 +89,4 @@ impl Trustee {
         };
         return (trustee, secret);
     }
-}
-
-pub fn deal_secret_shares(theshold: u8, num_trustees: usize, secret: &[u8]) -> Vec<Vec<u8>> {
-    let sharks = Sharks(theshold);
-    let dealer = sharks.dealer(secret);
-
-    let mut all_shares = Vec::with_capacity(num_trustees);
-    for s in dealer.take(num_trustees) {
-        all_shares.push(Vec::from(&s));
-    }
-
-    all_shares
-}
-
-pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result<Vec<u8>, Error> {
-    let shares: Vec<Share> = shares.iter().map(|s| Share::from(s.as_slice())).collect();
-
-    let sharks = Sharks(threshold);
-
-    let secret = sharks
-        .recover(&shares)
-        .map_err(|_| Error::SecretRecoveryFailed)?;
-
-    Ok(secret)
 }
