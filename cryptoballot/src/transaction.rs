@@ -1,4 +1,6 @@
 use crate::*;
+use content_inspector::ContentType;
+use digest::Digest;
 use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
@@ -45,6 +47,14 @@ impl Transaction {
             Transaction::Decryption(tx) => tx.id,
         }
     }
+
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        match content_inspector::inspect(&bytes) {
+            ContentType::UTF_8 => Ok(serde_json::from_slice(&bytes)?),
+            ContentType::BINARY => Ok(serde_cbor::from_slice(&bytes)?),
+            _ => Err(Error::DeserializationUnknownFormat),
+        }
+    }
 }
 
 /// A signed transaction
@@ -76,8 +86,13 @@ impl SignedTransaction {
     }
 
     /// Unpack from bytes
-    pub fn from_bytes(packed: &[u8]) -> Result<Self, Error> {
-        Ok(serde_cbor::from_slice(packed)?)
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        // If it starts with `{` then it's JSON
+        if bytes[0] == 123 {
+            Ok(serde_json::from_slice(&bytes)?)
+        } else {
+            Ok(serde_cbor::from_slice(&bytes)?)
+        }
     }
 
     /// Get the transaction ID
@@ -116,7 +131,7 @@ pub trait Signable: Serialize {
 }
 
 /// A generic signed transaction
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Signed<T: Signable> {
     pub tx: T,
 
@@ -184,7 +199,7 @@ impl<T: Signable + Serialize> Deref for Signed<T> {
 /// Transaction identifier
 ///
 /// The identifier defines the election, transction-type, and a unique identifier.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Identifier {
     pub election_id: [u8; 15],
     pub transaction_type: TransactionType,
@@ -193,11 +208,13 @@ pub struct Identifier {
 
 impl Identifier {
     /// Creat a new Identifier
-    pub fn new(election_id: Identifier, transaction_type: TransactionType) -> Self {
-        let mut csprng = rand::rngs::OsRng {};
-
+    pub fn new(
+        election_id: Identifier,
+        transaction_type: TransactionType,
+        unique_info: &[u8],
+    ) -> Self {
         let election_id = election_id.election_id;
-        let unique_id: [u8; 16] = csprng.gen();
+        let unique_id: [u8; 16] = sha2::Sha512::digest(unique_info)[0..16].try_into().unwrap();
         Identifier {
             election_id,
             transaction_type,
@@ -218,18 +235,21 @@ impl Identifier {
             unique_id: Some(unique_id),
         }
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes: [u8; 32] = [0; 32];
+        bytes[0..15].clone_from_slice(&self.election_id);
+        bytes[15] = self.transaction_type as u8;
+        if let Some(unique_id) = self.unique_id {
+            bytes[16..32].clone_from_slice(&unique_id);
+        }
+        bytes.to_vec()
+    }
 }
 
 impl ToString for Identifier {
     fn to_string(&self) -> String {
-        let election_id = hex::encode(self.election_id);
-        let transaction_type = hex::encode([self.transaction_type as u8]);
-        let unique_id = match self.unique_id {
-            Some(unique_id) => hex::encode(unique_id),
-            None => "".to_string(),
-        };
-
-        format!("{}{}{}", election_id, transaction_type, unique_id)
+        hex::encode(self.to_bytes())
     }
 }
 
@@ -283,14 +303,14 @@ impl Serialize for Identifier {
 }
 
 /// A transaction type
-#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum TransactionType {
-    Election,
-    Vote,
-    SecretShare,
-    Decryption,
+    Election = 1,
+    Vote = 2,
+    SecretShare = 3,
+    Decryption = 4,
 }
 
 // Automatic translation between types
@@ -390,5 +410,28 @@ impl AsRef<DecryptionTransaction> for SignedTransaction {
             SignedTransaction::Decryption(signed) => &signed.tx,
             _ => panic!("wrong transaction type expected"),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_identifier() {
+        assert!(TransactionType::Election as u8 == 1);
+        assert!(TransactionType::Vote as u8 == 2);
+        assert!(TransactionType::SecretShare as u8 == 3);
+        assert!(TransactionType::Decryption as u8 == 4);
+
+        let election_id = Identifier::new_for_election();
+        let election_id_bytes = election_id.to_bytes();
+        assert_eq!(election_id_bytes[15], 1);
+
+        let stringed = election_id.to_string();
+        let from_string = Identifier::from_str(&stringed).unwrap();
+
+        assert_eq!(election_id, from_string);
     }
 }

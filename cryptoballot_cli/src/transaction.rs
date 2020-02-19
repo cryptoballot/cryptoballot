@@ -1,4 +1,3 @@
-use cryptoballot::Signable;
 use lazy_static::lazy_static;
 use protobuf::Message;
 use protobuf::RepeatedField;
@@ -153,15 +152,16 @@ pub fn create_batch_list(signer: &Signer, tx: &Transaction) -> Vec<u8> {
     batch_list_bytes
 }
 
-pub fn send_batch_list(batch_list_bytes: Vec<u8>) {
+pub fn send_batch_list(batch_list_bytes: Vec<u8>, uri: &str) -> Result<(), reqwest::Error> {
+    let full_uri = format!("{}/batches", uri);
     let client = reqwest::blocking::Client::new();
-    let res = client
-        .post("http://localhost:8008/batches")
+    client
+        .post(&full_uri)
         .header("Content-Type", "application/octet-stream")
         .body(batch_list_bytes)
-        .send();
+        .send()?;
 
-    dbg!(res);
+    Ok(())
 }
 
 #[cfg(test)]

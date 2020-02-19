@@ -1,10 +1,15 @@
 {
     "type": "decryption",
     "tx": {
-        "id": "90e336d5f2f73f70acfa7fbc9d00080334251648f2c521512c5a22eae2e90d81",
-        "election": "90e336d5f2f73f70acfa7fbc9d00080000000000000000000000000000000000",
-        "vote": "90e336d5f2f73f70acfa7fbc9d000801f079015802ff8940380f366be0e7635a",
+        "id": "bebb7c9de7d7d77ec3c4f3fbc73b0d04750f6285c9f6d3e36a8a30707a7a47b7",
+        "election": "bebb7c9de7d7d77ec3c4f3fbc73b0d0100000000000000000000000000000000",
+        "vote": "bebb7c9de7d7d77ec3c4f3fbc73b0d0294b58ad32f52f1e60115bc17b189f027",
+        "trustees": [
+            "d09df23e-9445-4764-8396-fbd119a1b4d3",
+            "ef32ec47-c553-455d-b755-2d813d65d73b",
+            "6bdc2b36-878f-4628-bba7-ef460ca6c06a"
+        ],
         "decrypted_vote": "426172616b204f62616d61"
     },
-    "sig": "2bac986e7f4307c6283886da535552ef8446a100bbc5c612c341137f6f0c8dea081fffb309897c87bf8af6163944a66f4e458d7cb82f820823e4d64ebb4fcb0c"
+    "sig": "57159a7cd3947b33311e127fc3ef8ded579d04b5df2daf3cfe593242ba4c114ac390f8f0c1d9f5a54f7b38ba462f9aef032e1573f05548c0be470067d706b40b"
 }

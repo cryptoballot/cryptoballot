@@ -3,9 +3,6 @@ use failure::Fail;
 /// Error types
 #[derive(Debug, Fail)]
 pub enum Error {
-    #[fail(display = "cryptoballot: transaction failed to unpack: {}", 0)]
-    UnpackError(serde_cbor::error::Error),
-
     #[fail(display = "cryptoballot: sinature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
 
@@ -26,11 +23,26 @@ pub enum Error {
 
     #[fail(display = "cryptoballot: invalid identifier - wrong length")]
     IdentifierBadLen,
+
+    #[fail(display = "cryptoballot: CBOR error deserializing transaction: {}", 0)]
+    CBORDeserialization(serde_cbor::Error),
+
+    #[fail(display = "cryptoballot: JSON error deserializing transaction: {}", 0)]
+    JSONDeserialization(serde_json::Error),
+
+    #[fail(display = "cryptoballot: error deserializing transaction: unknown format")]
+    DeserializationUnknownFormat,
 }
 
 impl From<serde_cbor::error::Error> for Error {
     fn from(err: serde_cbor::error::Error) -> Self {
-        Error::UnpackError(err)
+        Error::CBORDeserialization(err)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Self {
+        Error::JSONDeserialization(err)
     }
 }
 

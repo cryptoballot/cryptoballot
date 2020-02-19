@@ -34,8 +34,9 @@ impl VoteTransaction {
     /// Create a new vote transaction.
     pub fn new(election_id: Identifier, ballot_id: Uuid) -> (Self, SecretKey) {
         let (secret_key, public_key) = generate_keypair();
+
         let vote = VoteTransaction {
-            id: Identifier::new(election_id, TransactionType::Vote),
+            id: Identifier::new(election_id, TransactionType::Vote, &public_key.to_bytes()),
             election: election_id,
             ballot_id: ballot_id,
             encrypted_vote: vec![],

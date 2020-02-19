@@ -26,7 +26,7 @@ impl SecretShareTransaction {
     /// Create a new SecretShare Transaction
     pub fn new(election_id: Identifier, trustee: Trustee, secret_share: Vec<u8>) -> Self {
         let secret_share = SecretShareTransaction {
-            id: Identifier::new(election_id, TransactionType::SecretShare),
+            id: Self::build_id(election_id, trustee.id),
             election: election_id,
             trustee_id: trustee.id,
             public_key: trustee.public_key,
@@ -34,6 +34,14 @@ impl SecretShareTransaction {
         };
 
         secret_share
+    }
+
+    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
+        Identifier::new(
+            election_id,
+            TransactionType::SecretShare,
+            trustee_id.as_bytes(),
+        )
     }
 
     /// Validate the transaction

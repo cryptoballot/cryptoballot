@@ -72,8 +72,6 @@ fn main() {
 }
 
 fn command_sign_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Verbosity) {
-    use content_inspector::ContentType;
-
     let filename = match matches.value_of("INPUT") {
         Some(filename) => filename,
         None => {
@@ -90,25 +88,13 @@ fn command_sign_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Ve
         }
     };
 
-    let tx: cryptoballot::Transaction = match content_inspector::inspect(&file_bytes) {
-        ContentType::UTF_8 => serde_json::from_slice(&file_bytes).unwrap_or_else(|e| {
-            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
-            std::process::exit(1);
-        }),
-        ContentType::BINARY => serde_cbor::from_slice(&file_bytes).unwrap_or_else(|e| {
-            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
-            std::process::exit(1);
-        }),
-        _ => {
-            eprintln!("cryptoballot post: invalid file format for {}", filename);
-            std::process::exit(1);
-        }
-    };
+    let tx = cryptoballot::Transaction::from_bytes(&file_bytes).unwrap_or_else(|e| {
+        eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
+        std::process::exit(1);
+    });
 }
 
 fn command_post_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Verbosity) {
-    use content_inspector::ContentType;
-
     let filename = match matches.value_of("INPUT") {
         Some(filename) => filename,
         None => {
@@ -125,20 +111,10 @@ fn command_post_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Ve
         }
     };
 
-    let tx: cryptoballot::SignedTransaction = match content_inspector::inspect(&file_bytes) {
-        ContentType::UTF_8 => serde_json::from_slice(&file_bytes).unwrap_or_else(|e| {
-            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
-            std::process::exit(1);
-        }),
-        ContentType::BINARY => serde_cbor::from_slice(&file_bytes).unwrap_or_else(|e| {
-            eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
-            std::process::exit(1);
-        }),
-        _ => {
-            eprintln!("cryptoballot post: invalid file format for {}", filename);
-            std::process::exit(1);
-        }
-    };
+    let tx = cryptoballot::SignedTransaction::from_bytes(&file_bytes).unwrap_or_else(|e| {
+        eprintln!("cryptoballot post: unable to read {}: {}, ", filename, e);
+        std::process::exit(1);
+    });
 
     // Generate the signer
     // TODO: allow signer to be passed in
@@ -152,5 +128,18 @@ fn command_post_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Ve
     // Create sawtooth transaction
     let tx = transaction::create_tx(&signer, &tx);
     let bl = transaction::create_batch_list(&signer, &tx);
-    transaction::send_batch_list(bl);
+    transaction::send_batch_list(bl, uri).unwrap_or_else(|e| {
+        eprintln!("cryptoballot post: error sending transaction: {}, ", e);
+        std::process::exit(1);
+    });
+}
+
+fn command_get_transaction(matches: &clap::ArgMatches, uri: &str, verbosity: Verbosity) {
+    let identifier = match matches.value_of("ID") {
+        Some(id) => id,
+        None => {
+            eprintln!("cryptoballot post: Transaction ID required");
+            std::process::exit(1);
+        }
+    };
 }

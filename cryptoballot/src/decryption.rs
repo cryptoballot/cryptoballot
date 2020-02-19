@@ -1,6 +1,8 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
 use sharks::{Share, Sharks};
+use uuid::Uuid;
+
 /// Transaction 4: Decryption
 ///
 /// After a quorum of Trustees have posted SharedSecret transactions (#3), any node may produce
@@ -11,6 +13,7 @@ pub struct DecryptionTransaction {
     pub id: Identifier,
     pub election: Identifier,
     pub vote: Identifier,
+    pub trustees: Vec<Uuid>,
 
     #[serde(with = "hex_serde")]
     pub decrypted_vote: Vec<u8>,
@@ -21,15 +24,16 @@ impl DecryptionTransaction {
     pub fn new(
         election: Identifier,
         vote: Identifier,
+        trustees: Vec<Uuid>,
         decrypted_vote: Vec<u8>,
     ) -> DecryptionTransaction {
         // TODO: sanity check to make sure election and vote are in same election
         // This could be a debug assert
-
         DecryptionTransaction {
-            id: Identifier::new(election, TransactionType::Decryption),
+            id: Identifier::new(election, TransactionType::Decryption, &vote.to_bytes()),
             election: election,
             vote: vote,
+            trustees: trustees,
             decrypted_vote,
         }
     }
@@ -76,13 +80,15 @@ impl Signable for DecryptionTransaction {
     }
 
     fn inputs(&self) -> Vec<Identifier> {
-        let all_secret_shares = Identifier {
-            election_id: self.election.election_id,
-            transaction_type: TransactionType::SecretShare,
-            unique_id: None,
-        };
+        let mut inputs = Vec::<Identifier>::with_capacity(2 + self.trustees.len());
+        inputs.push(self.election);
+        inputs.push(self.vote);
 
-        vec![self.election, self.vote, all_secret_shares]
+        for trustee in self.trustees.iter() {
+            inputs.push(SecretShareTransaction::build_id(self.election, *trustee))
+        }
+
+        inputs
     }
 }
 

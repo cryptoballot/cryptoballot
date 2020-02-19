@@ -94,12 +94,16 @@ impl TransactionHandler for CbTransactionHandler {
 
                 let vote: Signed<VoteTransaction> = state.get_inner(decryption.vote).unwrap();
 
-                let secret_shares: Vec<Signed<SecretShareTransaction>> = state
-                    .get_all_type(decryption.election, TransactionType::SecretShare)
-                    .unwrap();
+                let mut secret_shares =
+                    Vec::<SecretShareTransaction>::with_capacity(election.trustees.len());
+                for trustee in election.trustees.iter() {
+                    let secret_share_id =
+                        SecretShareTransaction::build_id(decryption.election, trustee.id);
 
-                let secret_shares: Vec<SecretShareTransaction> =
-                    secret_shares.iter().map(|e| e.inner().to_owned()).collect();
+                    let secret_share: Signed<SecretShareTransaction> =
+                        state.get_inner(secret_share_id).unwrap();
+                    secret_shares.push(secret_share.inner().to_owned());
+                }
 
                 decryption.verify_signature().unwrap();
                 decryption
@@ -150,22 +154,6 @@ impl<'a> CbState<'a> {
             },
             None => Ok(None),
         }
-    }
-
-    pub fn get_all_type<T: From<SignedTransaction>>(
-        &self,
-        election_id: Identifier,
-        tx_type: TransactionType,
-    ) -> Result<Vec<T>, ApplyError> {
-        let address_prefix = cb_address_type(&election_id, tx_type);
-        let d = self.context.get_state_entries(&[address_prefix])?;
-
-        // TODO: fix this unwrap
-        let transactions = d
-            .iter()
-            .map(|e| SignedTransaction::from_bytes(&e.1).unwrap().into())
-            .collect();
-        Ok(transactions)
     }
 
     pub fn get_inner<T: From<SignedTransaction>>(

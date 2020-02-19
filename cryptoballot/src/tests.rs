@@ -100,7 +100,8 @@ fn end_to_end_election() {
     let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote).unwrap();
 
     // Create decryption transaction
-    let decryption = DecryptionTransaction::new(election.id(), vote.id(), decrypted_vote);
+    let trustees: Vec<Uuid> = election.trustees.iter().map(|t| t.id).collect();
+    let decryption = DecryptionTransaction::new(election.id(), vote.id(), trustees, decrypted_vote);
     let decryption = Signed::sign(&authority_secret, decryption).unwrap();
 
     // Validate decryption transaction
