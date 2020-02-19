@@ -90,6 +90,17 @@ impl SignedTransaction {
             SignedTransaction::Decryption(signed) => signed.tx.id,
         }
     }
+
+    /// Get the transaction ID
+    // TODO: use a macro
+    pub fn inputs(&self) -> Vec<Identifier> {
+        match self {
+            SignedTransaction::Election(signed) => signed.inputs(),
+            SignedTransaction::Vote(signed) => signed.inputs(),
+            SignedTransaction::SecretShare(signed) => signed.inputs(),
+            SignedTransaction::Decryption(signed) => signed.inputs(),
+        }
+    }
 }
 
 /// This trait should be considered sealed and should not be implemented outside this crate
@@ -97,7 +108,7 @@ impl SignedTransaction {
 pub trait Signable: Serialize {
     fn id(&self) -> Identifier;
     fn public(&self) -> Option<PublicKey>;
-    fn input(&self) -> Vec<Identifier>;
+    fn inputs(&self) -> Vec<Identifier>;
 
     fn as_bytes(&self) -> Vec<u8> {
         serde_cbor::to_vec(&self).expect("cryptoballot: Unexpected error serializing transaction")

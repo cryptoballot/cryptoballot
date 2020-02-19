@@ -18,3 +18,5 @@ reqwest = { version = "0.10.1", features=["blocking"] }
 protobuf = "2.10.1"
 rand = "0.7.3"
 sha2 = "0.8.1"
+lazy_static = "1.4.0"
+hex = '0.4.2' 

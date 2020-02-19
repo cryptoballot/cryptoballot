@@ -1,3 +1,5 @@
+use cryptoballot::Signable;
+use lazy_static::lazy_static;
 use protobuf::Message;
 use protobuf::RepeatedField;
 use rand::{thread_rng, Rng};
@@ -10,9 +12,25 @@ use sawtooth_sdk::signing::Signer;
 use sha2::Digest;
 use sha2::Sha512;
 
+lazy_static! {
+    static ref CB_PREFIX: String = {
+        let mut sha = Sha512::new();
+        sha.input("cryptoballot");
+        hex::encode(&sha.result()[..6])
+    };
+}
+
+fn identifier_to_address(ident: cryptoballot::Identifier) -> String {
+    let prefix: &str = CB_PREFIX.as_ref();
+    format!("{}{}", prefix, ident.to_string())
+}
+
 pub fn create_tx(signer: &Signer, tx: &cryptoballot::SignedTransaction) -> Transaction {
+    let inputs = tx.inputs();
+    let outputs = vec![tx.id()];
+
     let payload_bytes = tx.as_bytes();
-    let tx_header_bytes = create_header(signer, &payload_bytes);
+    let tx_header_bytes = create_header(signer, &payload_bytes, inputs, outputs);
 
     let signature = signer
         .sign(&tx_header_bytes)
@@ -26,10 +44,25 @@ pub fn create_tx(signer: &Signer, tx: &cryptoballot::SignedTransaction) -> Trans
     tx
 }
 
-fn create_header(signer: &Signer, payload_bytes: &[u8]) -> Vec<u8> {
+fn create_header(
+    signer: &Signer,
+    payload_bytes: &[u8],
+    inputs: Vec<cryptoballot::Identifier>,
+    outputs: Vec<cryptoballot::Identifier>,
+) -> Vec<u8> {
     let mut txn_header = TransactionHeader::new();
     txn_header.set_family_name(String::from("cryptoballot"));
     txn_header.set_family_version(String::from("1.0"));
+
+    // Translate the identifiers to addresses
+    let mut input_addresses = Vec::with_capacity(inputs.len());
+    for ident in inputs {
+        input_addresses.push(identifier_to_address(ident));
+    }
+    let mut output_addresses = Vec::with_capacity(outputs.len());
+    for ident in outputs {
+        output_addresses.push(identifier_to_address(ident));
+    }
 
     // Generate a random 128 bit number to use as a nonce
     let mut nonce = [0u8; 16];
@@ -38,15 +71,8 @@ fn create_header(signer: &Signer, payload_bytes: &[u8]) -> Vec<u8> {
         .expect("Error generating random nonce");
     txn_header.set_nonce(to_hex_string(&nonce.to_vec()));
 
-    let input_vec: Vec<String> = vec![String::from(
-        "1cf1266e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7",
-    )];
-    let output_vec: Vec<String> = vec![String::from(
-        "1cf1266e282c41be5e4254d8820772c5518a2c5a8c0c7f7eda19594a7eb539453e1ed7",
-    )];
-
-    txn_header.set_inputs(RepeatedField::from_vec(input_vec));
-    txn_header.set_outputs(RepeatedField::from_vec(output_vec));
+    txn_header.set_inputs(RepeatedField::from_vec(input_addresses));
+    txn_header.set_outputs(RepeatedField::from_vec(output_addresses));
     txn_header.set_signer_public_key(
         signer
             .get_public_key()

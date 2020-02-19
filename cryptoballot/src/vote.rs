@@ -86,7 +86,7 @@ impl Signable for VoteTransaction {
         Some(self.anonymous_key)
     }
 
-    fn input(&self) -> Vec<Identifier> {
+    fn inputs(&self) -> Vec<Identifier> {
         // Only requires election as input
         vec![self.election]
     }

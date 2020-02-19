@@ -75,7 +75,7 @@ impl Signable for DecryptionTransaction {
         None
     }
 
-    fn input(&self) -> Vec<Identifier> {
+    fn inputs(&self) -> Vec<Identifier> {
         let all_secret_shares = Identifier {
             election_id: self.election.election_id,
             transaction_type: TransactionType::SecretShare,

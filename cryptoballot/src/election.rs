@@ -136,7 +136,7 @@ impl Signable for ElectionTransaction {
         Some(self.authority_public)
     }
 
-    fn input(&self) -> Vec<Identifier> {
+    fn inputs(&self) -> Vec<Identifier> {
         // No inputs requires for election
         vec![]
     }

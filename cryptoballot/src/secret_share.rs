@@ -64,7 +64,7 @@ impl Signable for SecretShareTransaction {
         Some(self.public_key)
     }
 
-    fn input(&self) -> Vec<Identifier> {
+    fn inputs(&self) -> Vec<Identifier> {
         // Only requires election as input
         vec![self.election]
     }
