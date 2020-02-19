@@ -1,4 +1,4 @@
-//! CryptoBallot is a cryptographically secure online voting system, providing secure anonimous voting with end-to-end verifiability.
+//! CryptoBallot is a cryptographically secure online voting system, providing secure anonymous voting with end-to-end verifiability.
 //!
 //! It is currenly under active development and is not production ready.
 //!
