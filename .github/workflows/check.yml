@@ -27,8 +27,8 @@ jobs:
         sudo apt-get -y install libzmq3-dev
         PROTOC_ZIP=protoc-3.11.3-linux-x86_64.zip
         curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/$PROTOC_ZIP
-        nzip -o $PROTOC_ZIP -d /usr/local bin/protoc
-        unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+        sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+        sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
         rm -f $PROTOC_ZIP
         
     - name: Install cargo tools
