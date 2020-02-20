@@ -49,3 +49,7 @@ jobs:
         cargo install cargo-tarpaulin
         cargo tarpaulin --out Xml
         bash <(curl -s https://codecov.io/bash)
+
+    - name: Prepare Cargo cache
+      run: |
+        sudo chmod -R a+w ~/.cargo
