@@ -36,9 +36,15 @@ jobs:
       run: |
         cargo install cargo-license
         cargo install cargo-audit
+        cargo install cargo-tarpaulin
       
     - name: Run Cargo check
       run: |
         cargo check
         cargo clippy
         cargo audit
+
+    - name: Run Tests
+      run: |
+        cargo tarpaulin --out Xml
+        bash <(curl -s https://codecov.io/bash)
