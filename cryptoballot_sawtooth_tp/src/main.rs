@@ -1,6 +1,9 @@
 extern crate sawtooth_sdk;
 
+mod error;
 mod handler;
+
+pub use error::*;
 
 use handler::CbTransactionHandler;
 use sawtooth_sdk::processor::TransactionProcessor;

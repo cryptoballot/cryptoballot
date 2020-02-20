@@ -313,6 +313,18 @@ pub enum TransactionType {
     Decryption = 4,
 }
 
+impl std::fmt::Display for TransactionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let name = match self {
+            TransactionType::Election => "Election",
+            TransactionType::Vote => "Vote",
+            TransactionType::SecretShare => "SecretShare",
+            TransactionType::Decryption => "Decryption",
+        };
+        write!(f, "{}", name)
+    }
+}
+
 // Automatic translation between types
 // TODO: Use a macro for all of these
 // ----------------------------------

@@ -1,3 +1,4 @@
+use crate::*;
 use cryptoballot::*;
 use digest::Digest;
 use lazy_static::lazy_static;
@@ -61,74 +62,94 @@ impl TransactionHandler for CbTransactionHandler {
         };
         // TODO: validate _signer
 
-        let transaction: SignedTransaction = serde_cbor::from_slice(&request.payload).unwrap();
+        // Deserialize transaction
+        let transaction: SignedTransaction =
+            serde_cbor::from_slice(&request.payload).map_err(|e| {
+                ApplyError::InvalidTransaction(format!("cannot parse transaction: {}", e))
+            })?;
+
+        // Load the state
         let state = CbState::new(context);
 
-        match &transaction {
-            SignedTransaction::Election(signed) => {
-                // TODO: check election authority stored in sawset settings
-                signed.verify_signature().unwrap();
-                signed.validate().unwrap();
+        // Validate the transaction
+        validate_transaction(&transaction, &state).map_err(|e| {
+            let err = format!(
+                "error validating {} {}: {}",
+                transaction.transaction_type(),
+                transaction.id().to_string(),
+                &e
+            );
+            match e {
+                TPError::ValidationError(_) => ApplyError::InvalidTransaction(err),
+                _ => ApplyError::InternalError(err),
             }
+        })?;
 
-            SignedTransaction::Vote(vote) => {
-                let election: Signed<ElectionTransaction> = state.get_inner(vote.election).unwrap();
+        // Store the transaction
+        state.set(&transaction).map_err(|e| {
+            ApplyError::InternalError(format!(
+                "cannot store transaction {} {}: {}",
+                transaction.transaction_type(),
+                transaction.id().to_string(),
+                e
+            ))
+        })
+    }
+}
 
-                vote.verify_signature().unwrap();
-                vote.validate(&election).unwrap();
-            }
-
-            SignedTransaction::SecretShare(secret_share) => {
-                let election: Signed<ElectionTransaction> =
-                    state.get_inner(secret_share.election).unwrap();
-
-                secret_share.verify_signature().unwrap();
-                secret_share.validate(&election).unwrap();
-            }
-
-            SignedTransaction::Decryption(decryption) => {
-                decryption.verify_signature().unwrap();
-
-                let election: Signed<ElectionTransaction> =
-                    state.get_inner(decryption.election).unwrap();
-
-                let vote: Signed<VoteTransaction> = state.get_inner(decryption.vote).unwrap();
-
-                let mut secret_shares =
-                    Vec::<SecretShareTransaction>::with_capacity(election.trustees.len());
-                for trustee in election.trustees.iter() {
-                    let secret_share_id =
-                        SecretShareTransaction::build_id(decryption.election, trustee.id);
-
-                    let secret_share: Signed<SecretShareTransaction> =
-                        state.get_inner(secret_share_id).unwrap();
-                    secret_shares.push(secret_share.inner().to_owned());
-                }
-
-                decryption.verify_signature().unwrap();
-                decryption
-                    .validate(&election, &vote, &secret_shares)
-                    .unwrap();
-            }
+fn validate_transaction(transaction: &SignedTransaction, state: &CbState) -> Result<(), TPError> {
+    match &transaction {
+        SignedTransaction::Election(signed) => {
+            // TODO: check election authority stored in sawset settings
+            signed.verify_signature()?;
+            signed.validate()?;
         }
 
-        // Validation passed
-        state.set(&transaction)
+        SignedTransaction::Vote(vote) => {
+            let election: Signed<ElectionTransaction> = state.get_inner(vote.election)?;
+
+            vote.verify_signature()?;
+            vote.validate(&election)?;
+        }
+
+        SignedTransaction::SecretShare(secret_share) => {
+            let election: Signed<ElectionTransaction> = state.get_inner(secret_share.election)?;
+
+            secret_share.verify_signature()?;
+            secret_share.validate(&election)?;
+        }
+
+        SignedTransaction::Decryption(decryption) => {
+            decryption.verify_signature()?;
+
+            let election: Signed<ElectionTransaction> = state.get_inner(decryption.election)?;
+
+            let vote: Signed<VoteTransaction> = state.get_inner(decryption.vote)?;
+
+            let mut secret_shares =
+                Vec::<SecretShareTransaction>::with_capacity(election.trustees.len());
+            for trustee in election.trustees.iter() {
+                let secret_share_id =
+                    SecretShareTransaction::build_id(decryption.election, trustee.id);
+
+                let secret_share = state.get(secret_share_id)?;
+                if let Some(secret_share) = secret_share {
+                    let secret_share: Signed<SecretShareTransaction> = secret_share.into();
+                    secret_shares.push(secret_share.inner().to_owned());
+                }
+            }
+
+            decryption.verify_signature()?;
+            decryption.validate(&election, &vote, &secret_shares)?;
+        }
     }
+
+    Ok(())
 }
 
 // Get the full address prefix for the given transaction
 fn cb_address(transaction_id: &Identifier) -> String {
     format!("{}{}", CB_PREFIX.as_str(), transaction_id.to_string())
-}
-
-// Get the address prefix for the given type
-// Querying by this address will return all transactions of this type for this election.
-fn cb_address_type(election_id: &Identifier, tx_type: TransactionType) -> String {
-    let mut ident = election_id.clone();
-    ident.transaction_type = tx_type;
-    let address = ident.to_string();
-    format!("{}{}", CB_PREFIX.as_str(), &address[0..16])
 }
 
 pub struct CbState<'a> {
@@ -140,17 +161,13 @@ impl<'a> CbState<'a> {
         CbState { context }
     }
 
-    pub fn get(&self, transaction_id: Identifier) -> Result<Option<SignedTransaction>, ApplyError> {
+    pub fn get(&self, transaction_id: Identifier) -> Result<Option<SignedTransaction>, TPError> {
         let address = cb_address(&transaction_id);
         let d = self.context.get_state_entry(&address)?;
         match d {
             Some(packed) => match SignedTransaction::from_bytes(&packed) {
                 Ok(t) => return Ok(Some(t)),
-                Err(e) => Err(ApplyError::InternalError(format!(
-                    "Unable to parse transaction {}: {}",
-                    transaction_id.to_string(),
-                    e
-                ))),
+                Err(_e) => Err(TPError::CannotParseTransaction(transaction_id.to_string())),
             },
             None => Ok(None),
         }
@@ -159,8 +176,11 @@ impl<'a> CbState<'a> {
     pub fn get_inner<T: From<SignedTransaction>>(
         &self,
         transaction_id: Identifier,
-    ) -> Result<T, ()> {
-        let tx: T = self.get(transaction_id).unwrap().unwrap().into();
+    ) -> Result<T, TPError> {
+        let tx: T = self
+            .get(transaction_id)?
+            .ok_or(TPError::StateNotFound(transaction_id.to_string()))?
+            .into();
         Ok(tx)
     }
 
