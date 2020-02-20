@@ -15,6 +15,7 @@ use std::ops::Deref;
 use std::str::FromStr;
 
 /// An unsigned transaction
+/// TODO: Implment From going for specific tx to this emum and vice versa
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]

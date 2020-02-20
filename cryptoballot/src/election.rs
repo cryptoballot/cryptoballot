@@ -168,20 +168,49 @@ mod tests {
 
     #[test]
     fn create_new_election() {
-        let (_authority_secret, authority_public) = generate_keypair();
+        // Bad keypair
+        let (bad_secret, _bad_public) = generate_keypair();
 
-        let (mut election, _election_secret) = ElectionTransaction::new(authority_public);
+        // Create election authority public and private key
+        let (authority_secret, authority_public) = generate_keypair();
 
-        // Create a trustee and add it to the election
-        let (trustee, _trustee_secret) = Trustee::new();
-        election.trustees.push(trustee);
-
-        // Create an authenticator and add it to the election
+        // Create a ballot (TODO: make this a proper struct)
         let ballot_id = Uuid::new_v4();
-        let (authn, _authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
-        election.authenticators.push(authn);
 
-        // Verify the election transaction
-        election.validate().expect("Election did not verify");
+        // Create an authenticator
+        let (authenticator, authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
+        let _authn_secret = authn_secrets.get(&ballot_id).unwrap();
+        let _authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
+
+        // Create 1 trustee
+        let (trustee, _trustee_secret) = Trustee::new();
+
+        // Create an election transaction with a single ballot
+        let (mut election, _election_secret) = ElectionTransaction::new(authority_public);
+        election.ballots = vec![ballot_id];
+        election.authenticators = vec![authenticator.clone()];
+        election.trustees = vec![trustee.clone()];
+
+        // Signing with wrong key should fail
+        assert!(Signed::sign(&bad_secret, election.clone()).is_err());
+
+        // Check inputs
+        assert!(election.inputs().is_empty());
+
+        // Turn it into a generic transaction and check some thing
+        let election_generic = Transaction::Election(election.clone());
+        assert!(election_generic.transaction_type() == TransactionType::Election);
+        assert!(election_generic.id() == election.id);
+
+        // Finalize election transaction by signing it
+        let election = Signed::sign(&authority_secret, election).unwrap();
+        assert!(election.id() == election.id);
+        let election_generic = SignedTransaction::Election(election.clone());
+        assert!(election_generic.transaction_type() == TransactionType::Election);
+        assert!(election_generic.id() == election.id);
+
+        // Validate the election transaction
+        election.verify_signature().unwrap();
+        election.validate().unwrap();
     }
 }

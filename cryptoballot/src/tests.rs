@@ -140,3 +140,20 @@ fn end_to_end_election() {
 
     // TODO: tally!
 }
+
+#[test]
+fn test_all_elections() {
+    for entry in std::fs::read_dir("../test_elections").unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_dir() {
+            for tx_json in std::fs::read_dir(path).unwrap() {
+                let tx_json = tx_json.unwrap();
+                let path = tx_json.path();
+                let file_bytes = std::fs::read(path).unwrap();
+
+                let _tx = SignedTransaction::from_bytes(&file_bytes).unwrap();
+            }
+        }
+    }
+}
