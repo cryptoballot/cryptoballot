@@ -45,6 +45,8 @@ jobs:
         cargo audit
 
     - name: Run Tests
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
         cargo tarpaulin --out Xml
         bash <(curl -s https://codecov.io/bash)
