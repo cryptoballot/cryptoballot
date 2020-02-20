@@ -31,22 +31,21 @@ jobs:
         sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
         sudo chmod a+x /usr/local/bin/protoc
         rm -f $PROTOC_ZIP
-        
-    - name: Install cargo tools
-      run: |
-        cargo install cargo-license
-        cargo install cargo-audit
-        cargo install cargo-tarpaulin
-      
-    - name: Run Cargo check
-      run: |
-        cargo check
-        cargo clippy
-        cargo audit
+
+    - name: cargo check
+        run: |
+          cargo check
+          cargo clippy
+  
+    - name: cargo audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
 
     - name: Run Tests
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: |
+        cargo install cargo-tarpaulin
         cargo tarpaulin --out Xml
         bash <(curl -s https://codecov.io/bash)
