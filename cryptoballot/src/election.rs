@@ -188,7 +188,13 @@ mod tests {
         // Create an election transaction with a single ballot
         let (mut election, _election_secret) = ElectionTransaction::new(authority_public);
         election.ballots = vec![ballot_id];
+
+        // Validation should fail without authenticators
+        assert!(election.validate().is_err());
         election.authenticators = vec![authenticator.clone()];
+
+        // Validation should fail without trustees
+        assert!(election.validate().is_err());
         election.trustees = vec![trustee.clone()];
 
         // Signing with wrong key should fail
@@ -207,10 +213,20 @@ mod tests {
         assert!(election.id() == election.id);
         let election_generic = SignedTransaction::Election(election.clone());
         assert!(election_generic.transaction_type() == TransactionType::Election);
+        assert_eq!(
+            format!("{}", election_generic.transaction_type()),
+            "Election"
+        );
         assert!(election_generic.id() == election.id);
 
         // Validate the election transaction
         election.verify_signature().unwrap();
         election.validate().unwrap();
+
+        // Getting non-existent things shouldn't work
+        let some_uuid = Uuid::new_v4();
+        assert!(election.get_ballot(some_uuid).is_none());
+        assert!(election.get_authenticator(some_uuid).is_none());
+        assert!(election.get_trustee(some_uuid).is_none());
     }
 }
