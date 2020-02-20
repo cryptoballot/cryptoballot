@@ -1,6 +1,6 @@
 [package]
 name = 'cryptoballot'
-version = '0.3.0'
+version = '0.3.1'
 authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
 description = 'Cryptographically secure end-to-end verifiable online voting'
@@ -16,12 +16,12 @@ libsecp256k1 = "0.3.5"
 ed25519-dalek = { version ="1.0.0-pre.3", features = ["serde"] }
 ecies = '0.1.3'
 serde_cbor = '0.11.1'
-hex = '0.4.1'
+hex = '0.4.2'
 num_enum = "0.4.2"
 failure = "0.1.6"
 sha2 = "0.8.1"
 digest = "0.8.1"
-rsa-fdh = "0.2.0"
+rsa-fdh = "0.2.1"
 rsa = { version = "0.2.0", features = ["serde1"] }
 content_inspector = "0.2.4" 
 
