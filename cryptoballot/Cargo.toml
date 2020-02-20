@@ -1,6 +1,6 @@
 [package]
 name = 'cryptoballot'
-version = '0.2.1'
+version = '0.3.0'
 authors = ['phayes <patrick.d.hayes@gmail.com>']
 edition = '2018'
 description = 'Cryptographically secure end-to-end verifiable online voting'
