@@ -33,14 +33,14 @@ jobs:
         rm -f $PROTOC_ZIP
 
     - name: cargo check
-        run: |
-          cargo check
-          cargo clippy
+      run: |
+        cargo check
+        cargo clippy
   
     - name: cargo audit
-        run: |
-          cargo install cargo-audit
-          cargo audit
+      run: |
+        cargo install cargo-audit
+        cargo audit
 
     - name: Run Tests
       env:
