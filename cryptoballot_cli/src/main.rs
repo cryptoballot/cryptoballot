@@ -1,5 +1,3 @@
-#![feature(inner_deref)]
-
 use clap::{App, Arg, SubCommand};
 use sawtooth_sdk::signing::create_context;
 use sawtooth_sdk::signing::CryptoFactory;
@@ -37,13 +35,13 @@ fn main() {
     // Gets a value for config if supplied by user, or defaults to "default.conf"
     let env_var = std::env::var("CRYPTOBALLOT_URI");
     let uri = match matches.value_of("uri") {
-        Some(uri) => uri,
-        None => env_var.as_deref().unwrap_or("http://localhost:8008"),
+        Some(uri) => uri.to_string(),
+        None => env_var.unwrap_or("http://localhost:8008".to_string()),
     };
 
     // Subcommands
     if let Some(matches) = matches.subcommand_matches("post") {
-        command_post_transaction(matches, uri);
+        command_post_transaction(matches, &uri);
     }
 }
 
