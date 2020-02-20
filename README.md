@@ -7,7 +7,7 @@ CryptoBallot
 [![codecov](https://codecov.io/gh/cryptoballot/cryptoballot/branch/master/graph/badge.svg)](https://codecov.io/gh/cryptoballot/cryptoballot)
 
 
-CryptoBallot is a cryptographically secure decentralized E2E voting system meant for real-world elections. It is a "backend" service providing vote storage, cryptographic operations, and an API. It does not provide a user interface - although it is built to make creating a UI that interfaces with it easy.
+CryptoBallot is a cryptographically secure decentralized end-to-end verifiable voting system meant for real-world elections. It is a "backend" service providing vote storage, cryptographic operations, and an API. It does not provide a user interface - although it is built to make creating a UI that interfaces with it easy.
 
 It uses  Shamir Secret Sharing for election decryption keys, blind-signing for voter anonymity, and an optional blockchain backend for distributed transaction storage and verification.  It supports all tally methods including write-in candidates. 
 
