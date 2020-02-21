@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use protobuf::Message;
 use protobuf::RepeatedField;
 use rand::{thread_rng, Rng};
@@ -11,18 +10,7 @@ use sawtooth_sdk::signing::Signer;
 use sha2::Digest;
 use sha2::Sha512;
 
-lazy_static! {
-    static ref CB_PREFIX: String = {
-        let mut sha = Sha512::new();
-        sha.input("cryptoballot");
-        hex::encode(&sha.result()[..3])
-    };
-}
-
-fn identifier_to_address(ident: cryptoballot::Identifier) -> String {
-    let prefix: &str = CB_PREFIX.as_ref();
-    format!("{}{}", prefix, ident.to_string())
-}
+use super::*;
 
 pub fn create_tx(signer: &Signer, tx: &cryptoballot::SignedTransaction) -> Transaction {
     let inputs = tx.inputs();
@@ -150,18 +138,6 @@ pub fn create_batch_list(signer: &Signer, tx: &Transaction) -> Vec<u8> {
         .expect("Error converting batch list to bytes");
 
     batch_list_bytes
-}
-
-pub fn send_batch_list(batch_list_bytes: Vec<u8>, uri: &str) -> Result<(), reqwest::Error> {
-    let full_uri = format!("{}/batches", uri);
-    let client = reqwest::blocking::Client::new();
-    client
-        .post(&full_uri)
-        .header("Content-Type", "application/octet-stream")
-        .body(batch_list_bytes)
-        .send()?;
-
-    Ok(())
 }
 
 #[cfg(test)]
