@@ -46,15 +46,15 @@ Under active development. Not ready for production use!
 
 ### cryptoballot - Core library
 
-**Location**: `./cryptoballot`
+`./cryptoballot`
 
 **Installation**
 
-Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's `Cargo.toml` file. 
+1. Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's `Cargo.toml` file. 
 
 ### cryptoballot_cli - Command-line tool
 
-**Location**: `./cryptoballot_cli`
+`./cryptoballot_cli`
 
 **Installation**
 
@@ -63,7 +63,7 @@ Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's
 
 ### cryptoballot_sawtooth_tp - Sawtooth Transaction Processor
 
-**Location**: `./cryptoballot_sawtooth_tp`
+`./cryptoballot_sawtooth_tp`
 
 **Installation**
 
