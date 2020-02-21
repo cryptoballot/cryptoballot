@@ -47,6 +47,7 @@ Under active development. Not ready for production use!
 ### cryptoballot - Core library
 
 **Location**: `./cryptoballot`
+
 **Installation**
 
 Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's `Cargo.toml` file. 
@@ -54,6 +55,7 @@ Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's
 ### cryptoballot_cli - Command-line tool
 
 **Location**: `./cryptoballot_cli`
+
 **Installation**
 
 1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
@@ -62,6 +64,7 @@ Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's
 ### cryptoballot_sawtooth_tp - Sawtooth Transaction Processor
 
 **Location**: `./cryptoballot_sawtooth_tp`
+
 **Installation**
 
 1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
