@@ -40,3 +40,21 @@ Under active development. Not ready for production use!
 | ⚠       | End-User Device Verification      | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
+
+
+## Components
+
+### [Core library](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot)
+
+1. Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's `Cargo.toml` file. 
+
+### [Command-line tool](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_cli)
+
+1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
+2. Run `cargo install --path=cryptoballot_cli`
+
+### [Sawtooth Transaction Processor](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_sawtooth_tp)
+
+1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
+2. Install [Sawtooth](https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/installing_sawtooth.html)
+3. Run `cargo install --path=cryptoballot_sawtooth_tp`
