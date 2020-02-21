@@ -43,23 +43,6 @@ impl SecretShareTransaction {
             trustee_id.as_bytes(),
         )
     }
-
-    /// Validate the transaction
-    pub fn validate(&self, election: &ElectionTransaction) -> Result<(), ValidationError> {
-        // TODO: check self.id.election_id vs self.election_id
-        if self.election != election.id {
-            return Err(ValidationError::ElectionMismatch);
-        }
-        let trustee = election
-            .get_trustee(self.trustee_id)
-            .ok_or(ValidationError::TrusteeDoesNotExist)?;
-
-        if trustee.public_key != self.public_key {
-            return Err(ValidationError::InvalidPublicKey);
-        }
-
-        Ok(())
-    }
 }
 
 impl Signable for SecretShareTransaction {
@@ -75,6 +58,25 @@ impl Signable for SecretShareTransaction {
     fn inputs(&self) -> Vec<Identifier> {
         // Only requires election as input
         vec![self.election]
+    }
+
+    /// Validate the transaction
+    fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        let election = store.get_election(self.election)?;
+
+        // TODO: check self.id.election_id vs self.election_id
+        if self.election != election.id {
+            return Err(ValidationError::ElectionMismatch);
+        }
+        let trustee = election
+            .get_trustee(self.trustee_id)
+            .ok_or(ValidationError::TrusteeDoesNotExist)?;
+
+        if trustee.public_key != self.public_key {
+            return Err(ValidationError::InvalidPublicKey);
+        }
+
+        Ok(())
     }
 }
 

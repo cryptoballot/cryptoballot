@@ -7,7 +7,6 @@ use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
 use sha2::Sha512;
-use std::convert::Into;
 
 lazy_static! {
     static ref CB_PREFIX: String = {
@@ -98,52 +97,7 @@ impl TransactionHandler for CbTransactionHandler {
 }
 
 fn validate_transaction(transaction: &SignedTransaction, state: &CbState) -> Result<(), TPError> {
-    match &transaction {
-        SignedTransaction::Election(signed) => {
-            // TODO: check election authority stored in sawset settings
-            signed.verify_signature()?;
-            signed.validate()?;
-        }
-
-        SignedTransaction::Vote(vote) => {
-            let election: Signed<ElectionTransaction> = state.get_inner(vote.election)?;
-
-            vote.verify_signature()?;
-            vote.validate(&election)?;
-        }
-
-        SignedTransaction::SecretShare(secret_share) => {
-            let election: Signed<ElectionTransaction> = state.get_inner(secret_share.election)?;
-
-            secret_share.verify_signature()?;
-            secret_share.validate(&election)?;
-        }
-
-        SignedTransaction::Decryption(decryption) => {
-            decryption.verify_signature()?;
-
-            let election: Signed<ElectionTransaction> = state.get_inner(decryption.election)?;
-
-            let vote: Signed<VoteTransaction> = state.get_inner(decryption.vote)?;
-
-            let mut secret_shares =
-                Vec::<SecretShareTransaction>::with_capacity(election.trustees.len());
-            for trustee in election.trustees.iter() {
-                let secret_share_id =
-                    SecretShareTransaction::build_id(decryption.election, trustee.id);
-
-                let secret_share = state.get(secret_share_id)?;
-                if let Some(secret_share) = secret_share {
-                    let secret_share: Signed<SecretShareTransaction> = secret_share.into();
-                    secret_shares.push(secret_share.inner().to_owned());
-                }
-            }
-
-            decryption.verify_signature()?;
-            decryption.validate(&election, &vote, &secret_shares)?;
-        }
-    }
-
+    transaction.validate(state)?;
     Ok(())
 }
 
@@ -173,17 +127,6 @@ impl<'a> CbState<'a> {
         }
     }
 
-    pub fn get_inner<T: From<SignedTransaction>>(
-        &self,
-        transaction_id: Identifier,
-    ) -> Result<T, TPError> {
-        let tx: T = self
-            .get(transaction_id)?
-            .ok_or(TPError::StateNotFound(transaction_id.to_string()))?
-            .into();
-        Ok(tx)
-    }
-
     pub fn set(&self, transaction: &SignedTransaction) -> Result<(), ApplyError> {
         let address = cb_address(&transaction.id());
         let packed = transaction.as_bytes();
@@ -197,6 +140,13 @@ impl<'a> CbState<'a> {
                 ))
             })?;
         Ok(())
+    }
+}
+
+impl<'a> Store for CbState<'a> {
+    // TODO: Perhaps change this from Option<T> to Result<T>
+    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
+        self.get(id).ok().flatten()
     }
 }
 

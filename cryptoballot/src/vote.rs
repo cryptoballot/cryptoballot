@@ -46,9 +46,27 @@ impl VoteTransaction {
 
         (vote, secret_key)
     }
+}
+
+impl Signable for VoteTransaction {
+    fn id(&self) -> Identifier {
+        self.id
+    }
+
+    // TODO: election authority public key
+    fn public(&self) -> Option<PublicKey> {
+        Some(self.anonymous_key)
+    }
+
+    fn inputs(&self) -> Vec<Identifier> {
+        // Only requires election as input
+        vec![self.election]
+    }
 
     /// Validate the vote transaction
-    pub fn validate(&self, election: &ElectionTransaction) -> Result<(), ValidationError> {
+    fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        let election = store.get_election(self.election)?;
+
         // TODO: check self.id.election_id vs self.election_id
         if self.election != election.id {
             return Err(ValidationError::ElectionMismatch);
@@ -74,22 +92,6 @@ impl VoteTransaction {
         }
 
         Ok(())
-    }
-}
-
-impl Signable for VoteTransaction {
-    fn id(&self) -> Identifier {
-        self.id
-    }
-
-    // TODO: election authority public key
-    fn public(&self) -> Option<PublicKey> {
-        Some(self.anonymous_key)
-    }
-
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        vec![self.election]
     }
 }
 

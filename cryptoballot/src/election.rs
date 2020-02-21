@@ -70,31 +70,6 @@ impl ElectionTransaction {
         (election, secret)
     }
 
-    /// Validate the election transaction
-    pub fn validate(&self) -> Result<(), ValidationError> {
-        // Make sure the encryption public-key is well-formed
-        if self.encryption_public.len() != 65 {
-            return Err(ValidationError::InvalidPublicKey);
-        }
-        // TODO: check parsing of public key
-
-        // Make sure trustees settings are sane
-        if self.trustees_threshold > self.trustees.len() as u8 {
-            return Err(ValidationError::InvalidTrusteeThreshold);
-        }
-        // TODO: check that we have at least 1 trustee
-
-        // Make sure authenticator settings are sane
-        if self.authenticators_threshold > self.authenticators.len() as u8 {
-            return Err(ValidationError::InvalidAuthThreshold);
-        }
-        // TODO: check that we have at least 1 authenticator
-
-        // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
-
-        Ok(())
-    }
-
     // TODO: return a ballot struct when we have it defined
     /// Get a ballot with the given ID
     pub fn get_ballot(&self, ballot_id: Uuid) -> Option<()> {
@@ -140,6 +115,31 @@ impl Signable for ElectionTransaction {
         // No inputs requires for election
         vec![]
     }
+
+    /// Validate the election transaction
+    fn validate_tx<S: Store>(&self, _store: &S) -> Result<(), ValidationError> {
+        // Make sure the encryption public-key is well-formed
+        if self.encryption_public.len() != 65 {
+            return Err(ValidationError::InvalidPublicKey);
+        }
+        // TODO: check parsing of public key
+
+        // Make sure trustees settings are sane
+        if self.trustees_threshold > self.trustees.len() as u8 {
+            return Err(ValidationError::InvalidTrusteeThreshold);
+        }
+        // TODO: check that we have at least 1 trustee
+
+        // Make sure authenticator settings are sane
+        if self.authenticators_threshold > self.authenticators.len() as u8 {
+            return Err(ValidationError::InvalidAuthThreshold);
+        }
+        // TODO: check that we have at least 1 authenticator
+
+        // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
+
+        Ok(())
+    }
 }
 
 /// Deal the election secret into shares, ready to be distributed to trustees.
@@ -168,6 +168,8 @@ mod tests {
 
     #[test]
     fn create_new_election() {
+        let store = TestStore::default();
+
         // Bad keypair
         let (bad_secret, _bad_public) = generate_keypair();
 
@@ -190,11 +192,11 @@ mod tests {
         election.ballots = vec![ballot_id];
 
         // Validation should fail without authenticators
-        assert!(election.validate().is_err());
+        assert!(election.validate_tx(&store).is_err());
         election.authenticators = vec![authenticator.clone()];
 
         // Validation should fail without trustees
-        assert!(election.validate().is_err());
+        assert!(election.validate_tx(&store).is_err());
         election.trustees = vec![trustee.clone()];
 
         // Signing with wrong key should fail
@@ -221,7 +223,7 @@ mod tests {
 
         // Validate the election transaction
         election.verify_signature().unwrap();
-        election.validate().unwrap();
+        election.validate(&store).unwrap();
 
         // Getting non-existent things shouldn't work
         let some_uuid = Uuid::new_v4();

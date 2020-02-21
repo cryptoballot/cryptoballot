@@ -23,6 +23,7 @@ mod election;
 mod error;
 mod secret_share;
 mod serde_hex;
+mod store;
 mod transaction;
 mod util;
 mod vote;
@@ -32,6 +33,7 @@ pub use decryption::*;
 pub use election::*;
 pub use error::*;
 pub use secret_share::*;
+pub use store::*;
 pub use transaction::*;
 pub use util::*;
 pub use vote::*;
@@ -40,3 +42,6 @@ pub(crate) use serde_hex::*;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+pub use tests::*;

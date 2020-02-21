@@ -1,8 +1,28 @@
 use super::*;
+use std::collections::HashMap;
 use uuid::Uuid;
+
+#[derive(Default)]
+pub struct TestStore {
+    inner: HashMap<Identifier, SignedTransaction>,
+}
+
+impl TestStore {
+    pub fn set(&mut self, tx: SignedTransaction) {
+        self.inner.insert(tx.id(), tx);
+    }
+}
+
+impl Store for TestStore {
+    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
+        self.inner.get(&id).cloned()
+    }
+}
 
 #[test]
 fn end_to_end_election() {
+    let mut store = TestStore::default();
+
     // Create election authority public and private key
     let (authority_secret, authority_public) = generate_keypair();
 
@@ -40,9 +60,10 @@ fn end_to_end_election() {
 
     // TODO: In the future, don't rely on a trusted dealer, instead do verifiable distributed key generation using ElGamal
 
-    // Validate the election transaction
+    // Validate the election transaction and store it
     election.verify_signature().unwrap();
-    election.validate().unwrap();
+    election.validate(&store).unwrap();
+    store.set(election.clone().into());
 
     // Generate an empty vote transaction
     let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id);
@@ -66,9 +87,10 @@ fn end_to_end_election() {
     // Sign and seal the vote transaction
     let vote = Signed::sign(&voter_secret, vote).unwrap();
 
-    // Validate the vote transaction
+    // Validate the vote transaction and store it
     vote.verify_signature().unwrap();
-    vote.validate(&election).unwrap();
+    vote.validate(&store).unwrap();
+    store.set(vote.clone().into());
 
     // Voting is over
     // ----------------
@@ -83,9 +105,12 @@ fn end_to_end_election() {
 
     // Validate SecretShare transactions
     secret_share_1.verify_signature().unwrap();
-    secret_share_1.validate(&election).unwrap();
+    secret_share_1.validate(&store).unwrap();
+    store.set(secret_share_1.clone().into());
+
     secret_share_2.verify_signature().unwrap();
-    secret_share_2.validate(&election).unwrap();
+    secret_share_2.validate(&store).unwrap();
+    store.set(secret_share_2.clone().into());
 
     // Sign the secret-share transaction
 
@@ -104,17 +129,10 @@ fn end_to_end_election() {
     let decryption = DecryptionTransaction::new(election.id(), vote.id(), trustees, decrypted_vote);
     let decryption = Signed::sign(&authority_secret, decryption).unwrap();
 
-    // Validate decryption transaction
-    let secret_share_transactions = vec![
-        secret_share_1.inner().to_owned(),
-        secret_share_2.inner().to_owned(),
-    ];
-
     // Validate the vote transaction
     decryption.verify_signature().unwrap();
-    decryption
-        .validate(&election, &vote, &secret_share_transactions)
-        .unwrap();
+    decryption.validate(&store).unwrap();
+    store.set(decryption.clone().into());
 
     // To print out the transactions, do `cargo test -- --nocapture`
     println!(

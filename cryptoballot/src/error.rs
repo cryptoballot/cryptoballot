@@ -1,3 +1,4 @@
+use crate::*;
 use failure::Fail;
 
 /// Error types
@@ -103,6 +104,9 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot: auth signature verification failed")]
     AuthSignatureVerificationFailed,
 
+    #[fail(display = "cryptoballot: {}", 0)]
+    TransactionNotFound(TransactionNotFound),
+
     #[fail(display = "cryptoballot validation: signature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
 }
@@ -110,5 +114,11 @@ pub enum ValidationError {
 impl From<ed25519_dalek::SignatureError> for ValidationError {
     fn from(err: ed25519_dalek::SignatureError) -> Self {
         ValidationError::SignatureError(err)
+    }
+}
+
+impl From<TransactionNotFound> for ValidationError {
+    fn from(err: TransactionNotFound) -> Self {
+        ValidationError::TransactionNotFound(err)
     }
 }

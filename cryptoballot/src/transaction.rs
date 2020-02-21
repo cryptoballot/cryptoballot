@@ -56,6 +56,15 @@ impl Transaction {
             _ => Err(Error::DeserializationUnknownFormat),
         }
     }
+
+    pub fn validate_tx<S: Store>(&self, s: &S) -> Result<(), ValidationError> {
+        match self {
+            Transaction::Election(tx) => tx.validate_tx(s),
+            Transaction::Vote(tx) => tx.validate_tx(s),
+            Transaction::SecretShare(tx) => tx.validate_tx(s),
+            Transaction::Decryption(tx) => tx.validate_tx(s),
+        }
+    }
 }
 
 /// A signed transaction
@@ -117,6 +126,15 @@ impl SignedTransaction {
             SignedTransaction::Decryption(signed) => signed.inputs(),
         }
     }
+
+    pub fn validate<S: Store>(&self, s: &S) -> Result<(), ValidationError> {
+        match self {
+            SignedTransaction::Election(tx) => tx.validate(s),
+            SignedTransaction::Vote(tx) => tx.validate(s),
+            SignedTransaction::SecretShare(tx) => tx.validate(s),
+            SignedTransaction::Decryption(tx) => tx.validate(s),
+        }
+    }
 }
 
 /// This trait should be considered sealed and should not be implemented outside this crate
@@ -125,6 +143,7 @@ pub trait Signable: Serialize {
     fn id(&self) -> Identifier;
     fn public(&self) -> Option<PublicKey>;
     fn inputs(&self) -> Vec<Identifier>;
+    fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError>;
 
     fn as_bytes(&self) -> Vec<u8> {
         serde_cbor::to_vec(&self).expect("cryptoballot: Unexpected error serializing transaction")
@@ -133,7 +152,7 @@ pub trait Signable: Serialize {
 
 /// A generic signed transaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Signed<T: Signable> {
+pub struct Signed<T: Signable + Serialize> {
     pub tx: T,
 
     #[serde(with = "EdSignatureHex")]
@@ -181,6 +200,14 @@ impl<T: Signable + Serialize> Signed<T> {
     pub fn id(&self) -> Identifier {
         self.tx.id()
     }
+
+    /// Verify the signature and validate the transaction
+    pub fn validate<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        self.verify_signature()?;
+        self.validate_tx(store)?;
+
+        Ok(())
+    }
 }
 
 impl<T: Signable + Serialize> AsRef<T> for Signed<T> {
@@ -200,7 +227,7 @@ impl<T: Signable + Serialize> Deref for Signed<T> {
 /// Transaction identifier
 ///
 /// The identifier defines the election, transction-type, and a unique identifier.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier {
     pub election_id: [u8; 15],
     pub transaction_type: TransactionType,
@@ -245,12 +272,6 @@ impl Identifier {
             bytes[16..32].clone_from_slice(&unique_id);
         }
         bytes.to_vec()
-    }
-}
-
-impl ToString for Identifier {
-    fn to_string(&self) -> String {
-        hex::encode(self.to_bytes())
     }
 }
 
@@ -303,8 +324,14 @@ impl Serialize for Identifier {
     }
 }
 
+impl std::fmt::Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.to_bytes()))
+    }
+}
+
 /// A transaction type
-#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum TransactionType {

@@ -37,36 +37,6 @@ impl DecryptionTransaction {
             decrypted_vote,
         }
     }
-
-    /// Validate the transaction
-    ///
-    /// The validation does the following:
-    ///  - Takes vote transaction and all secret-share stransactions
-    ///  - validates that the decrypted vote is the same
-    pub fn validate(
-        &self,
-        election: &ElectionTransaction,
-        vote: &VoteTransaction,
-        secret_shares: &[SecretShareTransaction],
-    ) -> Result<(), ValidationError> {
-        let mut shares = Vec::with_capacity(election.trustees_threshold as usize);
-        for secret_share_tx in secret_shares.iter() {
-            shares.push(secret_share_tx.secret_share.clone());
-        }
-
-        // Recover election key from two trustees
-        let election_key = recover_secret_from_shares(election.trustees_threshold, shares)
-            .map_err(|_| ValidationError::SecretRecoveryFailed)?;
-
-        let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote)
-            .map_err(|_| ValidationError::DecryptVoteFailed)?;
-
-        if decrypted_vote != self.decrypted_vote {
-            return Err(ValidationError::MismatchedDecryptedVote);
-        }
-
-        Ok(())
-    }
 }
 
 impl Signable for DecryptionTransaction {
@@ -89,6 +59,41 @@ impl Signable for DecryptionTransaction {
         }
 
         inputs
+    }
+
+    /// Validate the transaction
+    ///
+    /// The validation does the following:
+    ///  - Takes vote transaction and all secret-share stransactions
+    ///  - validates that the decrypted vote is the same
+    fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        let election = store.get_election(self.election)?;
+        let vote = store.get_vote(self.vote)?;
+
+        // TODO: implement some sort of "get_multiple" in Store
+        let mut shares = Vec::with_capacity(election.trustees.len());
+        for trustee in election.trustees.iter() {
+            let secret_share_id = SecretShareTransaction::build_id(self.election, trustee.id);
+            let secret_share_tx = store.get_secret_share(secret_share_id).ok();
+            if let Some(secret_share_tx) = secret_share_tx {
+                shares.push(secret_share_tx.secret_share.clone());
+            }
+        }
+
+        // TODO: Check the secret_shares.len() >= election.trustees_threshold
+
+        // Recover election key from two trustees
+        let election_key = recover_secret_from_shares(election.trustees_threshold, shares)
+            .map_err(|_| ValidationError::SecretRecoveryFailed)?;
+
+        let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote)
+            .map_err(|_| ValidationError::DecryptVoteFailed)?;
+
+        if decrypted_vote != self.decrypted_vote {
+            return Err(ValidationError::MismatchedDecryptedVote);
+        }
+
+        Ok(())
     }
 }
 
