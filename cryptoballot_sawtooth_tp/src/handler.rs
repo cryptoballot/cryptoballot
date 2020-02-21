@@ -61,6 +61,9 @@ impl TransactionHandler for CbTransactionHandler {
             }
         };
         // TODO: validate _signer
+        // TODO: Performance
+        //  - Create a global state cache that stores immutable transactions (all tx except election)
+        //  - Do a single request for all input addresses and use a temporary in-memory Store to pass to tx's.
 
         // Deserialize transaction
         let transaction: SignedTransaction =
