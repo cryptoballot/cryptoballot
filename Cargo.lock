@@ -1823,9 +1823,9 @@ dependencies = [
 
 [[package]]
 name = "tallystick"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18c94a87ebd7732249678b7877ac64c5316629dfa77515fa6370ffcc91cbd823"
+checksum = "a51c43ef3a2399206a2d4aa39322d74a8cb40648dea5f3888236e37a7ea85aa0"
 dependencies = [
  "derive_more",
  "failure",
