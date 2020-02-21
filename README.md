@@ -44,28 +44,16 @@ Under active development. Not ready for production use!
 
 ## Components
 
-### cryptoballot - Core library
-
-`./cryptoballot`
-
-**Installation**
+### [Core library](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot)
 
 1. Add `cryptoballot = "0.3.1"` to your [rust](https://www.rust-lang.org) project's `Cargo.toml` file. 
 
-### cryptoballot_cli - Command-line tool
-
-`./cryptoballot_cli`
-
-**Installation**
+### [Command-line tool](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_cli)
 
 1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
 2. Run `cargo install --path=cryptoballot_cli`
 
-### cryptoballot_sawtooth_tp - Sawtooth Transaction Processor
-
-`./cryptoballot_sawtooth_tp`
-
-**Installation**
+### [Sawtooth Transaction Processor](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_sawtooth_tp)
 
 1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
 2. Install [Sawtooth](https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/installing_sawtooth.html)
