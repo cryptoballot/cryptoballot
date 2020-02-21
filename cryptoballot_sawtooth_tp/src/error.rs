@@ -12,6 +12,9 @@ pub enum TPError {
     #[fail(display = "state error: could not find {}", 0)]
     StateNotFound(String),
 
+    #[fail(display = "state error: transaction {} already exits", 0)]
+    AlreadyExists(String),
+
     #[fail(display = "cannot parse transaction: {}", 0)]
     CannotParseTransaction(String),
 

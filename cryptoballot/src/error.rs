@@ -104,6 +104,12 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot: auth signature verification failed")]
     AuthSignatureVerificationFailed,
 
+    #[fail(
+        display = "cryptoballot: not enough secret shares: need {}, found {}",
+        0, 1
+    )]
+    NotEnoughShares(usize, usize),
+
     #[fail(display = "cryptoballot: {}", 0)]
     TransactionNotFound(TransactionNotFound),
 

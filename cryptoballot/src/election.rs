@@ -4,7 +4,7 @@ use sharks::Sharks;
 use uuid::Uuid;
 
 /// Transaction 1: Election
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ElectionTransaction {
     pub id: Identifier,
 

@@ -7,6 +7,7 @@ use sawtooth_sdk::processor::handler::ApplyError;
 use sawtooth_sdk::processor::handler::TransactionContext;
 use sawtooth_sdk::processor::handler::TransactionHandler;
 use sha2::Sha512;
+use std::string::ToString;
 
 lazy_static! {
     static ref CB_PREFIX: String = {
@@ -78,10 +79,10 @@ impl TransactionHandler for CbTransactionHandler {
                 transaction.id().to_string(),
                 &e
             );
-            match e {
-                TPError::ValidationError(_) => ApplyError::InvalidTransaction(err),
-                _ => ApplyError::InternalError(err),
-            }
+
+            // TODO: This doesn't account for state network errors (should be InternalError)
+            // TODO: turn get_transaction into a Result and bubble error to here and check
+            ApplyError::InvalidTransaction(err)
         })?;
 
         // Store the transaction
@@ -97,7 +98,21 @@ impl TransactionHandler for CbTransactionHandler {
 }
 
 fn validate_transaction(transaction: &SignedTransaction, state: &CbState) -> Result<(), TPError> {
+    if let SignedTransaction::Election(_election) = transaction {
+        // TODO: check election authority public key against settings
+        // TODO: Load special "election_index" state and check that election-nonce has not been used yet
+    } else {
+        // All transaction except elections are immutable
+        // TODO: Allow resubmisson to pass if they are the same??
+        if state.get_transaction(transaction.id()).is_some() {
+            return Err(TPError::AlreadyExists(transaction.id().to_string()));
+        }
+    }
+
+    // This will validate both the signature and the signed transaction
     transaction.validate(state)?;
+
+    // All checks pass
     Ok(())
 }
 

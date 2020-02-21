@@ -9,7 +9,7 @@ use uuid::Uuid;
 ///
 /// After the trustee determins that voting is over and all votes may be decrypted, they publish
 /// a SecretShareTransaction, revealing the secret-share that was delt to them by the election authority.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SecretShareTransaction {
     pub id: Identifier,
     pub election: Identifier,
@@ -85,7 +85,7 @@ impl Signable for SecretShareTransaction {
 ///
 /// Most elections will have a handful of trustees (between 3 and 30), with a quorum being set to about 2/3
 /// the total number of trustees. Any quorum of trustees may decrypt the votes.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Trustee {
     pub id: uuid::Uuid,
 

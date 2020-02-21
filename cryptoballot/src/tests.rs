@@ -165,12 +165,19 @@ fn test_all_elections() {
         let entry = entry.unwrap();
         let path = entry.path();
         if path.is_dir() {
-            for tx_json in std::fs::read_dir(path).unwrap() {
-                let tx_json = tx_json.unwrap();
-                let path = tx_json.path();
-                let file_bytes = std::fs::read(path).unwrap();
+            let mut store = TestStore::default();
 
-                let _tx = SignedTransaction::from_bytes(&file_bytes).unwrap();
+            let mut paths: Vec<_> = std::fs::read_dir(path)
+                .unwrap()
+                .map(|r| r.unwrap())
+                .collect();
+            paths.sort_by_key(|dir| dir.path());
+
+            for path in paths {
+                let file_bytes = std::fs::read(path.path()).unwrap();
+                let tx = SignedTransaction::from_bytes(&file_bytes).unwrap();
+                tx.validate(&store).unwrap();
+                store.set(tx);
             }
         }
     }

@@ -11,7 +11,7 @@ use uuid::Uuid;
 ///
 /// Before a voter can post a VoteTransaction, they must first be authenticated by a quorum of authenticator,
 /// who certify that they can vote this election and ballot.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VoteTransaction {
     pub id: Identifier,
     pub election: Identifier,

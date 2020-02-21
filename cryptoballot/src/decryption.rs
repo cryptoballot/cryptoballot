@@ -8,7 +8,7 @@ use uuid::Uuid;
 /// After a quorum of Trustees have posted SharedSecret transactions (#3), any node may produce
 /// a DecryptionTransaction. One DecryptionTransaction is produced for each Vote (#2) transaction,
 /// decrypting the vote using the secret recovered from the SharedSecret transactions.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DecryptionTransaction {
     pub id: Identifier,
     pub election: Identifier,
@@ -78,6 +78,15 @@ impl Signable for DecryptionTransaction {
             if let Some(secret_share_tx) = secret_share_tx {
                 shares.push(secret_share_tx.secret_share.clone());
             }
+        }
+
+        // Make sure we have enough shares
+        let required_shares = election.trustees_threshold as usize;
+        if shares.len() < required_shares {
+            return Err(ValidationError::NotEnoughShares(
+                required_shares,
+                shares.len(),
+            ));
         }
 
         // TODO: Check the secret_shares.len() >= election.trustees_threshold

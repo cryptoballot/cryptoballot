@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 /// RSA Public Key for blind signing
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthPublicKey(#[serde(with = "RSAPublicKeyHex")] RSAPublicKey);
 
 impl AsRef<RSAPublicKey> for AuthPublicKey {
@@ -34,7 +34,7 @@ impl AsRef<RSAPublicKey> for AuthPublicKey {
 ///
 /// WARNING: The secret keys used to sign blinded triplets must NOT be used for any other purpose.
 /// Doing so can result in secret key disclosure.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Authenticator {
     pub id: uuid::Uuid,
 
@@ -131,7 +131,7 @@ impl Authenticator {
 /// Make sure this package is blinded before being sent to the authenticator to keep the voter's
 /// public-key secret from the authenticator.
 // TODO: Be smarter about lifetimes here so we don't need to clone PublicKey
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthPackage {
     election_id: Identifier,
     ballot_id: Uuid,
@@ -178,7 +178,7 @@ impl AuthPackage {
 /// An Authentication is returned by an authenticator, clearing the voter to vote.
 ///
 /// The sigature returned by the authenticator is blind, and must be unblinded by the voter before use.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Authentication {
     pub authenticator: Uuid,
 
