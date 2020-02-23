@@ -13,9 +13,9 @@ content_inspector = "0.2.4"
 cryptoballot = { path = "../cryptoballot" } 
 serde_json = "1.0.48"
 serde_cbor = "0.11.1"
-sawtooth-sdk = { version = "0.4.2", features=[] }
+sawtooth-sdk = { version = "0.4.2", default-features = false}
 reqwest = { version = "0.10.1", features=["blocking", "json"] }
-protobuf = "2.10.1"
+protobuf = "2.10.1" 
 rand = "0.7.3"
 sha2 = "0.8.1"
 lazy_static = "1.4.0"
