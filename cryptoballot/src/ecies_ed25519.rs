@@ -15,6 +15,10 @@ const AES_IV_LENGTH: usize = 12;
 type AesKey = [u8; 32];
 type SharedSecret = [u8; 32];
 
+/// A ed25517 Public Key meant for use in ECIES
+///
+/// Neither it's PrivateKey nor should this public key be used for signing
+/// or in any other protocol other than ECIES.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EciesPublicKey(PublicKey);
 
@@ -44,12 +48,14 @@ impl EciesPublicKey {
         Some(EciesPublicKey(public))
     }
 
+    /// Derive a public key from a private key
     pub fn from_secret(sk: &SecretKey) -> Self {
         let point = &Scalar::from_bits(sk.to_bytes()) * &constants::ED25519_BASEPOINT_TABLE;
         let public = PublicKey::from_bytes(&point.compress().to_bytes()).unwrap();
         EciesPublicKey(public)
     }
 
+    /// Get the Edwards Point for this public key
     pub fn as_point(&self) -> EdwardsPoint {
         CompressedEdwardsY::from_slice(self.0.as_bytes())
             .decompress()
@@ -73,6 +79,7 @@ impl FromHex for EciesPublicKey {
     }
 }
 
+/// Generate a keypair, ready for use in ECIES
 pub fn generate_keypair() -> (SecretKey, EciesPublicKey) {
     let mut csprng = rand::rngs::OsRng {};
     let ed25519_dalek::Keypair { public: _, secret } =
@@ -81,6 +88,7 @@ pub fn generate_keypair() -> (SecretKey, EciesPublicKey) {
     (secret, public)
 }
 
+/// Encrypt a message using ECIES, it can only be decrypted by the receiver's SecretKey.
 pub fn encrypt(receiver_pub: &EciesPublicKey, msg: &[u8]) -> Vec<u8> {
     let (ephemeral_sk, ephemeral_pk) = generate_keypair();
 
@@ -94,6 +102,7 @@ pub fn encrypt(receiver_pub: &EciesPublicKey, msg: &[u8]) -> Vec<u8> {
     cipher_text
 }
 
+/// Decrypt a ECIES encrypted ciphertext using the receiver's SecretKey.
 pub fn decrypt(receiver_sec: &SecretKey, msg: &[u8]) -> Result<Vec<u8>, aead::Error> {
     // TODO: check size of msg and throw error
 
