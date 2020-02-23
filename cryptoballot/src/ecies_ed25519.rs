@@ -15,7 +15,7 @@ const AES_IV_LENGTH: usize = 12;
 type AesKey = [u8; 32];
 type SharedSecret = [u8; 32];
 
-/// A ed25517 Public Key meant for use in ECIES
+/// A ed25519 Public Key meant for use in ECIES
 ///
 /// Neither it's PrivateKey nor should this public key be used for signing
 /// or in any other protocol other than ECIES.
