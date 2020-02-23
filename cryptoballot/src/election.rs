@@ -1,5 +1,6 @@
 use crate::*;
-use ed25519_dalek::PublicKey;
+use ecies_ed25519::EciesPublicKey;
+use ed25519_dalek::{PublicKey, SecretKey};
 use sharks::Sharks;
 use uuid::Uuid;
 
@@ -29,7 +30,7 @@ pub struct ElectionTransaction {
     /// Future plans include moving to Distributed key generation, so no one entity ever has
     /// the secret key, even temporarily.
     #[serde(with = "hex_serde")]
-    pub encryption_public: Vec<u8>,
+    pub encryption_public: EciesPublicKey,
 
     /// List of ballots that can be cast in this election
     // TODO: Define ballot struct
@@ -53,13 +54,13 @@ impl ElectionTransaction {
     /// Create a new ElectionTransaction
     ///
     /// The returned SecretKey should be distributed to the trustees using Shamir Secret Sharing
-    pub fn new(authority_public: PublicKey) -> (Self, secp256k1::SecretKey) {
-        let (secret, public) = ecies::utils::generate_keypair();
+    pub fn new(authority_public: PublicKey) -> (Self, SecretKey) {
+        let (secret, public) = ecies_ed25519::generate_keypair();
 
         let election = ElectionTransaction {
             id: Identifier::new_for_election(),
             authority_public: authority_public,
-            encryption_public: public.serialize().to_vec(),
+            encryption_public: public,
             ballots: vec![],
             trustees: vec![],
             trustees_threshold: 1,
@@ -118,10 +119,7 @@ impl Signable for ElectionTransaction {
 
     /// Validate the election transaction
     fn validate_tx<S: Store>(&self, _store: &S) -> Result<(), ValidationError> {
-        // Make sure the encryption public-key is well-formed
-        if self.encryption_public.len() != 65 {
-            return Err(ValidationError::InvalidPublicKey);
-        }
+        // TODO: Make sure the encryption public-key is well-formed
         // TODO: check parsing of public key
 
         // Make sure trustees settings are sane

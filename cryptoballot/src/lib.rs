@@ -19,7 +19,7 @@ extern crate serde;
 
 mod authn;
 mod decryption;
-mod ecies_ed25519;
+pub mod ecies_ed25519;
 mod election;
 mod error;
 mod secret_share;

@@ -7,9 +7,6 @@ pub enum Error {
     #[fail(display = "cryptoballot: sinature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
 
-    #[fail(display = "cryptoballot: decryption error: {}", 0)]
-    DecryptionError(secp256k1::Error),
-
     #[fail(display = "cryptoballot: RSA error: {}", 0)]
     RSAError(rsa::errors::Error),
 
@@ -33,6 +30,9 @@ pub enum Error {
 
     #[fail(display = "cryptoballot: error deserializing transaction: unknown format")]
     DeserializationUnknownFormat,
+
+    #[fail(display = "cryptoballot: failed to decrypt vote")]
+    DecryptionError,
 }
 
 impl From<serde_cbor::error::Error> for Error {
@@ -50,12 +50,6 @@ impl From<serde_json::Error> for Error {
 impl From<ed25519_dalek::SignatureError> for Error {
     fn from(err: ed25519_dalek::SignatureError) -> Self {
         Error::SignatureError(err)
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(err: secp256k1::Error) -> Self {
-        Error::DecryptionError(err)
     }
 }
 

@@ -1,4 +1,5 @@
 use crate::*;
+use ecies_ed25519::EciesPublicKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use uuid::Uuid;
@@ -96,8 +97,9 @@ impl Signable for VoteTransaction {
 }
 
 /// Encrypt a vote with the public key provided by the election transaction (ElectionTransaction.encryption_key)
-pub fn encrypt_vote(election_key: &[u8], vote: &[u8]) -> Result<Vec<u8>, secp256k1::Error> {
-    let encrypted = ecies::encrypt(election_key, vote)?;
+pub fn encrypt_vote(election_key: &EciesPublicKey, vote: &[u8]) -> Result<Vec<u8>, ()> {
+    // TODO: Hadle errors
+    let encrypted = ecies_ed25519::encrypt(election_key, vote);
     Ok(encrypted)
 }
 

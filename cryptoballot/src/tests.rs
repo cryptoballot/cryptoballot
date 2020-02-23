@@ -1,4 +1,5 @@
 use super::*;
+use ed25519_dalek::SecretKey;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -53,7 +54,7 @@ fn end_to_end_election() {
     let mut shares = deal_secret_shares(
         election.trustees_threshold,
         election.trustees.len(),
-        &election_secret.serialize(),
+        election_secret.as_bytes(),
     );
     let trustee_1_share = shares.pop().unwrap();
     let trustee_2_share = shares.pop().unwrap();
@@ -120,6 +121,7 @@ fn end_to_end_election() {
         secret_share_2.secret_share.clone(),
     ];
     let election_key = recover_secret_from_shares(election.trustees_threshold, shares).unwrap();
+    let election_key = SecretKey::from_bytes(&election_key).unwrap();
 
     // Decrypt the votes
     let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote).unwrap();
@@ -137,23 +139,14 @@ fn end_to_end_election() {
     // To print out the transactions, do `cargo test -- --nocapture`
     println!(
         "{}",
-        serde_json::to_string_pretty(&SignedTransaction::from(election)).unwrap()
-    );
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&SignedTransaction::from(vote)).unwrap()
-    );
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&SignedTransaction::from(secret_share_1)).unwrap()
-    );
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&SignedTransaction::from(secret_share_2)).unwrap()
-    );
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&SignedTransaction::from(decryption)).unwrap()
+        serde_json::to_string_pretty(&vec![
+            SignedTransaction::from(election),
+            SignedTransaction::from(vote),
+            SignedTransaction::from(secret_share_1),
+            SignedTransaction::from(secret_share_2),
+            SignedTransaction::from(decryption)
+        ])
+        .unwrap()
     );
 
     // TODO: tally!
@@ -175,9 +168,17 @@ fn test_all_elections() {
 
             for path in paths {
                 let file_bytes = std::fs::read(path.path()).unwrap();
-                let tx = SignedTransaction::from_bytes(&file_bytes).unwrap();
-                tx.validate(&store).unwrap();
-                store.set(tx);
+
+                let txs: Vec<SignedTransaction> = if file_bytes[0] == b"["[0] {
+                    serde_json::from_slice(&file_bytes).unwrap()
+                } else {
+                    vec![SignedTransaction::from_bytes(&file_bytes).unwrap()]
+                };
+
+                for tx in txs {
+                    tx.validate(&store).unwrap();
+                    store.set(tx);
+                }
             }
         }
     }

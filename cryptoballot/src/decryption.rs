@@ -1,5 +1,5 @@
 use crate::*;
-use ed25519_dalek::PublicKey;
+use ed25519_dalek::{PublicKey, SecretKey};
 use sharks::{Share, Sharks};
 use uuid::Uuid;
 
@@ -94,6 +94,7 @@ impl Signable for DecryptionTransaction {
         // Recover election key from two trustees
         let election_key = recover_secret_from_shares(election.trustees_threshold, shares)
             .map_err(|_| ValidationError::SecretRecoveryFailed)?;
+        let election_key = SecretKey::from_bytes(&election_key)?;
 
         let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote)
             .map_err(|_| ValidationError::DecryptVoteFailed)?;
@@ -124,6 +125,6 @@ pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result
 /// Decrypt the vote from the given recovered decryption key.
 ///
 /// `encrypted_vote` is taken from `VoteTransaction::encrypted_vote`.
-pub fn decrypt_vote(election_key: &[u8], encrypted_vote: &[u8]) -> Result<Vec<u8>, Error> {
-    Ok(ecies::decrypt(election_key, encrypted_vote)?)
+pub fn decrypt_vote(election_key: &SecretKey, encrypted_vote: &[u8]) -> Result<Vec<u8>, Error> {
+    ecies_ed25519::decrypt(election_key, encrypted_vote).map_err(|_| Error::DecryptionError)
 }
