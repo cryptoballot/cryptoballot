@@ -31,7 +31,7 @@ Under active development. Not ready for production use!
 | ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
 |         | Blind-Signing (ed25519 / schnorr)       | Will replace current RSA bling-signing                         |
 | ✓       | Shamir Secret Sharing                   | Uses [Sharks](https://docs.rs/sharks/)                         |
-| ⚠       | Blockchain backend                      | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
+| ⚠       | Optional Blockchain backend             | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
 | ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 |         | REST frontend                           |                                                                |
 |         | Distributed key generation / decryption | Will use [threshold_crypto](https://crates.io/crates/threshold_crypto). Replaces Shamir |
