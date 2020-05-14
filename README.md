@@ -26,18 +26,18 @@ Under active development. Not ready for production use!
 ## Road Map
 
 | Status¹ | Feature                           | Notes                                                          |
-| ------- | --------------------------------- | -------------------------------------------------------------- |
-| ✓       | Migrate from Go to Rust           | 🦀                                                             |
-| ✓       | Blind-Signing (RSA)               | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
-|         | Blind-Signing (ed25519 / schnorr) | Will replace current RSA bling-signing                         |
-| ✓       | Shamir Secret Sharing             | Uses [Sharks](https://docs.rs/sharks/)                         |
-| ⚠       | Blockchain backend                | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
-| ⚠       | Support all tally methods         | Uses [Tallystick](https://github.com/phayes/tallystick)        |
-|         | REST frontend                     |                                                                |
-|         | Distributed key generation        | Replace Shamir, uses ElGamal, fully verifiable and distributed |
-|         | Onion mixnet (likely Sphinx)      | Strengthened voter anonymity - Depends on REST frontend        |
-|         | Re-encryption mixnet              | Provides coercion resistance                                   |
-| ⚠       | End-User Device Verification      | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
+| ------- | --------------------------------------- | -------------------------------------------------------------- |
+| ✓       | Migrate from Go to Rust                 | 🦀                                                             |
+| ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
+|         | Blind-Signing (ed25519 / schnorr)       | Will replace current RSA bling-signing                         |
+| ✓       | Shamir Secret Sharing                   | Uses [Sharks](https://docs.rs/sharks/)                         |
+| ⚠       | Optional Blockchain backend             | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
+| ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
+|         | REST frontend                           |                                                                |
+|         | Distributed key generation / decryption | Will use [threshold_crypto](https://crates.io/crates/threshold_crypto). Replaces Shamir |
+|         | Onion mixnet (likely Sphinx)            | Strengthened voter anonymity - Depends on REST frontend        |
+|         | Re-encryption mixnet                    | Provides coercion resistance                                   |
+| ⚠       | End-User Device Verification            | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
 
