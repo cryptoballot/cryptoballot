@@ -1,3 +1,12 @@
+//! ECIES-ed25519: An Integrated Encryption Scheme on Twisted Edwards Curve25519.
+//!
+//! It uses many of the same primitives as the ed25519 signature scheme, but is also different.
+//!   - It uses the same Secret Key representation as the ed25519 signature scheme.
+//!   - It uses a different Public Key representation. While the ed25519 signature scheme hashes the
+//!     secret key and mangles some bits before using it to derive the public key,
+//!     ECIES-ed25519 uses the secret key directly. This means you should take care to
+//!     use a good secure RNG or KDF to generate a your secret key.
+
 use aes_gcm::aead::{self, generic_array::GenericArray, Aead, NewAead};
 use aes_gcm::Aes256Gcm;
 use curve25519_dalek::constants;
