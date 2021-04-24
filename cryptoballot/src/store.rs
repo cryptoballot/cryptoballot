@@ -1,5 +1,6 @@
 use crate::*;
 use failure::Fail;
+use std::collections::BTreeMap;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Fail)]
@@ -73,5 +74,57 @@ pub trait Store {
             },
             None => Err(TransactionNotFound(id)),
         }
+    }
+}
+
+/// A simple store that uses an in-memory BTreeMap
+#[derive(Default)]
+pub struct MemStore {
+    inner: BTreeMap<[u8; 32], SignedTransaction>,
+}
+
+impl MemStore {
+    pub fn set(&mut self, tx: SignedTransaction) {
+        self.inner.insert(tx.id().into(), tx);
+    }
+
+    pub fn get_multiple(
+        &self,
+        election_id: Identifier,
+        tx_type: TransactionType,
+    ) -> Vec<SignedTransaction> {
+        let mut results = Vec::new();
+
+        let election_id = election_id.to_array();
+        let mut start: [u8; 32] = [0; 32];
+        start[..15].copy_from_slice(&election_id[..15]);
+        start[16] = tx_type as u8;
+
+        // End at the next transaction type
+        let mut end: [u8; 32] = [0; 32];
+        end[..15].copy_from_slice(&election_id[..15]);
+        end[16] = (tx_type as u8) + 1;
+
+        for (_, v) in self.inner.range(start..end) {
+            results.push(v.clone())
+        }
+        results
+    }
+}
+
+impl Store for MemStore {
+    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
+        let key = id.to_array();
+        self.inner.get(&key).cloned()
+    }
+}
+
+impl From<Vec<SignedTransaction>> for MemStore {
+    fn from(item: Vec<SignedTransaction>) -> Self {
+        let mut memstore = MemStore::default();
+        for tx in item {
+            memstore.set(tx);
+        }
+        memstore
     }
 }

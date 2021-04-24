@@ -8,6 +8,7 @@ use ed25519_dalek::Signature;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::cmp::Ordering;
 use std::convert::AsRef;
 use std::convert::From;
 use std::convert::TryInto;
@@ -264,13 +265,18 @@ impl Identifier {
         }
     }
 
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_array(&self) -> [u8; 32] {
         let mut bytes: [u8; 32] = [0; 32];
         bytes[0..15].clone_from_slice(&self.election_id);
         bytes[15] = self.transaction_type as u8;
         if let Some(unique_id) = self.unique_id {
             bytes[16..32].clone_from_slice(&unique_id);
         }
+        bytes
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let bytes = self.to_array();
         bytes.to_vec()
     }
 }
@@ -330,7 +336,52 @@ impl std::fmt::Display for Identifier {
     }
 }
 
+impl PartialOrd for Identifier {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let election_ord = self.election_id.cmp(&other.election_id);
+
+        if let Ordering::Equal = election_ord {
+            let tx_type = self.transaction_type as u8;
+            let other_tx_type = other.transaction_type as u8;
+            let tx_type_ord = tx_type.cmp(&other_tx_type);
+            if let Ordering::Equal = tx_type_ord {
+                Some(self.unique_id.cmp(&other.unique_id))
+            } else {
+                Some(tx_type_ord)
+            }
+        } else {
+            Some(election_ord)
+        }
+    }
+}
+
+impl Ord for Identifier {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let election_ord = self.election_id.cmp(&other.election_id);
+
+        if let Ordering::Equal = election_ord {
+            let tx_type = self.transaction_type as u8;
+            let other_tx_type = other.transaction_type as u8;
+            let tx_type_ord = tx_type.cmp(&other_tx_type);
+            if let Ordering::Equal = tx_type_ord {
+                self.unique_id.cmp(&other.unique_id)
+            } else {
+                tx_type_ord
+            }
+        } else {
+            election_ord
+        }
+    }
+}
+
+impl From<Identifier> for [u8; 32] {
+    fn from(item: Identifier) -> Self {
+        item.to_array()
+    }
+}
+
 /// A transaction type
+// TODO: Maybe make Election = 0 to align with identifiers in merkle-tree
 #[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]

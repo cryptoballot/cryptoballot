@@ -9,14 +9,15 @@ use std::fs::File;
 use std::io::prelude::*;
 use tallystick::plurality::DefaultPluralityTally;
 
+mod command_e2e;
 mod rest;
 mod transaction;
 
 fn main() {
-    let matches = App::new("CryptoBallot CLI")
+    let mut app = App::new("CryptoBallot")
         .version("1.0")
         .author("Patrick Hayes <patrick.d.hayes@gmail.com>")
-        .about("Interacts with a CryptoBallot server")
+        .about("CryptoBallot command-line tool")
         .arg(
             Arg::with_name("uri")
                 .help("Set the cryptoballot uri - can also be set with CRYPTOBALLOT_URI")
@@ -87,7 +88,18 @@ fn main() {
                     .help("Tally votes in an election to get a winner"),
             ),
         )
-        .get_matches();
+        .subcommand(
+            SubCommand::with_name("e2e")
+                .about("End-to-End Election Verification")
+                .arg(
+                    Arg::with_name("INPUT")
+                        .index(1)
+                        .required(true) // TODO: allow stdin
+                        .help("Entire Election is JSON format"),
+                ),
+        );
+
+    let matches = app.clone().get_matches();
 
     // Gets a value for config if supplied by user, or defaults to "default.conf"
     let env_var = std::env::var("CRYPTOBALLOT_URI");
@@ -99,19 +111,32 @@ fn main() {
     // Subcommands
     if let Some(matches) = matches.subcommand_matches("post") {
         command_post_transaction(matches, &uri);
+        std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("generate") {
         command_generate(matches);
+        std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("sign") {
         command_sign_transaction(matches);
+        std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("get") {
         command_get_transaction(matches, &uri);
+        std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("tally") {
         command_tally(matches, &uri);
+        std::process::exit(0);
     }
+    if let Some(matches) = matches.subcommand_matches("e2e") {
+        command_e2e::command_e2e(matches);
+        std::process::exit(0);
+    }
+
+    // No command, just print help
+    app.print_help().expect("Unable to print help message");
+    println!(""); // Trailing linebreak
 }
 
 fn command_generate(matches: &clap::ArgMatches) {
@@ -302,7 +327,7 @@ pub fn identifier_to_address_prefix(
 }
 
 // Performs shell expansion on filenames (mostly to handle ~)
-fn expand(filename: &str) -> String {
+pub fn expand(filename: &str) -> String {
     shellexpand::full(filename)
         .unwrap_or_else(|e| {
             eprintln!("cryptoballot: error expanding {}: {}", filename, e);

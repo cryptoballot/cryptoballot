@@ -1,28 +1,10 @@
 use super::*;
 use ed25519_dalek::SecretKey;
-use std::collections::HashMap;
 use uuid::Uuid;
-
-#[derive(Default)]
-pub struct TestStore {
-    inner: HashMap<Identifier, SignedTransaction>,
-}
-
-impl TestStore {
-    pub fn set(&mut self, tx: SignedTransaction) {
-        self.inner.insert(tx.id(), tx);
-    }
-}
-
-impl Store for TestStore {
-    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
-        self.inner.get(&id).cloned()
-    }
-}
 
 #[test]
 fn end_to_end_election() {
-    let mut store = TestStore::default();
+    let mut store = MemStore::default();
 
     // Create election authority public and private key
     let (authority_secret, authority_public) = generate_keypair();
@@ -158,7 +140,7 @@ fn test_all_elections() {
         let entry = entry.unwrap();
         let path = entry.path();
         if path.is_dir() {
-            let mut store = TestStore::default();
+            let mut store = MemStore::default();
 
             let mut paths: Vec<_> = std::fs::read_dir(path)
                 .unwrap()

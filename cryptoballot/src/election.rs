@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn create_new_election() {
-        let store = TestStore::default();
+        let store = MemStore::default();
 
         // Bad keypair
         let (bad_secret, _bad_public) = generate_keypair();
