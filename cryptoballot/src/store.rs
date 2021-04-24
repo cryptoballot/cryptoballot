@@ -78,14 +78,14 @@ pub trait Store {
 }
 
 /// A simple store that uses an in-memory BTreeMap
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct MemStore {
-    inner: BTreeMap<[u8; 32], SignedTransaction>,
+    inner: BTreeMap<String, SignedTransaction>,
 }
 
 impl MemStore {
     pub fn set(&mut self, tx: SignedTransaction) {
-        self.inner.insert(tx.id().into(), tx);
+        self.inner.insert(tx.id().to_string(), tx);
     }
 
     pub fn get_multiple(
@@ -95,15 +95,25 @@ impl MemStore {
     ) -> Vec<SignedTransaction> {
         let mut results = Vec::new();
 
-        let election_id = election_id.to_array();
-        let mut start: [u8; 32] = [0; 32];
-        start[..15].copy_from_slice(&election_id[..15]);
-        start[16] = tx_type as u8;
+        let mut start = election_id.clone();
+        start.transaction_type = tx_type;
+        let start = start.to_string();
+
+        let mut end = start.clone();
+        end.truncate(32);
+        let end = format!("{:f<64}", end);
+
+        // TODO: Go back to using array keys (faster)
+        // OLD CODE For Array Keys:
+        //let election_id = election_id.to_array();
+        //let mut start: [u8; 32] = [0; 32];
+        //start[..15].copy_from_slice(&election_id[..15]);
+        //start[16] = tx_type as u8;
 
         // End at the next transaction type
-        let mut end: [u8; 32] = [0; 32];
-        end[..15].copy_from_slice(&election_id[..15]);
-        end[16] = (tx_type as u8) + 1;
+        //let mut end: [u8; 32] = [0; 32];
+        //end[..15].copy_from_slice(&election_id[..15]);
+        //end[16] = (tx_type as u8) + 1;
 
         for (_, v) in self.inner.range(start..end) {
             results.push(v.clone())
@@ -114,7 +124,7 @@ impl MemStore {
 
 impl Store for MemStore {
     fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
-        let key = id.to_array();
+        let key = id.to_string();
         self.inner.get(&key).cloned()
     }
 }
