@@ -96,6 +96,21 @@ fn main() {
                         .index(1)
                         .required(true) // TODO: allow stdin
                         .help("Entire Election is JSON format"),
+                )
+                .arg(
+                    Arg::with_name("print-votes")
+                        .long("print-votes")
+                        .help("Print all the recorded votes"),
+                )
+                .arg(
+                    Arg::with_name("print-tally")
+                        .long("print-tally")
+                        .help("Print the tally"),
+                )
+                .arg(
+                    Arg::with_name("print-results")
+                        .long("print-results")
+                        .help("Print the election results"),
                 ),
         );
 
