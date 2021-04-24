@@ -31,6 +31,9 @@ pub enum Error {
     #[fail(display = "cryptoballot: error deserializing transaction: unknown format")]
     DeserializationUnknownFormat,
 
+    #[fail(display = "cryptoballot: ecies error: {}", 0)]
+    EciesError(ecies_ed25519::Error),
+
     #[fail(display = "cryptoballot: failed to decrypt vote")]
     DecryptionError,
 }
@@ -56,6 +59,12 @@ impl From<ed25519_dalek::SignatureError> for Error {
 impl From<rsa::errors::Error> for Error {
     fn from(err: rsa::errors::Error) -> Self {
         Error::RSAError(err)
+    }
+}
+
+impl From<ecies_ed25519::Error> for Error {
+    fn from(err: ecies_ed25519::Error) -> Self {
+        Error::EciesError(err)
     }
 }
 
@@ -109,6 +118,9 @@ pub enum ValidationError {
 
     #[fail(display = "cryptoballot validation: signature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
+
+    #[fail(display = "cryptoballot validation: ecies decryption error: {}", 0)]
+    EciesError(ecies_ed25519::Error),
 }
 
 impl From<ed25519_dalek::SignatureError> for ValidationError {
@@ -120,5 +132,11 @@ impl From<ed25519_dalek::SignatureError> for ValidationError {
 impl From<TransactionNotFound> for ValidationError {
     fn from(err: TransactionNotFound) -> Self {
         ValidationError::TransactionNotFound(err)
+    }
+}
+
+impl From<ecies_ed25519::Error> for ValidationError {
+    fn from(err: ecies_ed25519::Error) -> Self {
+        Self::EciesError(err)
     }
 }

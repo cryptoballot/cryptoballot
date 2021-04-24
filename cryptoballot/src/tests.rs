@@ -1,9 +1,11 @@
 use super::*;
-use ed25519_dalek::SecretKey;
+use ecies_ed25519::SecretKey;
+use rand::SeedableRng;
 use uuid::Uuid;
 
 #[test]
 fn end_to_end_election() {
+    let mut test_rng = rand::rngs::StdRng::from_seed([0u8; 32]);
     let mut store = MemStore::default();
 
     // Create election authority public and private key
@@ -23,7 +25,7 @@ fn end_to_end_election() {
     let (trustee_3, _trustee_3_secret) = Trustee::new();
 
     // Create an election transaction with a single ballot
-    let (mut election, election_secret) = ElectionTransaction::new(authority_public);
+    let (mut election, election_secret) = ElectionTransaction::new(authority_public, &mut test_rng);
     election.ballots = vec![ballot_id];
     election.authenticators = vec![authenticator.clone()];
     election.trustees = vec![trustee_1.clone(), trustee_2.clone(), trustee_3.clone()];
@@ -64,8 +66,12 @@ fn end_to_end_election() {
     let secret_vote = "Barak Obama";
 
     // Encrypt the secret vote
-    vote.encrypted_vote =
-        encrypt_vote(&election.encryption_public, secret_vote.as_bytes()).unwrap();
+    vote.encrypted_vote = encrypt_vote(
+        &election.encryption_public,
+        secret_vote.as_bytes(),
+        &mut test_rng,
+    )
+    .unwrap();
 
     // Sign and seal the vote transaction
     let vote = Signed::sign(&voter_secret, vote).unwrap();
@@ -158,7 +164,14 @@ fn test_all_elections() {
                 };
 
                 for tx in txs {
-                    tx.validate(&store).unwrap();
+                    if let Err(e) = tx.validate(&store) {
+                        panic!(
+                            "Failed to validate {} trancaction {}. Error: {}",
+                            tx.transaction_type(),
+                            tx.id(),
+                            e
+                        );
+                    }
                     store.set(tx);
                 }
             }

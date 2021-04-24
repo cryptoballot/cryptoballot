@@ -5,6 +5,7 @@ use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
+use ed25519_dalek::Verifier;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};

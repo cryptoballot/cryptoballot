@@ -10,37 +10,34 @@ repository = "https://github.com/cryptoballot/cryptoballot"
 homepage = "https://cryptoballot.com"
 
 [dependencies]
-sharks = "0.3"
+sharks = "0.5.0"
 rand = '0.7.3'
-ed25519-dalek = { version ="1.0.0-pre.3", features = ["serde"] }
-curve25519-dalek  = "2.0.0"
+ed25519-dalek = { version = "1.0.1", features = ["serde"] }
+curve25519-dalek = "^3.0.0"
 serde_cbor = '0.11.1'
-hex = '0.3.1' 
-num_enum = "0.4.2"
+hex = '0.4.3'
+num_enum = "0.5.1"
 failure = "0.1.6"
-sha2 = "0.8.1" 
-digest = "0.8.1"
-rsa-fdh = "0.2.1"
-rsa = { version = "0.2.0", features = ["serde1"] }
+sha2 = "0.9.3"
+digest = "0.9.0"
+rsa-fdh = "0.5.0"
+rsa = { version = "0.3.0", features = ["serde"] }
 content_inspector = "0.2.4" # TODO REMOVE
-hkdf = "0.8.0"
-aes-gcm = "0.3.0"
-
-# TODO: Replace these with something better (that use is_human_readable()) 
-hex-serde = "0.1.0" 
-hex-buffer-serde = "0.2"
+hkdf = "0.10.0"
+aes-gcm = "0.8.0"
+# TODO: Replace these with something better (that use is_human_readable())
+hex-serde = "0.1.0"
+hex-buffer-serde = "0.2.2"
+ecies-ed25519 = { version = "0.5.1", features = ["serde"] }
 
 [dependencies.uuid]
-version = '0.8.1'
-features = [
-    'serde',
-    'v4',
-]
+version = '0.8.2'
+features = ['serde', 'v4']
 
 [dependencies.serde]
-version = '1.0.104'
+version = '1.0.125'
 features = ['derive']
 
 [dependencies.serde_json]
-version = '1.0'
+version = '1.0.64'
 features = ['preserve_order']

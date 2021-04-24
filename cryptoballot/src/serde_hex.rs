@@ -3,6 +3,7 @@ use ed25519_dalek::PublicKey;
 use ed25519_dalek::Signature;
 use rsa::RSAPublicKey;
 use std::borrow::Cow;
+use std::convert::TryFrom;
 
 pub use hex_buffer_serde::Hex;
 // a single-purpose type for use in `#[serde(with)]`
@@ -28,7 +29,7 @@ impl Hex<Signature> for EdSignatureHex {
     }
 
     fn from_bytes(bytes: &[u8]) -> Result<Signature, String> {
-        Signature::from_bytes(bytes).map_err(|e| format!("{}", e))
+        Signature::try_from(bytes).map_err(|e| format!("{}", e))
     }
 }
 

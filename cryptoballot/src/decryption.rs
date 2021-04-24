@@ -1,6 +1,8 @@
 use crate::*;
-use ed25519_dalek::{PublicKey, SecretKey};
+use ecies_ed25519::SecretKey as EciesSecretKey;
+use ed25519_dalek::PublicKey;
 use sharks::{Share, Sharks};
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// Transaction 4: Decryption
@@ -94,7 +96,7 @@ impl Signable for DecryptionTransaction {
         // Recover election key from two trustees
         let election_key = recover_secret_from_shares(election.trustees_threshold, shares)
             .map_err(|_| ValidationError::SecretRecoveryFailed)?;
-        let election_key = SecretKey::from_bytes(&election_key)?;
+        let election_key = EciesSecretKey::from_bytes(&election_key)?;
 
         let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote)
             .map_err(|_| ValidationError::DecryptVoteFailed)?;
@@ -111,7 +113,11 @@ impl Signable for DecryptionTransaction {
 /// the secret decryption key. The decryption key can then be used to decrypt votes and create
 /// a DecryptionTransaction.
 pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result<Vec<u8>, Error> {
-    let shares: Vec<Share> = shares.iter().map(|s| Share::from(s.as_slice())).collect();
+    // TODO: Remove this unwrap
+    let shares: Vec<Share> = shares
+        .iter()
+        .map(|s| Share::try_from(s.as_slice()).unwrap())
+        .collect();
 
     let sharks = Sharks(threshold);
 
@@ -125,6 +131,9 @@ pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result
 /// Decrypt the vote from the given recovered decryption key.
 ///
 /// `encrypted_vote` is taken from `VoteTransaction::encrypted_vote`.
-pub fn decrypt_vote(election_key: &SecretKey, encrypted_vote: &[u8]) -> Result<Vec<u8>, Error> {
+pub fn decrypt_vote(
+    election_key: &EciesSecretKey,
+    encrypted_vote: &[u8],
+) -> Result<Vec<u8>, Error> {
     ecies_ed25519::decrypt(election_key, encrypted_vote).map_err(|_| Error::DecryptionError)
 }

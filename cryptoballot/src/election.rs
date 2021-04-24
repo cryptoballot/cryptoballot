@@ -1,6 +1,7 @@
 use crate::*;
-use ecies_ed25519::EciesPublicKey;
-use ed25519_dalek::{PublicKey, SecretKey};
+use ecies_ed25519::{PublicKey as EciesPublicKey, SecretKey as EciesSecretKey};
+use ed25519_dalek::PublicKey;
+use rand::{CryptoRng, RngCore};
 use sharks::Sharks;
 use uuid::Uuid;
 
@@ -29,7 +30,6 @@ pub struct ElectionTransaction {
     ///
     /// Future plans include moving to Distributed key generation, so no one entity ever has
     /// the secret key, even temporarily.
-    #[serde(with = "hex_serde")]
     pub encryption_public: EciesPublicKey,
 
     /// List of ballots that can be cast in this election
@@ -54,8 +54,11 @@ impl ElectionTransaction {
     /// Create a new ElectionTransaction
     ///
     /// The returned SecretKey should be distributed to the trustees using Shamir Secret Sharing
-    pub fn new(authority_public: PublicKey) -> (Self, SecretKey) {
-        let (secret, public) = ecies_ed25519::generate_keypair();
+    pub fn new<R: CryptoRng + RngCore>(
+        authority_public: PublicKey,
+        rng: &mut R,
+    ) -> (Self, EciesSecretKey) {
+        let (secret, public) = ecies_ed25519::generate_keypair(rng);
 
         let election = ElectionTransaction {
             id: Identifier::new_for_election(),
@@ -163,9 +166,11 @@ pub fn deal_secret_shares(theshold: u8, num_trustees: usize, secret: &[u8]) -> V
 mod tests {
 
     use super::*;
+    use rand::SeedableRng;
 
     #[test]
     fn create_new_election() {
+        let mut test_rng = rand::rngs::StdRng::from_seed([0u8; 32]);
         let store = MemStore::default();
 
         // Bad keypair
@@ -186,7 +191,8 @@ mod tests {
         let (trustee, _trustee_secret) = Trustee::new();
 
         // Create an election transaction with a single ballot
-        let (mut election, _election_secret) = ElectionTransaction::new(authority_public);
+        let (mut election, _election_secret) =
+            ElectionTransaction::new(authority_public, &mut test_rng);
         election.ballots = vec![ballot_id];
 
         // Validation should fail without authenticators
@@ -215,7 +221,7 @@ mod tests {
         assert!(election_generic.transaction_type() == TransactionType::Election);
         assert_eq!(
             format!("{}", election_generic.transaction_type()),
-            "Election"
+            "election"
         );
         assert!(election_generic.id() == election.id);
 

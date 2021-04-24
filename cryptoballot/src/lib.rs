@@ -17,9 +17,10 @@
 #[macro_use]
 extern crate serde;
 
+extern crate ed25519_dalek;
+
 mod authn;
 mod decryption;
-pub mod ecies_ed25519;
 mod election;
 mod error;
 mod secret_share;

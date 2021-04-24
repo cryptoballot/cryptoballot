@@ -1,7 +1,8 @@
 use crate::*;
-use ecies_ed25519::EciesPublicKey;
+use ecies_ed25519::PublicKey as EciesPublicKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
+use rand::{CryptoRng, RngCore};
 use uuid::Uuid;
 
 /// Transaction 2: Vote
@@ -97,10 +98,12 @@ impl Signable for VoteTransaction {
 }
 
 /// Encrypt a vote with the public key provided by the election transaction (ElectionTransaction.encryption_key)
-pub fn encrypt_vote(election_key: &EciesPublicKey, vote: &[u8]) -> Result<Vec<u8>, ()> {
-    // TODO: Hadle errors
-    let encrypted = ecies_ed25519::encrypt(election_key, vote);
-    Ok(encrypted)
+pub fn encrypt_vote<R: CryptoRng + RngCore>(
+    election_key: &EciesPublicKey,
+    vote: &[u8],
+    rng: &mut R,
+) -> Result<Vec<u8>, Error> {
+    Ok(ecies_ed25519::encrypt(election_key, vote, rng)?)
 }
 
 #[cfg(test)]
