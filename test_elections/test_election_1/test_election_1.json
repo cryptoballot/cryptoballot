@@ -2,91 +2,91 @@
     {
         "type": "election",
         "tx": {
-            "id": "b94e73303dd3c697e67a7feca820a90100000000000000000000000000000000",
-            "authority_public": "58213c3db6e0925b975603c807873b5ea217a2c085f003af297cf692189e2711",
-            "encryption_public": "04dffedbc2bfee3540b9f0917465af99d83a957eae4ef78cb96df75ba65f9f96",
+            "id": "e10728aa51457a9765963d2b2d2f1c0100000000000000000000000000000000",
+            "authority_public": "6d7240b78e2660440bee90adc9a4c93e8968da068648f9aaf0798dfab526693f",
+            "encryption_public": "0c0b2b92409ccf13d44dcde752747f9308f9910c850366c89dc566ac129794c1",
             "ballots": [
-                "168a67c0-0eaa-4273-9f76-84388c58bda8"
+                "c4208005-9275-42df-8d56-599643fb6cf6"
             ],
             "trustees": [
                 {
-                    "id": "5a93f415-0e3d-46bb-8780-3b674cf83a4a",
-                    "public_key": "b9fd176ca72d7bbbf6d93c54a732a26b010dd4b0b629887c4c098ca12658c6e0"
+                    "id": "c8c68de8-7bd1-4815-a5d9-660ba9cc34db",
+                    "public_key": "88f3e4667f5061419d99612a0ba379eace1c93c80cb4d1818d48e6f789e15772"
                 },
                 {
-                    "id": "bc6688db-3a9d-4e2d-bb6b-b5df1aeeb194",
-                    "public_key": "186aa12ca100e5758f9c9f0203179322e37969eecde4299ada98714f6d8af667"
+                    "id": "77b82434-4715-43af-9f7e-0a24c95f3a21",
+                    "public_key": "623eceb800feaf4b7de95e8da28512d4daf534796259ba4390fdcbaed447e59a"
                 },
                 {
-                    "id": "65b0e5c7-0b42-441b-a005-c725b25561c8",
-                    "public_key": "93675b109b9898059df7898786bcd1ad8951d344be3e382cfe0b8041f2f0a81c"
+                    "id": "5dd2c036-9976-43e3-92d3-6d893c1407bf",
+                    "public_key": "df51091f99a8dd3a67351d9c351f807b1b4737019535a841de429c824025a17e"
                 }
             ],
             "trustees_threshold": 2,
             "authenticators": [
                 {
-                    "id": "e3e5a4fd-7d8a-45d7-b4ca-d58ed50d7ed5",
+                    "id": "fdf8cebd-b939-4e49-b8a5-cb4fdf95e5a2",
                     "public_keys": {
-                        "168a67c0-0eaa-4273-9f76-84388c58bda8": "a2616e881a4128b8a91a6f6c30cf1a4bf0e9d61adcb6337f1a06c09b661ad58540021abf2aa3c91ac3dd1b696165811a00010001"
+                        "c4208005-9275-42df-8d56-599643fb6cf6": "a2616e881ae46d93df1ac691d9d41a33da64b41acb6e618e1a1ee6022b1a1a3d70fe1a1a8749ae1ace724fc66165811a00010001"
                     }
                 }
             ],
             "authenticators_threshold": 1
         },
-        "sig": "56e69a8f713df775f68e3a09a5512cf10e0662470dace10f00b8d4591cc7cb2058af1aaa25d66c067f6a1d245f6379b87bdd3c5ca26ede105c540aaa5b38da07"
+        "sig": "2ea525a5c1cae7c3bbdb9107a2830d7e84f2548a4db1dbfb1c60d121850c939959a5a4098586989f0607c7e826f34c1630756a98a6a8957b222a297a7bd06e00"
     },
     {
         "type": "vote",
         "tx": {
-            "id": "b94e73303dd3c697e67a7feca820a902042965f25a24ccc93dac75631cdb506e",
-            "election": "b94e73303dd3c697e67a7feca820a90100000000000000000000000000000000",
-            "ballot_id": "168a67c0-0eaa-4273-9f76-84388c58bda8",
-            "encrypted_vote": "626b9c1095f06baf7b7fd7b39e53a2167ac3f79ad2bf2b40eb10f418581063158f4dacf1387cddea26745fbdac602d7c949384103b6958b7fde298147e07585527cc20cb35495f",
-            "anonymous_key": "8ed7526580a3245aa5a0be6b28eb0d399d5a8df1185b619cb63b4753ee8ac8d9",
+            "id": "e10728aa51457a9765963d2b2d2f1c025318486cbee12640c569bedd7522e92d",
+            "election": "e10728aa51457a9765963d2b2d2f1c0100000000000000000000000000000000",
+            "ballot_id": "c4208005-9275-42df-8d56-599643fb6cf6",
+            "encrypted_vote": "ebf9cfe75b266aca162272bf6b7a639d2bd22ee5dbd06fb0629a2afa72e944089f07e7be5551387a98ba977cf5b092af756da695f890edf76ee219eb98a5227306845b509ef43f",
+            "anonymous_key": "2cfcc712dced60fd6d7216d7e814ffefb538b1cf1a3bed6608093c4703fdf43e",
             "authentication": [
                 {
-                    "authenticator": "e3e5a4fd-7d8a-45d7-b4ca-d58ed50d7ed5",
-                    "signature": "a3505050cef3151136bad0a4b46b64217a57d9258cc4777400209d5258d84256"
+                    "authenticator": "fdf8cebd-b939-4e49-b8a5-cb4fdf95e5a2",
+                    "signature": "ab38b0f564b54ed0c2cab0ece7ba45316bbc0f64a66484fa6e13d4c6bce671ee"
                 }
             ]
         },
-        "sig": "baeeb04cdacaef14d75282c98743af11f72178fa37bbaf5d4f7d0c4bbfa02365ed7108b0a464d5fbf0d29b738c41e5676dacd2fa292ce5f1ec68c53693f7820a"
+        "sig": "a960cb640f1493a8af33f2bcd3fefd6dcc9f3ceaa643b2c1fd0fccf6da23349e62131f5d570a23f2395fe86ac199de9bf4c0efa3c74da8cce385c80f61d6210a"
     },
     {
         "type": "secret_share",
         "tx": {
-            "id": "b94e73303dd3c697e67a7feca820a903a71b799121758af7d781f1d46f1b1eed",
-            "election": "b94e73303dd3c697e67a7feca820a90100000000000000000000000000000000",
-            "trustee_id": "5a93f415-0e3d-46bb-8780-3b674cf83a4a",
-            "public_key": "b9fd176ca72d7bbbf6d93c54a732a26b010dd4b0b629887c4c098ca12658c6e0",
-            "secret_share": "03643421d418b32fbe49fd85f2cf20b69fb72673241a3c8633e193a002aec0f9b4"
+            "id": "e10728aa51457a9765963d2b2d2f1c034b4ccee86871ed7fd87d9121ad086a7d",
+            "election": "e10728aa51457a9765963d2b2d2f1c0100000000000000000000000000000000",
+            "trustee_id": "c8c68de8-7bd1-4815-a5d9-660ba9cc34db",
+            "public_key": "88f3e4667f5061419d99612a0ba379eace1c93c80cb4d1818d48e6f789e15772",
+            "secret_share": "03df7addcd46bc1b07645237e01867c97d3745046a9f4308748d7365c66daea221"
         },
-        "sig": "77df207009dd4ccd851658720f09a588e5855c1a1ae724eda64bcb93c2eead5acab7b47aa71677cd6469a17f826447f15907d9309a4d180b59714df0a432be0a"
+        "sig": "5d9e9491166563527331d808b701c6eeccc4cb375f25eb5253acc817aac913cf6e9f705ee4a5ab516b0474bc4349368747eed03623a2e95ad199cea8b7c8f600"
     },
     {
         "type": "secret_share",
         "tx": {
-            "id": "b94e73303dd3c697e67a7feca820a903a0bd986f3b3e05217a97abac864d1f8d",
-            "election": "b94e73303dd3c697e67a7feca820a90100000000000000000000000000000000",
-            "trustee_id": "bc6688db-3a9d-4e2d-bb6b-b5df1aeeb194",
-            "public_key": "186aa12ca100e5758f9c9f0203179322e37969eecde4299ada98714f6d8af667",
-            "secret_share": "02cd96ddd5cc2d96f076c7f1ba9ee258ae35d37c13fa147732fb203bdcaab23838"
+            "id": "e10728aa51457a9765963d2b2d2f1c03cd076c13008956f60a0ce372ab3ca2a6",
+            "election": "e10728aa51457a9765963d2b2d2f1c0100000000000000000000000000000000",
+            "trustee_id": "77b82434-4715-43af-9f7e-0a24c95f3a21",
+            "public_key": "623eceb800feaf4b7de95e8da28512d4daf534796259ba4390fdcbaed447e59a",
+            "secret_share": "02b8cf3dedef87f2817857f7e32138e54ebac30f248af2a0a565bbe8c0c412c788"
         },
-        "sig": "2a84b68ab3fd98b67329a9a597c9985bf865c1a14e09cf812a52496ffc53c474fa2c83a7b374068cac245d5d82e6aa6db0ac3577ddf46d0fc9e1f89591475b05"
+        "sig": "ca96b8aaefc096db8dc6f2133433f77c8846b97dc3ba1127110a907e74f118ff9a1529e0d0830541d12387128eb8c6986f41217429675100f98f368cccb9700a"
     },
     {
         "type": "decryption",
         "tx": {
-            "id": "b94e73303dd3c697e67a7feca820a9046d7213346391a7929a5cbee0256d1aae",
-            "election": "b94e73303dd3c697e67a7feca820a90100000000000000000000000000000000",
-            "vote": "b94e73303dd3c697e67a7feca820a902042965f25a24ccc93dac75631cdb506e",
+            "id": "e10728aa51457a9765963d2b2d2f1c042e0ec39ff81b3378adffdeae793cb1b2",
+            "election": "e10728aa51457a9765963d2b2d2f1c0100000000000000000000000000000000",
+            "vote": "e10728aa51457a9765963d2b2d2f1c025318486cbee12640c569bedd7522e92d",
             "trustees": [
-                "5a93f415-0e3d-46bb-8780-3b674cf83a4a",
-                "bc6688db-3a9d-4e2d-bb6b-b5df1aeeb194",
-                "65b0e5c7-0b42-441b-a005-c725b25561c8"
+                "c8c68de8-7bd1-4815-a5d9-660ba9cc34db",
+                "77b82434-4715-43af-9f7e-0a24c95f3a21",
+                "5dd2c036-9976-43e3-92d3-6d893c1407bf"
             ],
             "decrypted_vote": "426172616b204f62616d61"
         },
-        "sig": "8fca2864555504324755fa1b91f493f70fea9f3839bd913a301df745e2653a496f3e07219043d15a0ecf67b308f82430e3d45b0038bff275c46571bc8c0b5b0c"
+        "sig": "01e30bc84c5750496476bb042072965747dfde5339db372e7618d8e19daf89d6a3806497936eafcf046438961c77001db3c40244051357a514c69db72e2d6004"
     }
 ]
