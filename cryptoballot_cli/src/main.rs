@@ -1,3 +1,4 @@
+use clap::AppSettings;
 use clap::{App, Arg, SubCommand};
 use cryptoballot::*;
 use lazy_static::lazy_static;
@@ -25,6 +26,7 @@ fn main() {
                 .help("Set the cryptoballot uri - can also be set with CRYPTOBALLOT_URI")
                 .required(false),
         )
+        .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("keygen")
                 .about("Generate keypair")
@@ -38,6 +40,7 @@ fn main() {
         )
         .subcommand(
             SubCommand::with_name("sign")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .about("Sign transaction")
                 .arg(
                     Arg::with_name("INPUT")
@@ -56,6 +59,7 @@ fn main() {
         .subcommand(
             SubCommand::with_name("get")
                 .about("GET transaction")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(
                     Arg::with_name("id")
                         .index(1)
@@ -69,24 +73,31 @@ fn main() {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("post").about("Post transaction").arg(
-                Arg::with_name("INPUT")
-                    .index(1)
-                    .required(true) // TODO: allow stdin
-                    .help("Transaction file in JSON or CBOR format"),
-            ),
+            SubCommand::with_name("post")
+                .about("Post transaction")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .arg(
+                    Arg::with_name("INPUT")
+                        .index(1)
+                        .required(true) // TODO: allow stdin
+                        .help("Transaction file in JSON or CBOR format"),
+                ),
         )
         .subcommand(
-            SubCommand::with_name("tally").about("Tally Election").arg(
-                Arg::with_name("election-id")
-                    .index(1)
-                    .required(true) // TODO: allow stdin
-                    .help("Tally votes in an election to get a winner"),
-            ),
+            SubCommand::with_name("tally")
+                .about("Tally Election")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .arg(
+                    Arg::with_name("election-id")
+                        .index(1)
+                        .required(true) // TODO: allow stdin
+                        .help("Tally votes in an election to get a winner"),
+                ),
         )
         .subcommand(
             SubCommand::with_name("e2e")
                 .about("End-to-End Election Verification")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(
                     Arg::with_name("INPUT")
                         .index(1)
@@ -112,6 +123,7 @@ fn main() {
         .subcommand(
             SubCommand::with_name("trustee")
                 .about("Trustee related commands")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("generate")
                         .about("Generate new trustee")
@@ -127,6 +139,7 @@ fn main() {
         .subcommand(
             SubCommand::with_name("authn")
                 .about("Authenticator related commands")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("generate")
                         .about("Generate new authenticator")
@@ -149,6 +162,7 @@ fn main() {
         .subcommand(
             SubCommand::with_name("election")
                 .about("Election authority related commands")
+                .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("generate")
                         .about("Generate new election")

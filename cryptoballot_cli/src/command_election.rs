@@ -31,7 +31,6 @@ pub fn command_election_generate(matches: &clap::ArgMatches) {
     let (mut election, _election_secret) = ElectionTransaction::new(authority_public, &mut rng);
 
     // TODO: Split secret key and deal it to tustees
-
     election.ballots = vec![uuid::Uuid::nil()];
 
     // TODO: Multiple authn
