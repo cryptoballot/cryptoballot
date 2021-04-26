@@ -5,8 +5,6 @@ use sawtooth_sdk::signing::create_context;
 use sawtooth_sdk::signing::CryptoFactory;
 use sha2::Digest;
 use sha2::Sha512;
-use std::fs::File;
-use std::io::prelude::*;
 use tallystick::plurality::DefaultPluralityTally;
 
 mod command_authn;

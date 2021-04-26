@@ -2,11 +2,8 @@ use super::expand;
 use cryptoballot::Authenticator;
 use cryptoballot::ElectionTransaction;
 use cryptoballot::Signed;
-use cryptoballot::Transaction;
 use cryptoballot::Trustee;
 use std::fs::read_to_string;
-use std::fs::File;
-use std::io::prelude::*;
 
 pub fn command_election(matches: &clap::ArgMatches) {
     // Subcommands
