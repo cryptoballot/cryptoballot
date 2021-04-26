@@ -9,7 +9,11 @@ use std::fs::File;
 use std::io::prelude::*;
 use tallystick::plurality::DefaultPluralityTally;
 
+mod command_authn;
 mod command_e2e;
+mod command_election;
+mod command_keygen;
+mod command_trustee;
 mod rest;
 mod transaction;
 
@@ -24,20 +28,14 @@ fn main() {
                 .required(false),
         )
         .subcommand(
-            SubCommand::with_name("generate")
+            SubCommand::with_name("keygen")
                 .about("Generate keypair")
-                .arg(
-                    Arg::with_name("algorithim")
-                        .index(1)
-                        .required(true) // TODO: allow stdin
-                        .help("One of [ed25519, secp256k1, rsa]"),
-                )
                 .arg(
                     Arg::with_name("secret")
                         .long("secret")
                         .help("File location to write secret key")
                         .takes_value(true)
-                        .required(true), // TODO: allow PEM format
+                        .required(true), // TODO: allow PEM format with password
                 ),
         )
         .subcommand(
@@ -112,6 +110,65 @@ fn main() {
                         .long("print-results")
                         .help("Print the election results"),
                 ),
+        )
+        .subcommand(
+            SubCommand::with_name("trustee")
+                .about("Trustee related commands")
+                .subcommand(
+                    SubCommand::with_name("generate")
+                        .about("Generate new trustee")
+                        .arg(
+                            Arg::with_name("secret")
+                                .long("secret")
+                                .help("File location to write secret key")
+                                .takes_value(true)
+                                .required(true), // TODO: allow PEM format with password
+                        ),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("authn")
+                .about("Authenticator related commands")
+                .subcommand(
+                    SubCommand::with_name("generate")
+                        .about("Generate new authenticator")
+                        .arg(
+                            Arg::with_name("secret")
+                                .long("secret")
+                                .help("File location to write secret keys")
+                                .takes_value(true)
+                                .required(true), // TODO: allow PEM format with password
+                        )
+                        .arg(
+                            Arg::with_name("keysize")
+                                .long("keysize")
+                                .help("Length of RSA key, anything less than 2048 is insecure")
+                                .takes_value(true)
+                                .default_value("4096"),
+                        ),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("election")
+                .about("Election authority related commands")
+                .subcommand(
+                    SubCommand::with_name("generate")
+                        .about("Generate new election")
+                        .arg(
+                            Arg::with_name("authn-file")
+                                .long("authn-file")
+                                .help("File location to read authn definition")
+                                .takes_value(true)
+                                .required(true), // TODO: allow multiple
+                        )
+                        .arg(
+                            Arg::with_name("trustee-file")
+                                .long("trustee-file")
+                                .help("File location to read trustee definition")
+                                .takes_value(true)
+                                .required(true), // TODO: allow multiple
+                        ),
+                ),
         );
 
     let matches = app.clone().get_matches();
@@ -128,8 +185,8 @@ fn main() {
         command_post_transaction(matches, &uri);
         std::process::exit(0);
     }
-    if let Some(matches) = matches.subcommand_matches("generate") {
-        command_generate(matches);
+    if let Some(matches) = matches.subcommand_matches("keygen") {
+        command_keygen::command_keygen(matches);
         std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("sign") {
@@ -148,45 +205,22 @@ fn main() {
         command_e2e::command_e2e(matches);
         std::process::exit(0);
     }
+    if let Some(matches) = matches.subcommand_matches("trustee") {
+        command_trustee::command_trustee(matches);
+        std::process::exit(0);
+    }
+    if let Some(matches) = matches.subcommand_matches("authn") {
+        command_authn::command_authn(matches);
+        std::process::exit(0);
+    }
+    if let Some(matches) = matches.subcommand_matches("election") {
+        command_election::command_election(matches);
+        std::process::exit(0);
+    }
 
     // No command, just print help
     app.print_help().expect("Unable to print help message");
     println!(""); // Trailing linebreak
-}
-
-fn command_generate(matches: &clap::ArgMatches) {
-    // Unwraps are OK, both these args are required
-    let algo = matches.value_of("algorithim").unwrap();
-    let secret_location = expand(matches.value_of("secret").unwrap());
-
-    let (secret, public) = match algo {
-        "ed25519" => {
-            let (secret, public) = cryptoballot::generate_keypair();
-            (
-                hex::encode(secret.to_bytes()),
-                hex::encode(public.to_bytes()),
-            )
-        }
-        _ => todo!("secp256k1 and rsa not implemented"), // TODO
-    };
-
-    let mut file = File::create(&secret_location).unwrap_or_else(|e| {
-        eprintln!(
-            "cryptoballot generate: cannot create file {}: {}",
-            &secret_location, e
-        );
-        std::process::exit(1);
-    });
-
-    file.write_all(secret.as_bytes()).unwrap_or_else(|e| {
-        eprintln!(
-            "cryptoballot post: unable to write secret to {}: {}",
-            &secret_location, e
-        );
-        std::process::exit(1);
-    });
-
-    println!("public-key: {}", public);
 }
 
 fn command_post_transaction(matches: &clap::ArgMatches, uri: &str) {
