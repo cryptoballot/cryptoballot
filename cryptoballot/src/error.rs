@@ -89,8 +89,8 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot validation: authentication does not exist in election")]
     AuthDoesNotExist,
 
-    #[fail(display = "cryptoballot validation: trustee does not exist in election")]
-    TrusteeDoesNotExist,
+    #[fail(display = "cryptoballot validation: trustee {} does not exist in election (or possibly mismatched public keys)", 0)]
+    TrusteeDoesNotExist(uuid::Uuid),
 
     #[fail(display = "cryptoballot validation: authentication failed")]
     AuthFailed,

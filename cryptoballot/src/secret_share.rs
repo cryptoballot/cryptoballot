@@ -70,7 +70,7 @@ impl Signable for SecretShareTransaction {
         }
         let trustee = election
             .get_trustee(self.trustee_id)
-            .ok_or(ValidationError::TrusteeDoesNotExist)?;
+            .ok_or(ValidationError::TrusteeDoesNotExist(self.trustee_id))?;
 
         if trustee.public_key != self.public_key {
             return Err(ValidationError::InvalidPublicKey);
@@ -80,28 +80,3 @@ impl Signable for SecretShareTransaction {
     }
 }
 
-/// A trustee is responsible for safeguarding a secret share (a portion of the secret vote decryption key),
-/// distributed by the election authority via Shamir Secret Sharing.
-///
-/// Most elections will have a handful of trustees (between 3 and 30), with a quorum being set to about 2/3
-/// the total number of trustees. Any quorum of trustees may decrypt the votes.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Trustee {
-    pub id: uuid::Uuid,
-
-    #[serde(with = "EdPublicKeyHex")]
-    pub public_key: PublicKey,
-}
-
-impl Trustee {
-    /// Create a new trustee
-    pub fn new() -> (Self, SecretKey) {
-        let (secret, public) = generate_keypair();
-
-        let trustee = Trustee {
-            id: Uuid::new_v4(),
-            public_key: public,
-        };
-        return (trustee, secret);
-    }
-}

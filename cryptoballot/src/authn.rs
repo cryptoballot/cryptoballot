@@ -92,12 +92,10 @@ impl Authenticator {
         let mut rng = rand::rngs::OsRng {};
         let blind_signature = blind::sign(&mut rng, &secret, blinded_auth_package).unwrap();
 
-        let authentication = Authentication {
+       Authentication {
             authenticator: self.id,
             signature: blind_signature,
-        };
-
-        authentication
+        }
     }
 
     /// Verify the authenticator signature

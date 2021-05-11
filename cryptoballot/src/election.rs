@@ -6,10 +6,10 @@ use sharks::Sharks;
 use uuid::Uuid;
 
 /// Transaction 1: Election
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ElectionTransaction {
     pub id: Identifier,
-
+    
     /// Election Authority Public Key
     ///
     /// The election authority's public key should be posted in a trusted and well-known location.
@@ -188,7 +188,7 @@ mod tests {
         let _authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
 
         // Create 1 trustee
-        let (trustee, _trustee_secret) = Trustee::new();
+        let (trustee, _trustee_secret) = Trustee::new(1, 1, 1);
 
         // Create an election transaction with a single ballot
         let (mut election, _election_secret) =

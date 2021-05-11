@@ -78,7 +78,7 @@ pub trait Store {
 }
 
 /// A simple store that uses an in-memory BTreeMap
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Clone)]
 pub struct MemStore {
     inner: BTreeMap<String, SignedTransaction>,
 }

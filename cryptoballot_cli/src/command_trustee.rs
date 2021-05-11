@@ -15,7 +15,7 @@ pub fn command_trustee_generate(matches: &clap::ArgMatches) {
     // Unwraps are OK, both these args are required
     let secret_location = expand(matches.value_of("secret").unwrap());
 
-    let (trustee, secret) = Trustee::new();
+    let (trustee, secret) = Trustee::new(1, 1, 1);
 
     let secret = hex::encode(secret.to_bytes());
 

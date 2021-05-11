@@ -20,9 +20,9 @@ fn end_to_end_election() {
     let authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
 
     // Create 3 trustees
-    let (trustee_1, trustee_1_secret) = Trustee::new();
-    let (trustee_2, trustee_2_secret) = Trustee::new();
-    let (trustee_3, _trustee_3_secret) = Trustee::new();
+    let (trustee_1, trustee_1_secret) = Trustee::new(1, 3, 2);
+    let (trustee_2, trustee_2_secret) = Trustee::new(2, 3, 2);
+    let (trustee_3, _trustee_3_secret) = Trustee::new(3, 3, 2);
 
     // Create an election transaction with a single ballot
     let (mut election, election_secret) = ElectionTransaction::new(authority_public, &mut test_rng);

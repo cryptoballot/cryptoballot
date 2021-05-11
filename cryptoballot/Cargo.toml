@@ -29,7 +29,7 @@ aes-gcm = "0.8.0"
 # TODO: Replace these with something better (that use is_human_readable())
 hex-serde = "0.1.0"
 hex-buffer-serde = "0.2.2"
-ecies-ed25519 = { version = "0.5.1", features = ["serde"] }
+ecies-ed25519 = { version = "0.4.1", features = ["serde"] }
 cryptid = { git = "https://github.com/eleanor-em/cryptid", branch = "0.9-preview" }
 
 [dependencies.rsa]
