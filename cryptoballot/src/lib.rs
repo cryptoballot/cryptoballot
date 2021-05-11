@@ -27,6 +27,7 @@ mod secret_share;
 mod serde_hex;
 mod store;
 mod transaction;
+mod trustee;
 mod util;
 mod vote;
 
