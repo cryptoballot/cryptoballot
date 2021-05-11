@@ -31,12 +31,13 @@ Under active development. Not ready for production use!
 | ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
 |         | Blind-Signing (ed25519 / schnorr)       | Will replace current RSA bling-signing                         |
 | ✓       | Shamir Secret Sharing                   | Uses [Sharks](https://docs.rs/sharks/)                         |
+| ⚠       | Distributed key generation / decryption | Uses [cryptid](https://github.com/eleanor-em/cryptid/). Will replace Shamir Sharing |
 | ⚠       | Optional Blockchain backend             | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
 | ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 |         | REST frontend                           |                                                                |
-|         | Distributed key generation / decryption | Will use [threshold_crypto](https://crates.io/crates/threshold_crypto). Replaces Shamir |
 |         | Onion mixnet (likely Sphinx)            | Strengthened voter anonymity - Depends on REST frontend        |
-|         | Re-encryption mixnet                    | Provides coercion resistance                                   |
+|         | Re-encryption mixnet                    | Provides coercion resistance. Will use [cryptid](https://github.com/eleanor-em/cryptid/).|
+|         | Optional TiKV Backend                   | High performance (non-blockchain) backend                      |
 | ⚠       | End-User Device Verification            | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
