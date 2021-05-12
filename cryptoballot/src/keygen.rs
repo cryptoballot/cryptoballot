@@ -274,7 +274,7 @@ impl Signable for EncryptionKeyTransaction {
         }
 
         // Get all keygen_public_key transactions
-        let pk_txs = store.get_multiple(self.election, TransactionType::EncryptionKey);
+        let pk_txs = store.get_multiple(self.election, TransactionType::KeyGenPublicKey);
         let pk_txs: Vec<Signed<KeyGenPublicKeyTransaction>> = pk_txs.into_iter().map(|tx| tx.into()).collect();
 
         // Validate that the number of public key transactions match

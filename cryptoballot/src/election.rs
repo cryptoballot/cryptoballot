@@ -2,7 +2,6 @@ use crate::*;
 use ecies_ed25519::{PublicKey as EciesPublicKey, SecretKey as EciesSecretKey};
 use ed25519_dalek::PublicKey;
 use rand::{CryptoRng, RngCore};
-use sharks::Sharks;
 use uuid::Uuid;
 
 /// Transaction 1: Election

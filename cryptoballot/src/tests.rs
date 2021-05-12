@@ -1,5 +1,4 @@
 use super::*;
-use ecies_ed25519::SecretKey;
 use rand::SeedableRng;
 use uuid::Uuid;
 
@@ -70,27 +69,61 @@ fn end_to_end_election() {
 
     // Generate keygen_share transaction for each trustee
     let share_1 = trustee_1.generate_shares(&mut test_rng, &trustee_1_secret, &election.trustees, &commitments);
-    let share_1_tx = KeyGenShareTransaction::new(election.id, trustee_1.id, trustee_1.public_key, share_1);
+    let share_1_tx = KeyGenShareTransaction::new(election.id, trustee_1.id, trustee_1.public_key, share_1.clone());
     let share_1_tx = Signed::sign(&trustee_1_secret, share_1_tx).unwrap();
     share_1_tx.verify_signature().unwrap();
     share_1_tx.validate(&store).unwrap();
     store.set(share_1_tx.clone().into());
 
     let share_2 = trustee_2.generate_shares(&mut test_rng, &trustee_2_secret, &election.trustees, &commitments);
-    let share_2_tx = KeyGenShareTransaction::new(election.id, trustee_2.id, trustee_2.public_key, share_2);
+    let share_2_tx = KeyGenShareTransaction::new(election.id, trustee_2.id, trustee_2.public_key, share_2.clone());
     let share_2_tx = Signed::sign(&trustee_2_secret, share_2_tx).unwrap();
     share_2_tx.verify_signature().unwrap();
     share_2_tx.validate(&store).unwrap();
     store.set(share_2_tx.clone().into());
 
     let share_3 = trustee_3.generate_shares(&mut test_rng, &trustee_3_secret, &election.trustees, &commitments);
-    let share_3_tx = KeyGenShareTransaction::new(election.id, trustee_3.id, trustee_3.public_key, share_3);
+    let share_3_tx = KeyGenShareTransaction::new(election.id, trustee_3.id, trustee_3.public_key, share_3.clone());
     let share_3_tx = Signed::sign(&trustee_3_secret, share_3_tx).unwrap();
     share_3_tx.verify_signature().unwrap();
     share_3_tx.validate(&store).unwrap();
     store.set(share_3_tx.clone().into());
 
     // Generate keygen_public_key transaction for each trustee
+    let all_shares = vec![(trustee_1.id, &share_1), (trustee_2.id, &share_2), (trustee_3.id, &share_3)];
+
+    let pk_1_shares: Vec<(Uuid, EncryptedShare)> = all_shares.iter().map(|m| (m.0, m.1.get(&trustee_1.id).unwrap().clone())).collect();
+    let pk_1 = trustee_1.generate_public_key(&trustee_1_secret, &election.trustees, &commitments, &pk_1_shares);
+    let pk_1_tx = KeyGenPublicKeyTransaction::new(election.id, trustee_1.id, trustee_1.public_key, pk_1);
+    let pk_1_tx = Signed::sign(&trustee_1_secret, pk_1_tx).unwrap();
+    pk_1_tx.verify_signature().unwrap();
+    pk_1_tx.validate(&store).unwrap();
+    store.set(pk_1_tx.clone().into());
+
+    let pk_2_shares: Vec<(Uuid, EncryptedShare)> = all_shares.iter().map(|m| (m.0, m.1.get(&trustee_2.id).unwrap().clone())).collect();
+    let pk_2 = trustee_2.generate_public_key(&trustee_2_secret, &election.trustees, &commitments, &pk_2_shares);
+    let pk_2_tx = KeyGenPublicKeyTransaction::new(election.id, trustee_2.id, trustee_2.public_key, pk_2);
+    let pk_2_tx = Signed::sign(&trustee_2_secret, pk_2_tx).unwrap();
+    pk_2_tx.verify_signature().unwrap();
+    pk_2_tx.validate(&store).unwrap();
+    store.set(pk_2_tx.clone().into());
+
+    let pk_3_shares: Vec<(Uuid, EncryptedShare)> = all_shares.iter().map(|m| (m.0, m.1.get(&trustee_3.id).unwrap().clone())).collect();
+    let pk_3 = trustee_3.generate_public_key(&trustee_3_secret, &election.trustees, &commitments, &pk_3_shares);
+    let pk_3_tx = KeyGenPublicKeyTransaction::new(election.id, trustee_3.id, trustee_3.public_key, pk_3);
+    let pk_3_tx = Signed::sign(&trustee_3_secret, pk_3_tx).unwrap();
+    pk_3_tx.verify_signature().unwrap();
+    pk_3_tx.validate(&store).unwrap();
+    store.set(pk_3_tx.clone().into());
+
+    // Generate an encryption_key transaction
+    let encryption_key_tx = EncryptionKeyTransaction::new(election.id, authority_public, pk_1_tx.inner().public_key);
+    let encryption_key_tx = Signed::sign(&authority_secret, encryption_key_tx).unwrap();
+    encryption_key_tx.verify_signature().unwrap();
+    encryption_key_tx.validate(&store).unwrap();
+    store.set(encryption_key_tx.clone().into());
+
+    return;
 
     // Generate an empty vote transaction
     let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id);
