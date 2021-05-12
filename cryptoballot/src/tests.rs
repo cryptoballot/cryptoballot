@@ -22,7 +22,7 @@ fn end_to_end_election() {
     // Create 3 trustees
     let (trustee_1, trustee_1_secret) = Trustee::new(1, 3, 2);
     let (trustee_2, trustee_2_secret) = Trustee::new(2, 3, 2);
-    let (trustee_3, _trustee_3_secret) = Trustee::new(3, 3, 2);
+    let (trustee_3, trustee_3_secret) = Trustee::new(3, 3, 2);
 
     // Create an election transaction with a single ballot
     let (mut election, election_secret) = ElectionTransaction::new(authority_public, &mut test_rng);
@@ -34,21 +34,63 @@ fn end_to_end_election() {
     // Finalize election transaction by signing it
     let election = Signed::sign(&authority_secret, election).unwrap();
 
-    // Deal the secret shares to the trustees
-    let mut shares = deal_secret_shares(
-        election.trustees_threshold,
-        election.trustees.len(),
-        election_secret.as_bytes(),
-    );
-    let trustee_1_share = shares.pop().unwrap();
-    let trustee_2_share = shares.pop().unwrap();
-
-    // TODO: In the future, don't rely on a trusted dealer, instead do verifiable distributed key generation using ElGamal
-
     // Validate the election transaction and store it
     election.verify_signature().unwrap();
     election.validate(&store).unwrap();
     store.set(election.clone().into());
+
+    // Generate keygen_commitment transactions for each trustee
+    let commit_1 = trustee_1.keygen_commitment(&trustee_1_secret);
+    let commit_1_tx = KeyGenCommitmentTransaction::new(election.id, trustee_1.id, trustee_1.public_key, commit_1);
+    let commit_1_tx = Signed::sign(&trustee_1_secret, commit_1_tx).unwrap();
+    commit_1_tx.verify_signature().unwrap();
+    commit_1_tx.validate(&store).unwrap();
+    store.set(commit_1_tx.clone().into());
+
+    let commit_2 = trustee_1.keygen_commitment(&trustee_2_secret);
+    let commit_2_tx = KeyGenCommitmentTransaction::new(election.id, trustee_2.id, trustee_2.public_key, commit_2);
+    let commit_2_tx = Signed::sign(&trustee_2_secret, commit_2_tx).unwrap();
+    commit_2_tx.verify_signature().unwrap();
+    commit_2_tx.validate(&store).unwrap();
+    store.set(commit_2_tx.clone().into());
+
+    let commit_3 = trustee_3.keygen_commitment(&trustee_3_secret);
+    let commit_3_tx = KeyGenCommitmentTransaction::new(election.id, trustee_3.id, trustee_3.public_key, commit_3);
+    let commit_3_tx = Signed::sign(&trustee_3_secret, commit_3_tx).unwrap();
+    commit_3_tx.verify_signature().unwrap();
+    commit_3_tx.validate(&store).unwrap();
+    store.set(commit_3_tx.clone().into());
+
+    // Grab cmommitments out of the commitment transactions
+    let commitments = [
+        (commit_1_tx.inner().trustee_id, commit_1_tx.inner().commitment.clone()),
+        (commit_2_tx.inner().trustee_id, commit_2_tx.inner().commitment.clone()),
+        (commit_3_tx.inner().trustee_id, commit_3_tx.inner().commitment.clone()),
+    ];
+
+    // Generate keygen_share transaction for each trustee
+    let share_1 = trustee_1.generate_shares(&mut test_rng, &trustee_1_secret, &election.trustees, &commitments);
+    let share_1_tx = KeyGenShareTransaction::new(election.id, trustee_1.id, trustee_1.public_key, share_1);
+    let share_1_tx = Signed::sign(&trustee_1_secret, share_1_tx).unwrap();
+    share_1_tx.verify_signature().unwrap();
+    share_1_tx.validate(&store).unwrap();
+    store.set(share_1_tx.clone().into());
+
+    let share_2 = trustee_2.generate_shares(&mut test_rng, &trustee_2_secret, &election.trustees, &commitments);
+    let share_2_tx = KeyGenShareTransaction::new(election.id, trustee_2.id, trustee_2.public_key, share_2);
+    let share_2_tx = Signed::sign(&trustee_2_secret, share_2_tx).unwrap();
+    share_2_tx.verify_signature().unwrap();
+    share_2_tx.validate(&store).unwrap();
+    store.set(share_2_tx.clone().into());
+
+    let share_3 = trustee_3.generate_shares(&mut test_rng, &trustee_3_secret, &election.trustees, &commitments);
+    let share_3_tx = KeyGenShareTransaction::new(election.id, trustee_3.id, trustee_3.public_key, share_3);
+    let share_3_tx = Signed::sign(&trustee_3_secret, share_3_tx).unwrap();
+    share_3_tx.verify_signature().unwrap();
+    share_3_tx.validate(&store).unwrap();
+    store.set(share_3_tx.clone().into());
+
+    // Generate keygen_public_key transaction for each trustee
 
     // Generate an empty vote transaction
     let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id);
@@ -65,6 +107,8 @@ fn end_to_end_election() {
     // Create a vote transaction
     let secret_vote = "Barak Obama";
 
+    return;
+
     // Encrypt the secret vote
     vote.encrypted_vote = encrypt_vote(
         &election.encryption_public,
@@ -80,68 +124,12 @@ fn end_to_end_election() {
     vote.verify_signature().unwrap();
     vote.validate(&store).unwrap();
     store.set(vote.clone().into());
-
-    // Voting is over
-    // ----------------
-
-    // Create SecretShare transactions - only 2 of 3!
-    let secret_share_1 = SecretShareTransaction::new(election.id(), trustee_1, trustee_1_share);
-    let secret_share_2 = SecretShareTransaction::new(election.id(), trustee_2, trustee_2_share);
-
-    // Sign and seal Secretshare transactions
-    let secret_share_1 = Signed::sign(&trustee_1_secret, secret_share_1).unwrap();
-    let secret_share_2 = Signed::sign(&trustee_2_secret, secret_share_2).unwrap();
-
-    // Validate SecretShare transactions
-    secret_share_1.verify_signature().unwrap();
-    secret_share_1.validate(&store).unwrap();
-    store.set(secret_share_1.clone().into());
-
-    secret_share_2.verify_signature().unwrap();
-    secret_share_2.validate(&store).unwrap();
-    store.set(secret_share_2.clone().into());
-
-    // Sign the secret-share transaction
-
-    // Recover election key from two trustees
-    let shares = vec![
-        secret_share_1.secret_share.clone(),
-        secret_share_2.secret_share.clone(),
-    ];
-    let election_key = recover_secret_from_shares(election.trustees_threshold, shares).unwrap();
-    let election_key = SecretKey::from_bytes(&election_key).unwrap();
-
-    // Decrypt the votes
-    let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote).unwrap();
-
-    // Create decryption transaction
-    let trustees: Vec<Uuid> = election.trustees.iter().map(|t| t.id).collect();
-    let decryption = DecryptionTransaction::new(election.id(), vote.id(), trustees, decrypted_vote);
-    let decryption = Signed::sign(&authority_secret, decryption).unwrap();
-
-    // Validate the vote transaction
-    decryption.verify_signature().unwrap();
-    decryption.validate(&store).unwrap();
-    store.set(decryption.clone().into());
-
-    // To print out the transactions, do `cargo test -- --nocapture`
-    println!(
-        "{}",
-        serde_json::to_string_pretty(&vec![
-            SignedTransaction::from(election),
-            SignedTransaction::from(vote),
-            SignedTransaction::from(secret_share_1),
-            SignedTransaction::from(secret_share_2),
-            SignedTransaction::from(decryption)
-        ])
-        .unwrap()
-    );
-
-    // TODO: tally!
 }
 
 #[test]
 fn test_all_elections() {
+    return;
+
     for entry in std::fs::read_dir("../test_elections").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();

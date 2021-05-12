@@ -143,25 +143,6 @@ impl Signable for ElectionTransaction {
     }
 }
 
-/// Deal the election secret into shares, ready to be distributed to trustees.
-///
-/// Generally the election authority will generate the secret, distribute it to trustees, then destroy
-/// the secret.
-///
-/// Future plans include moving to distributed key generation, removing all centralized control of the
-/// secret key.
-pub fn deal_secret_shares(theshold: u8, num_trustees: usize, secret: &[u8]) -> Vec<Vec<u8>> {
-    let sharks = Sharks(theshold);
-    let dealer = sharks.dealer(secret);
-
-    let mut all_shares = Vec::with_capacity(num_trustees);
-    for s in dealer.take(num_trustees) {
-        all_shares.push(Vec::from(&s));
-    }
-
-    all_shares
-}
-
 #[cfg(test)]
 mod tests {
 

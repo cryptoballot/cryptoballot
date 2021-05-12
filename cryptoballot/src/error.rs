@@ -71,6 +71,12 @@ impl From<ecies_ed25519::Error> for Error {
 /// Transaction Validation errors
 #[derive(Debug, Fail)]
 pub enum ValidationError {
+    #[fail(display = "cryptoballot validation: election authority public key mismatch")]
+    AuthorityPublicKeyMismatch,
+
+    #[fail(display = "cryptoballot validation: mismatched encryption_key for trustee {})", 0)]
+    MismatchedEncryptionKey(uuid::Uuid),
+
     #[fail(display = "cryptoballot validation: threshold is invalid for number of trustees")]
     InvalidTrusteeThreshold,
 
@@ -91,6 +97,18 @@ pub enum ValidationError {
 
     #[fail(display = "cryptoballot validation: trustee {} does not exist in election (or possibly mismatched public keys)", 0)]
     TrusteeDoesNotExist(uuid::Uuid),
+
+    #[fail(display = "cryptoballot validation: missing keygen_public_key transaction for trustee {})", 0)]
+    MissingKeyGenPublicKeyTransaction(uuid::Uuid),
+
+    #[fail(display = "cryptoballot validation: wrong number of keygen_public_key transactions)")]
+    WrongNumberOfPublicKeyTransactions,
+
+    #[fail(display = "cryptoballot validation: trustee {} share is missing)", 0)]
+    TrusteeShareMissing(uuid::Uuid),
+
+    #[fail(display = "cryptoballot validation: wrong number of shares")]
+    WrongNumberOfShares,
 
     #[fail(display = "cryptoballot validation: authentication failed")]
     AuthFailed,

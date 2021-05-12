@@ -17,6 +17,12 @@ pub trait Store {
     /// Get a transaction of an unknown type
     fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction>;
 
+    fn get_multiple(
+        &self,
+        election_id: Identifier,
+        tx_type: TransactionType,
+    ) -> Vec<SignedTransaction>;
+
     // TODO: Macro these methods
 
     /// Get an election transaction
@@ -88,7 +94,15 @@ impl MemStore {
         self.inner.insert(tx.id().to_string(), tx);
     }
 
-    pub fn get_multiple(
+}
+
+impl Store for MemStore {
+    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
+        let key = id.to_string();
+        self.inner.get(&key).cloned()
+    }
+
+    fn get_multiple(
         &self,
         election_id: Identifier,
         tx_type: TransactionType,
@@ -119,13 +133,6 @@ impl MemStore {
             results.push(v.clone())
         }
         results
-    }
-}
-
-impl Store for MemStore {
-    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
-        let key = id.to_string();
-        self.inner.get(&key).cloned()
     }
 }
 

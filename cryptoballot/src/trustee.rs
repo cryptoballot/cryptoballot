@@ -1,16 +1,12 @@
 use crate::*;
 use rand::{CryptoRng, Rng};
 use cryptid::elgamal::PublicKey as ElGamalPublicKey;
-use cryptid::elgamal::{CurveElem};
 use cryptid::threshold::{
-    Decryption, KeygenCommitment, Threshold, ThresholdGenerator, ThresholdParty,
+    KeygenCommitment, Threshold, ThresholdGenerator, ThresholdParty,
 };
-use cryptid::util::AsBase64;
 use cryptid::Scalar;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
-use std::collections::HashMap;
-use std::convert::TryInto;
 use uuid::Uuid;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -23,7 +19,7 @@ use serde::{
     Serializer,
 };
 use std::convert::TryFrom;
-
+use std::collections::HashMap;
 
 /// A trustee is responsible for safeguarding a secret share (a portion of the secret vote decryption key),
 /// distributed by the election authority via Shamir Secret Sharing.
@@ -97,24 +93,38 @@ impl Trustee {
         rng: &mut R,
         sk: &SecretKey, 
         trustees: &[Trustee],
-        commitments: &[(usize, KeygenCommitment)],
-    ) -> Vec<(Uuid, EncryptedShare)> {
+        commitments: &[(Uuid, KeygenCommitment)],
+    ) -> HashMap<Uuid, EncryptedShare> {
         let mut theshold_generator =  self.generator(sk);
 
-        for (index, commitment) in commitments {
+        for (trustee_id, commitment) in commitments {
+            // First get the index
+            let mut index = 0;
+            for trustee in trustees {
+                if &trustee.id == trustee_id {
+                    index = trustee.index;
+                    break;
+                }
+            }
+
+            // TODO: Result
+            if index == 0 {
+                panic!("Trustee ID not found in trustee list");
+            }
+
             theshold_generator
-                .receive_commitment(*index, commitment)
+                .receive_commitment(index, commitment)
                 .expect("Invalid commitment") // TODO Result
         }
 
-        let mut shares = Vec::new();
+        let mut shares = HashMap::with_capacity(commitments.len());
         for trustee in trustees {
             let share = theshold_generator.get_polynomial_share(trustee.index).unwrap();
 
             // Encrypt the share with the public key such that only the holder of the secret key can decrypt. 
             let encrypted = EncryptedShare(ecies_ed25519::encrypt(&trustee.ecies_key, share.as_bytes(), rng).unwrap());
 
-            shares.push((trustee.id, encrypted));
+            shares.insert(trustee.id, encrypted);
         }
 
         shares
@@ -124,7 +134,7 @@ impl Trustee {
         &self,
         sk: &SecretKey, 
         trustees: &[Trustee],
-        commitments: &[(usize, KeygenCommitment)],
+        commitments: &[(Uuid, KeygenCommitment)],
         shares: &[(Uuid, EncryptedShare)], // From, Share
     ) -> ElGamalPublicKey {
 
@@ -147,8 +157,22 @@ impl Trustee {
             }
         }
 
-        let party = self.generate_party(sk, commitments, &decrypted_shared);
-        party.pubkey()
+        // Map the commitments
+        let mut mapped_commitments = Vec::with_capacity(commitments.len());
+        for trustee in trustees {
+            for (trustee_id, commitment) in commitments {
+                if &trustee.id == trustee_id {
+                    mapped_commitments.push((trustee.index, commitment));
+                }
+            }
+        }
+        // TODO: Results
+        if mapped_commitments.len() != commitments.len() {
+            panic!("Missing commitments for some trustees");
+        }
+
+        let party = self.generate_party(sk, &mapped_commitments, &decrypted_shared);
+        party.pubkey() 
     }
 
     pub fn ecies_keys(
@@ -180,7 +204,7 @@ impl Trustee {
     fn generate_party(
         &self,
         sk: &SecretKey, 
-        commitments: &[(usize, KeygenCommitment)],
+        commitments: &[(usize, &KeygenCommitment)],
         shares: &[(usize, Scalar)], // From, Share
     ) -> ThresholdParty {
         let mut theshold_generator = self.generator(sk);
@@ -201,6 +225,8 @@ impl Trustee {
     }
 
 }
+
+#[derive(Clone, Debug)]
 pub struct EncryptedShare(Vec<u8>);
 
 impl EncryptedShare {
@@ -298,6 +324,8 @@ impl<'d> Deserialize<'d> for EncryptedShare {
 
 #[test]
 fn trustee_keygen_test() {
+    use std::collections::HashMap;
+
     let mut rng = rand::thread_rng();
 
     let (trustee_1, skey_1) = Trustee::new(1, 3, 2);
@@ -311,9 +339,9 @@ fn trustee_keygen_test() {
     let commit_3 = trustee_3.keygen_commitment(&skey_3);
 
     let commitments = [
-        (1, commit_1),
-        (2, commit_2),
-        (3, commit_3),
+        (trustee_1.id, commit_1),
+        (trustee_2.id, commit_2),
+        (trustee_3.id, commit_3),
     ];
 
     // Map of: recipient -> (sender, share)

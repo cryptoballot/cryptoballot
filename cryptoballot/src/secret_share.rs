@@ -1,8 +1,7 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
-use ed25519_dalek::SecretKey;
 use uuid::Uuid;
-
+ 
 /// Transaction 3: SecretShare
 ///
 /// The SecretShareTransaction is published by trustees, with one transaction created per trustee.

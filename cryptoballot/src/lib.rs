@@ -17,8 +17,6 @@
 #[macro_use]
 extern crate serde;
 
-extern crate ed25519_dalek;
-
 mod authn;
 mod decryption;
 mod election;
@@ -42,6 +40,7 @@ pub use transaction::*;
 pub use util::*;
 pub use vote::*;
 pub use trustee::*;
+pub use keygen::*;
 
 pub(crate) use serde_hex::*;
 
