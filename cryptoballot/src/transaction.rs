@@ -28,7 +28,7 @@ pub enum Transaction {
     KeyGenPublicKey(KeyGenPublicKeyTransaction),
     EncryptionKey(EncryptionKeyTransaction),
     Vote(VoteTransaction),
-    SecretShare(SecretShareTransaction),
+    PartialDecryption(PartialDecryptionTransaction),
     Decryption(DecryptionTransaction),
 }
 
@@ -43,7 +43,7 @@ impl Transaction {
             Transaction::KeyGenPublicKey(_) => TransactionType::KeyGenPublicKey,
             Transaction::EncryptionKey(_) => TransactionType::EncryptionKey,
             Transaction::Vote(_) => TransactionType::Vote,
-            Transaction::SecretShare(_) => TransactionType::SecretShare,
+            Transaction::PartialDecryption(_) => TransactionType::PartialDecryption,
             Transaction::Decryption(_) => TransactionType::Decryption,
         }
     }
@@ -58,7 +58,7 @@ impl Transaction {
             Transaction::KeyGenPublicKey(tx) => tx.id,
             Transaction::EncryptionKey(tx) => tx.id,
             Transaction::Vote(tx) => tx.id,
-            Transaction::SecretShare(tx) => tx.id,
+            Transaction::PartialDecryption(tx) => tx.id,
             Transaction::Decryption(tx) => tx.id,
         }
     }
@@ -74,12 +74,12 @@ impl Transaction {
     pub fn validate_tx<S: Store>(&self, s: &S) -> Result<(), ValidationError> {
         match self {
             Transaction::Election(tx) => tx.validate_tx(s),
-            Transaction::KeyGenCommitment(tx) =>  tx.validate_tx(s),
-            Transaction::KeyGenShare(tx) =>  tx.validate_tx(s),
-            Transaction::KeyGenPublicKey(tx) =>  tx.validate_tx(s),
-            Transaction::EncryptionKey(tx) =>  tx.validate_tx(s),
+            Transaction::KeyGenCommitment(tx) => tx.validate_tx(s),
+            Transaction::KeyGenShare(tx) => tx.validate_tx(s),
+            Transaction::KeyGenPublicKey(tx) => tx.validate_tx(s),
+            Transaction::EncryptionKey(tx) => tx.validate_tx(s),
             Transaction::Vote(tx) => tx.validate_tx(s),
-            Transaction::SecretShare(tx) => tx.validate_tx(s),
+            Transaction::PartialDecryption(tx) => tx.validate_tx(s),
             Transaction::Decryption(tx) => tx.validate_tx(s),
         }
     }
@@ -96,7 +96,7 @@ pub enum SignedTransaction {
     KeyGenPublicKey(Signed<KeyGenPublicKeyTransaction>),
     EncryptionKey(Signed<EncryptionKeyTransaction>),
     Vote(Signed<VoteTransaction>),
-    SecretShare(Signed<SecretShareTransaction>),
+    PartialDecryption(Signed<PartialDecryptionTransaction>),
     Decryption(Signed<DecryptionTransaction>),
 }
 
@@ -111,7 +111,7 @@ impl SignedTransaction {
             SignedTransaction::KeyGenPublicKey(_) => TransactionType::KeyGenPublicKey,
             SignedTransaction::EncryptionKey(_) => TransactionType::EncryptionKey,
             SignedTransaction::Vote(_) => TransactionType::Vote,
-            SignedTransaction::SecretShare(_) => TransactionType::SecretShare,
+            SignedTransaction::PartialDecryption(_) => TransactionType::PartialDecryption,
             SignedTransaction::Decryption(_) => TransactionType::Decryption,
         }
     }
@@ -137,11 +137,11 @@ impl SignedTransaction {
         match self {
             SignedTransaction::Election(signed) => signed.tx.id,
             SignedTransaction::KeyGenCommitment(signed) => signed.tx.id,
-            SignedTransaction::KeyGenShare(signed)  => signed.tx.id,
-            SignedTransaction::KeyGenPublicKey(signed)  => signed.tx.id,
+            SignedTransaction::KeyGenShare(signed) => signed.tx.id,
+            SignedTransaction::KeyGenPublicKey(signed) => signed.tx.id,
             SignedTransaction::EncryptionKey(signed) => signed.tx.id,
             SignedTransaction::Vote(signed) => signed.tx.id,
-            SignedTransaction::SecretShare(signed) => signed.tx.id,
+            SignedTransaction::PartialDecryption(signed) => signed.tx.id,
             SignedTransaction::Decryption(signed) => signed.tx.id,
         }
     }
@@ -152,11 +152,11 @@ impl SignedTransaction {
         match self {
             SignedTransaction::Election(signed) => signed.inputs(),
             SignedTransaction::KeyGenCommitment(signed) => signed.inputs(),
-            SignedTransaction::KeyGenShare(signed)  =>signed.inputs(),
-            SignedTransaction::KeyGenPublicKey(signed)  => signed.inputs(),
+            SignedTransaction::KeyGenShare(signed) => signed.inputs(),
+            SignedTransaction::KeyGenPublicKey(signed) => signed.inputs(),
             SignedTransaction::EncryptionKey(signed) => signed.inputs(),
             SignedTransaction::Vote(signed) => signed.inputs(),
-            SignedTransaction::SecretShare(signed) => signed.inputs(),
+            SignedTransaction::PartialDecryption(signed) => signed.inputs(),
             SignedTransaction::Decryption(signed) => signed.inputs(),
         }
     }
@@ -164,12 +164,12 @@ impl SignedTransaction {
     pub fn validate<S: Store>(&self, s: &S) -> Result<(), ValidationError> {
         match self {
             SignedTransaction::Election(tx) => tx.validate(s),
-            SignedTransaction::KeyGenCommitment(tx) =>  tx.validate(s),
-            SignedTransaction::KeyGenShare(tx)  => tx.validate(s),
-            SignedTransaction::KeyGenPublicKey(tx)  =>  tx.validate(s),
-            SignedTransaction::EncryptionKey(tx) =>  tx.validate(s),
+            SignedTransaction::KeyGenCommitment(tx) => tx.validate(s),
+            SignedTransaction::KeyGenShare(tx) => tx.validate(s),
+            SignedTransaction::KeyGenPublicKey(tx) => tx.validate(s),
+            SignedTransaction::EncryptionKey(tx) => tx.validate(s),
             SignedTransaction::Vote(tx) => tx.validate(s),
-            SignedTransaction::SecretShare(tx) => tx.validate(s),
+            SignedTransaction::PartialDecryption(tx) => tx.validate(s),
             SignedTransaction::Decryption(tx) => tx.validate(s),
         }
     }
@@ -429,7 +429,7 @@ pub enum TransactionType {
     KeyGenPublicKey = 4,
     EncryptionKey = 5,
     Vote = 6,
-    SecretShare = 7,
+    PartialDecryption = 7,
     Decryption = 8,
 }
 
@@ -442,7 +442,7 @@ impl TransactionType {
             TransactionType::KeyGenPublicKey => "04",
             TransactionType::EncryptionKey => "05",
             TransactionType::Vote => "06",
-            TransactionType::SecretShare => "07",
+            TransactionType::PartialDecryption => "07",
             TransactionType::Decryption => "08",
         }
     }
@@ -457,7 +457,7 @@ impl std::fmt::Display for TransactionType {
             TransactionType::KeyGenPublicKey => "keygen_public_key",
             TransactionType::EncryptionKey => "encryption_key",
             TransactionType::Vote => "vote",
-            TransactionType::SecretShare => "secret_share",
+            TransactionType::PartialDecryption => "partial_decryption",
             TransactionType::Decryption => "decryption",
         };
         write!(f, "{}", name)
@@ -513,7 +513,6 @@ impl From<SignedTransaction> for Signed<EncryptionKeyTransaction> {
     }
 }
 
-
 impl From<SignedTransaction> for Signed<VoteTransaction> {
     fn from(tx: SignedTransaction) -> Self {
         match tx {
@@ -523,19 +522,19 @@ impl From<SignedTransaction> for Signed<VoteTransaction> {
     }
 }
 
-impl From<SignedTransaction> for Signed<DecryptionTransaction> {
+impl From<SignedTransaction> for Signed<PartialDecryptionTransaction> {
     fn from(tx: SignedTransaction) -> Self {
         match tx {
-            SignedTransaction::Decryption(tx) => tx,
+            SignedTransaction::PartialDecryption(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
 }
 
-impl From<SignedTransaction> for Signed<SecretShareTransaction> {
+impl From<SignedTransaction> for Signed<DecryptionTransaction> {
     fn from(tx: SignedTransaction) -> Self {
         match tx {
-            SignedTransaction::SecretShare(tx) => tx,
+            SignedTransaction::Decryption(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
@@ -604,10 +603,10 @@ impl From<SignedTransaction> for DecryptionTransaction {
     }
 }
 
-impl From<SignedTransaction> for SecretShareTransaction {
+impl From<SignedTransaction> for PartialDecryptionTransaction {
     fn from(tx: SignedTransaction) -> Self {
         match tx {
-            SignedTransaction::SecretShare(tx) => tx.tx,
+            SignedTransaction::PartialDecryption(tx) => tx.tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
@@ -649,9 +648,9 @@ impl From<Signed<VoteTransaction>> for SignedTransaction {
     }
 }
 
-impl From<Signed<SecretShareTransaction>> for SignedTransaction {
-    fn from(tx: Signed<SecretShareTransaction>) -> Self {
-        SignedTransaction::SecretShare(tx)
+impl From<Signed<PartialDecryptionTransaction>> for SignedTransaction {
+    fn from(tx: Signed<PartialDecryptionTransaction>) -> Self {
+        SignedTransaction::PartialDecryption(tx)
     }
 }
 
@@ -715,10 +714,10 @@ impl AsRef<VoteTransaction> for SignedTransaction {
     }
 }
 
-impl AsRef<SecretShareTransaction> for SignedTransaction {
-    fn as_ref(&self) -> &SecretShareTransaction {
+impl AsRef<PartialDecryptionTransaction> for SignedTransaction {
+    fn as_ref(&self) -> &PartialDecryptionTransaction {
         match self {
-            SignedTransaction::SecretShare(signed) => &signed.tx,
+            SignedTransaction::PartialDecryption(signed) => &signed.tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
@@ -746,7 +745,7 @@ mod test {
         assert!(TransactionType::KeyGenPublicKey as u8 == 4);
         assert!(TransactionType::EncryptionKey as u8 == 5);
         assert!(TransactionType::Vote as u8 == 6);
-        assert!(TransactionType::SecretShare as u8 == 7);
+        assert!(TransactionType::PartialDecryption as u8 == 7);
         assert!(TransactionType::Decryption as u8 == 8);
 
         let election_id = Identifier::new_for_election();

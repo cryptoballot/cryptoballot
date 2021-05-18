@@ -1,14 +1,12 @@
 use crate::*;
-use ecies_ed25519::{PublicKey as EciesPublicKey, SecretKey as EciesSecretKey};
 use ed25519_dalek::PublicKey;
-use rand::{CryptoRng, RngCore};
 use uuid::Uuid;
 
 /// Transaction 1: Election
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ElectionTransaction {
     pub id: Identifier,
-    
+
     /// Election Authority Public Key
     ///
     /// The election authority's public key should be posted in a trusted and well-known location.
@@ -18,19 +16,6 @@ pub struct ElectionTransaction {
     #[serde(with = "EdPublicKeyHex")]
     pub authority_public: PublicKey,
 
-    /// Election public key for encrypting votes. It is an uncompressed `secp256k1::PublicKey`.
-    ///
-    /// This public key is used to encrypt all votes using ECIES encryption. This keeps
-    /// all the votes secret until the trustees post SecretShare transaction to allow
-    /// decryption of the voters after the election is over.
-    ///
-    /// After generating the keypair, the secret should be distributed to the trustees using
-    /// Shamir Secret Sharing and then destroyed.
-    ///
-    /// Future plans include moving to Distributed key generation, so no one entity ever has
-    /// the secret key, even temporarily.
-    pub encryption_public: EciesPublicKey,
-
     /// List of ballots that can be cast in this election
     // TODO: Define ballot struct
     pub ballots: Vec<uuid::Uuid>,
@@ -39,7 +24,7 @@ pub struct ElectionTransaction {
     pub trustees: Vec<Trustee>,
 
     /// Minimum number of trustees needed to reconstruct the secret key and decrypt votes.
-    pub trustees_threshold: u8,
+    pub trustees_threshold: usize,
 
     /// Authenticators who can authenticate voters
     pub authenticators: Vec<Authenticator>,
@@ -53,24 +38,16 @@ impl ElectionTransaction {
     /// Create a new ElectionTransaction
     ///
     /// The returned SecretKey should be distributed to the trustees using Shamir Secret Sharing
-    pub fn new<R: CryptoRng + RngCore>(
-        authority_public: PublicKey,
-        rng: &mut R,
-    ) -> (Self, EciesSecretKey) {
-        let (secret, public) = ecies_ed25519::generate_keypair(rng);
-
-        let election = ElectionTransaction {
+    pub fn new(authority_public: PublicKey) -> Self {
+        ElectionTransaction {
             id: Identifier::new_for_election(),
             authority_public: authority_public,
-            encryption_public: public,
             ballots: vec![],
             trustees: vec![],
             trustees_threshold: 1,
             authenticators: vec![],
             authenticators_threshold: 1,
-        };
-
-        (election, secret)
+        }
     }
 
     // TODO: return a ballot struct when we have it defined
@@ -125,7 +102,7 @@ impl Signable for ElectionTransaction {
         // TODO: check parsing of public key
 
         // Make sure trustees settings are sane
-        if self.trustees_threshold > self.trustees.len() as u8 {
+        if self.trustees_threshold > self.trustees.len() {
             return Err(ValidationError::InvalidTrusteeThreshold);
         }
         // TODO: check that we have at least 1 trustee
@@ -146,11 +123,9 @@ impl Signable for ElectionTransaction {
 mod tests {
 
     use super::*;
-    use rand::SeedableRng;
 
     #[test]
     fn create_new_election() {
-        let mut test_rng = rand::rngs::StdRng::from_seed([0u8; 32]);
         let store = MemStore::default();
 
         // Bad keypair
@@ -171,8 +146,7 @@ mod tests {
         let (trustee, _trustee_secret) = Trustee::new(1, 1, 1);
 
         // Create an election transaction with a single ballot
-        let (mut election, _election_secret) =
-            ElectionTransaction::new(authority_public, &mut test_rng);
+        let mut election = ElectionTransaction::new(authority_public);
         election.ballots = vec![ballot_id];
 
         // Validation should fail without authenticators

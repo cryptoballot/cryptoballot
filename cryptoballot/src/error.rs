@@ -74,7 +74,16 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot validation: election authority public key mismatch")]
     AuthorityPublicKeyMismatch,
 
-    #[fail(display = "cryptoballot validation: mismatched encryption_key for trustee {})", 0)]
+    #[fail(
+        display = "cryptoballot validation: trustee public key mismatch for trustee {}",
+        0
+    )]
+    TrusteePublicKeyMismatch(uuid::Uuid),
+
+    #[fail(
+        display = "cryptoballot validation: mismatched encryption_key for trustee {})",
+        0
+    )]
     MismatchedEncryptionKey(uuid::Uuid),
 
     #[fail(display = "cryptoballot validation: threshold is invalid for number of trustees")]
@@ -95,10 +104,16 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot validation: authentication does not exist in election")]
     AuthDoesNotExist,
 
-    #[fail(display = "cryptoballot validation: trustee {} does not exist in election (or possibly mismatched public keys)", 0)]
+    #[fail(
+        display = "cryptoballot validation: trustee {} does not exist in election (or possibly mismatched public keys)",
+        0
+    )]
     TrusteeDoesNotExist(uuid::Uuid),
 
-    #[fail(display = "cryptoballot validation: missing keygen_public_key transaction for trustee {})", 0)]
+    #[fail(
+        display = "cryptoballot validation: missing keygen_public_key transaction for trustee {})",
+        0
+    )]
     MissingKeyGenPublicKeyTransaction(uuid::Uuid),
 
     #[fail(display = "cryptoballot validation: wrong number of keygen_public_key transactions)")]
@@ -116,11 +131,11 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot: secret recovery failed")]
     SecretRecoveryFailed,
 
-    #[fail(display = "cryptoballot: decrypt vote failed")]
-    DecryptVoteFailed,
+    #[fail(display = "cryptoballot: vote decryption failed: {}", 0)]
+    VoteDecryptionFailed(cryptid::CryptoError),
 
-    #[fail(display = "cryptoballot: mismatched decrypted vote")]
-    MismatchedDecryptedVote,
+    #[fail(display = "cryptoballot: vote decryption failed: decrypted vote mismatch")]
+    VoteDecryptionMismatch,
 
     #[fail(display = "cryptoballot: auth signature verification failed")]
     AuthSignatureVerificationFailed,
@@ -139,6 +154,9 @@ pub enum ValidationError {
 
     #[fail(display = "cryptoballot validation: ecies decryption error: {}", 0)]
     EciesError(ecies_ed25519::Error),
+
+    #[fail(display = "cryptoballot: partial decryption proof failed to verify")]
+    PartialDecryptionProofFailed,
 }
 
 impl From<ed25519_dalek::SignatureError> for ValidationError {

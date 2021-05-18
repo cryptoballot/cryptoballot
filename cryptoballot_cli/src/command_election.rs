@@ -14,8 +14,6 @@ pub fn command_election(matches: &clap::ArgMatches) {
 }
 
 pub fn command_election_generate(matches: &clap::ArgMatches) {
-    let mut rng = rand::thread_rng();
-
     // Unwraps are OK, both these args are required
     // TODO: Multiple
     let authn_file = expand(matches.value_of("authn-file").unwrap());
@@ -28,7 +26,7 @@ pub fn command_election_generate(matches: &clap::ArgMatches) {
     let (authority_secret, authority_public) = cryptoballot::generate_keypair();
 
     // Create an election transaction with a single ballot
-    let (mut election, _election_secret) = ElectionTransaction::new(authority_public, &mut rng);
+    let mut election = ElectionTransaction::new(authority_public);
 
     // TODO: Split secret key and deal it to tustees
     election.ballots = vec![uuid::Uuid::nil()];

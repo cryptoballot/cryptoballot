@@ -1,9 +1,9 @@
 use crate::*;
-use ecies_ed25519::PublicKey as EciesPublicKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use rand::{CryptoRng, RngCore};
 use uuid::Uuid;
+use cryptid::elgamal::Ciphertext;
 
 /// Transaction 2: Vote
 ///
@@ -19,9 +19,7 @@ pub struct VoteTransaction {
     pub election: Identifier,
     pub ballot_id: Uuid,
 
-    /// Vote encrypted by ECIES with the key defined by `ElectionTransaction.encryption_public`
-    #[serde(with = "hex_serde")]
-    pub encrypted_vote: Vec<u8>,
+    pub encrypted_vote: Ciphertext,
 
     /// The public key used to anonymized the voter.
     /// The voter should not reveal that they own this key - doing so will leak their real identity.
@@ -34,14 +32,14 @@ pub struct VoteTransaction {
 
 impl VoteTransaction {
     /// Create a new vote transaction.
-    pub fn new(election_id: Identifier, ballot_id: Uuid) -> (Self, SecretKey) {
+    pub fn new(election_id: Identifier, ballot_id: Uuid, encrypted_vote: Ciphertext) -> (Self, SecretKey) {
         let (secret_key, public_key) = generate_keypair();
 
         let vote = VoteTransaction {
             id: Identifier::new(election_id, TransactionType::Vote, &public_key.to_bytes()),
             election: election_id,
             ballot_id: ballot_id,
-            encrypted_vote: vec![],
+            encrypted_vote,
             anonymous_key: public_key,
             authentication: vec![],
         };
@@ -97,13 +95,13 @@ impl Signable for VoteTransaction {
     }
 }
 
-/// Encrypt a vote with the public key provided by the election transaction (ElectionTransaction.encryption_key)
+/// Encrypt a vote with the public key provided by the encryption_key transaction (EncryptionKeyTransaction.encryption_key)
 pub fn encrypt_vote<R: CryptoRng + RngCore>(
-    election_key: &EciesPublicKey,
+    encryption_key: &cryptid::elgamal::PublicKey,
     vote: &[u8],
     rng: &mut R,
-) -> Result<Vec<u8>, Error> {
-    Ok(ecies_ed25519::encrypt(election_key, vote, rng)?)
+) -> Result<cryptid::elgamal::Ciphertext, Error> {
+    Ok(encryption_key.encrypt(rng, vote))
 }
 
 #[cfg(test)]

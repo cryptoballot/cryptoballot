@@ -40,6 +40,21 @@ pub trait Store {
         }
     }
 
+    /// Get a public_key transaction
+    fn get_keygen_public_key(
+        &self,
+        id: Identifier,
+    ) -> Result<Signed<KeyGenPublicKeyTransaction>, TransactionNotFound> {
+        let tx = self.get_transaction(id);
+        match tx {
+            Some(tx) => match tx {
+                SignedTransaction::KeyGenPublicKey(e) => Ok(e),
+                _ => Err(TransactionNotFound(id)),
+            },
+            None => Err(TransactionNotFound(id)),
+        }
+    }
+
     /// Get an Vote transaction
     fn get_vote(&self, id: Identifier) -> Result<Signed<VoteTransaction>, TransactionNotFound> {
         let tx = self.get_transaction(id);
@@ -52,15 +67,15 @@ pub trait Store {
         }
     }
 
-    /// Get a SecretShare transaction
-    fn get_secret_share(
+    /// Get a PartialDecryption transaction
+    fn get_partial_decryption(
         &self,
         id: Identifier,
-    ) -> Result<Signed<SecretShareTransaction>, TransactionNotFound> {
+    ) -> Result<Signed<PartialDecryptionTransaction>, TransactionNotFound> {
         let tx = self.get_transaction(id);
         match tx {
             Some(tx) => match tx {
-                SignedTransaction::SecretShare(e) => Ok(e),
+                SignedTransaction::PartialDecryption(e) => Ok(e),
                 _ => Err(TransactionNotFound(id)),
             },
             None => Err(TransactionNotFound(id)),
@@ -93,7 +108,6 @@ impl MemStore {
     pub fn set(&mut self, tx: SignedTransaction) {
         self.inner.insert(tx.id().to_string(), tx);
     }
-
 }
 
 impl Store for MemStore {

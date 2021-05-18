@@ -1,24 +1,26 @@
 use crate::*;
-use uuid::Uuid;
-use ed25519_dalek::PublicKey;
 use cryptid::threshold::KeygenCommitment;
+use ed25519_dalek::PublicKey;
 use std::collections::HashMap;
+use uuid::Uuid;
 /// Transaction 2: KeyGenCommitmentTransaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyGenCommitmentTransaction {
     pub id: Identifier,
     pub election: Identifier,
     pub trustee_id: Uuid,
+    #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
     pub commitment: KeygenCommitment,
 }
- 
+
 /// Transaction 3: KeyGenShareTransaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyGenShareTransaction {
     pub id: Identifier,
     pub election: Identifier,
     pub trustee_id: Uuid,
+    #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
     pub shares: HashMap<Uuid, EncryptedShare>,
 }
@@ -29,8 +31,10 @@ pub struct KeyGenPublicKeyTransaction {
     pub id: Identifier,
     pub election: Identifier,
     pub trustee_id: Uuid,
+    #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
     pub public_key: cryptid::elgamal::PublicKey,
+    pub public_key_proof: cryptid::threshold::PubkeyProof,
 }
 
 /// Transaction 4: PublicKeyConfirmationTransaction
@@ -38,6 +42,7 @@ pub struct KeyGenPublicKeyTransaction {
 pub struct EncryptionKeyTransaction {
     pub id: Identifier,
     pub election: Identifier,
+    #[serde(with = "EdPublicKeyHex")]
     pub authority_public_key: PublicKey,
     pub encryption_key: cryptid::elgamal::PublicKey,
 }
@@ -51,11 +56,15 @@ impl KeyGenCommitmentTransaction {
         commitment: KeygenCommitment,
     ) -> Self {
         KeyGenCommitmentTransaction {
-            id: Identifier::new(election, TransactionType::KeyGenCommitment, trustee_id.as_bytes()),
+            id: Identifier::new(
+                election,
+                TransactionType::KeyGenCommitment,
+                trustee_id.as_bytes(),
+            ),
             election: election,
             trustee_id,
             trustee_public_key,
-            commitment
+            commitment,
         }
     }
 }
@@ -80,7 +89,7 @@ impl Signable for KeyGenCommitmentTransaction {
     ///  - Validates that this transaction has been signed by a valid trustee
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
         let election = store.get_election(self.election)?;
-        
+
         let mut trustee_exists = false;
         for trustee in &election.trustees {
             if trustee.id == self.trustee_id && trustee.public_key == self.trustee_public_key {
@@ -89,9 +98,7 @@ impl Signable for KeyGenCommitmentTransaction {
         }
 
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(
-                self.trustee_id
-            ));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
         }
 
         // TODO: Validate the commitment somehow?
@@ -99,7 +106,6 @@ impl Signable for KeyGenCommitmentTransaction {
         Ok(())
     }
 }
-
 
 impl KeyGenShareTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
@@ -110,11 +116,15 @@ impl KeyGenShareTransaction {
         shares: HashMap<Uuid, EncryptedShare>,
     ) -> Self {
         KeyGenShareTransaction {
-            id: Identifier::new(election, TransactionType::KeyGenShare, trustee_id.as_bytes()),
+            id: Identifier::new(
+                election,
+                TransactionType::KeyGenShare,
+                trustee_id.as_bytes(),
+            ),
             election: election,
             trustee_id,
             trustee_public_key,
-            shares
+            shares,
         }
     }
 }
@@ -150,22 +160,18 @@ impl Signable for KeyGenShareTransaction {
             }
         }
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(
-                self.trustee_id
-            ));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
         }
 
         // Validate that the number of shares match
         if self.shares.len() != election.trustees.len() {
-            return Err(ValidationError::WrongNumberOfShares); 
+            return Err(ValidationError::WrongNumberOfShares);
         }
 
         // Validate that all trustees have been given a share
         for trustee in &election.trustees {
             if !self.shares.contains_key(&trustee.id) {
-                return Err(ValidationError::TrusteeShareMissing(
-                    self.trustee_id
-                )); 
+                return Err(ValidationError::TrusteeShareMissing(self.trustee_id));
             }
         }
 
@@ -180,13 +186,19 @@ impl KeyGenPublicKeyTransaction {
         trustee_id: Uuid,
         trustee_public_key: PublicKey,
         public_key: cryptid::elgamal::PublicKey,
+        public_key_proof: cryptid::threshold::PubkeyProof,
     ) -> Self {
         KeyGenPublicKeyTransaction {
-            id: Identifier::new(election, TransactionType::KeyGenPublicKey, trustee_id.as_bytes()),
+            id: Identifier::new(
+                election,
+                TransactionType::KeyGenPublicKey,
+                trustee_id.as_bytes(),
+            ),
             election: election,
             trustee_id,
             trustee_public_key,
-            public_key
+            public_key,
+            public_key_proof,
         }
     }
 }
@@ -221,9 +233,7 @@ impl Signable for KeyGenPublicKeyTransaction {
             }
         }
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(
-                self.trustee_id
-            ));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
         }
 
         Ok(())
@@ -270,36 +280,43 @@ impl Signable for EncryptionKeyTransaction {
 
         // Validate the the election authority public key is the same
         if self.authority_public_key != election.authority_public {
-            return Err(ValidationError::AuthorityPublicKeyMismatch); 
+            return Err(ValidationError::AuthorityPublicKeyMismatch);
         }
 
         // Get all keygen_public_key transactions
         let pk_txs = store.get_multiple(self.election, TransactionType::KeyGenPublicKey);
-        let pk_txs: Vec<Signed<KeyGenPublicKeyTransaction>> = pk_txs.into_iter().map(|tx| tx.into()).collect();
+        let pk_txs: Vec<Signed<KeyGenPublicKeyTransaction>> =
+            pk_txs.into_iter().map(|tx| tx.into()).collect();
 
         // Validate that the number of public key transactions match
         if pk_txs.len() != election.trustees.len() {
-            return Err(ValidationError::WrongNumberOfPublicKeyTransactions); 
+            return Err(ValidationError::WrongNumberOfPublicKeyTransactions);
         }
 
         // Validate that all trustees have a transaction
         for trustee in &election.trustees {
             let mut has_tx = false;
             for tx in &pk_txs {
-                if tx.inner().trustee_id == trustee.id && tx.inner().trustee_public_key == trustee.public_key {
+                if tx.inner().trustee_id == trustee.id
+                    && tx.inner().trustee_public_key == trustee.public_key
+                {
                     has_tx = true;
                     break;
                 }
             }
             if !has_tx {
-                return Err(ValidationError::MissingKeyGenPublicKeyTransaction(trustee.id)); 
+                return Err(ValidationError::MissingKeyGenPublicKeyTransaction(
+                    trustee.id,
+                ));
             }
         }
 
         // Validate that all the encryption keys match
         for tx in &pk_txs {
             if tx.inner().public_key != self.encryption_key {
-                return Err(ValidationError::MismatchedEncryptionKey(tx.inner().trustee_id)); 
+                return Err(ValidationError::MismatchedEncryptionKey(
+                    tx.inner().trustee_id,
+                ));
             }
         }
 

@@ -21,26 +21,24 @@ mod authn;
 mod decryption;
 mod election;
 mod error;
-mod secret_share;
+mod keygen;
 mod serde_hex;
 mod store;
 mod transaction;
 mod trustee;
 mod util;
 mod vote;
-mod keygen;
 
 pub use authn::*;
 pub use decryption::*;
 pub use election::*;
 pub use error::*;
-pub use secret_share::*;
+pub use keygen::*;
 pub use store::*;
 pub use transaction::*;
+pub use trustee::*;
 pub use util::*;
 pub use vote::*;
-pub use trustee::*;
-pub use keygen::*;
 
 pub(crate) use serde_hex::*;
 

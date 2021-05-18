@@ -1,20 +1,119 @@
 use crate::*;
-use ecies_ed25519::SecretKey as EciesSecretKey;
+use cryptid::elgamal::Ciphertext;
+use cryptid::threshold::DecryptShare;
+use cryptid::threshold::Threshold;
 use ed25519_dalek::PublicKey;
 use sharks::{Share, Sharks};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PartialDecryptionTransaction {
+    pub id: Identifier,
+    pub election_id: Identifier,
+    pub vote_id: Identifier,
+    pub trustee_id: Uuid,
+
+    #[serde(with = "EdPublicKeyHex")]
+    pub trustee_public_key: PublicKey,
+    pub partial_decryption: DecryptShare,
+}
+
+impl PartialDecryptionTransaction {
+    /// Create a new DecryptionTransaction with the decrypted vote
+    pub fn new(
+        election_id: Identifier,
+        vote_id: Identifier,
+        trustee_id: Uuid,
+        trustee_public_key: PublicKey,
+        partial_decryption: DecryptShare,
+    ) -> Self {
+        PartialDecryptionTransaction {
+            id: PartialDecryptionTransaction::build_id(election_id, vote_id, trustee_id),
+            election_id,
+            vote_id,
+            trustee_id,
+            trustee_public_key,
+            partial_decryption,
+        }
+    }
+
+    pub fn build_id(election_id: Identifier, vote_id: Identifier, trustee_id: Uuid) -> Identifier {
+        let mut unique_info = [0; 48];
+        unique_info[0..16].copy_from_slice(trustee_id.as_bytes());
+        unique_info[16..].copy_from_slice(&vote_id.to_bytes());
+
+        Identifier::new(election_id, TransactionType::Decryption, &unique_info)
+    }
+}
+
+impl Signable for PartialDecryptionTransaction {
+    fn id(&self) -> Identifier {
+        self.id
+    }
+
+    fn public(&self) -> Option<PublicKey> {
+        Some(self.trustee_public_key)
+    }
+
+    fn inputs(&self) -> Vec<Identifier> {
+        vec![self.election_id, self.vote_id]
+    }
+
+    /// Validate the transaction
+    fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        let election = store.get_election(self.election_id)?;
+        let vote = store.get_vote(self.vote_id)?;
+
+        // Get the public key transaction for this trustee
+        let pkey_tx_id = Identifier::new(
+            self.election_id,
+            TransactionType::KeyGenPublicKey,
+            self.trustee_id.as_bytes(),
+        );
+        let public_key = store.get_keygen_public_key(pkey_tx_id)?;
+
+        // Validate that the public_key transaction matches
+        if self.trustee_id != public_key.inner().trustee_id
+            || self.trustee_public_key != public_key.inner().trustee_public_key
+        {
+            return Err(ValidationError::TrusteePublicKeyMismatch(self.trustee_id));
+        }
+
+        // Validate that this trustee exists
+        let mut trustee_exists = false;
+        for trustee in &election.trustees {
+            if trustee.id == self.trustee_id && trustee.public_key == self.trustee_public_key {
+                trustee_exists = true;
+            }
+        }
+        if !trustee_exists {
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
+        }
+
+        // Verify the partial decryption proof
+        if !self.partial_decryption.verify(
+            &public_key.inner().public_key_proof,
+            &vote.inner().encrypted_vote,
+        ) {
+            return Err(ValidationError::PartialDecryptionProofFailed);
+        }
+
+        Ok(())
+    }
+}
+
 /// Transaction 4: Decryption
 ///
-/// After a quorum of Trustees have posted SharedSecret transactions (#3), any node may produce
-/// a DecryptionTransaction. One DecryptionTransaction is produced for each Vote (#2) transaction,
-/// decrypting the vote using the secret recovered from the SharedSecret transactions.
+/// After a quorum of Trustees have posted a PartialDecryption transactions, any node may produce
+/// a DecryptionTransaction. One DecryptionTransaction is produced for each Vote transaction,
+/// decrypting the vote and producing a proof of correct decryption.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct DecryptionTransaction {
     pub id: Identifier,
-    pub election: Identifier,
-    pub vote: Identifier,
+    pub election_id: Identifier,
+    pub vote_id: Identifier,
     pub trustees: Vec<Uuid>,
 
     #[serde(with = "hex_serde")]
@@ -24,18 +123,22 @@ pub struct DecryptionTransaction {
 impl DecryptionTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
-        election: Identifier,
-        vote: Identifier,
+        election_id: Identifier,
+        vote_id: Identifier,
         trustees: Vec<Uuid>,
         decrypted_vote: Vec<u8>,
     ) -> DecryptionTransaction {
         // TODO: sanity check to make sure election and vote are in same election
         // This could be a debug assert
         DecryptionTransaction {
-            id: Identifier::new(election, TransactionType::Decryption, &vote.to_bytes()),
-            election: election,
-            vote: vote,
-            trustees: trustees,
+            id: Identifier::new(
+                election_id,
+                TransactionType::Decryption,
+                &vote_id.to_bytes(),
+            ),
+            election_id,
+            vote_id,
+            trustees,
             decrypted_vote,
         }
     }
@@ -53,56 +156,70 @@ impl Signable for DecryptionTransaction {
 
     fn inputs(&self) -> Vec<Identifier> {
         let mut inputs = Vec::<Identifier>::with_capacity(2 + self.trustees.len());
-        inputs.push(self.election);
-        inputs.push(self.vote);
+        inputs.push(self.election_id);
+        inputs.push(self.vote_id);
 
         for trustee in self.trustees.iter() {
-            inputs.push(SecretShareTransaction::build_id(self.election, *trustee))
+            inputs.push(Identifier::new(
+                self.election_id,
+                TransactionType::KeyGenPublicKey,
+                trustee.as_bytes(),
+            ));
+
+            inputs.push(PartialDecryptionTransaction::build_id(
+                self.election_id,
+                self.vote_id,
+                *trustee,
+            ));
         }
 
         inputs
     }
 
     /// Validate the transaction
-    ///
-    /// The validation does the following:
-    ///  - Takes vote transaction and all secret-share stransactions
-    ///  - validates that the decrypted vote is the same
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
-        let election = store.get_election(self.election)?;
-        let vote = store.get_vote(self.vote)?;
+        let election = store.get_election(self.election_id)?;
+        let vote = store.get_vote(self.vote_id)?;
 
-        // TODO: implement some sort of "get_multiple" in Store
-        let mut shares = Vec::with_capacity(election.trustees.len());
-        for trustee in election.trustees.iter() {
-            let secret_share_id = SecretShareTransaction::build_id(self.election, trustee.id);
-            let secret_share_tx = store.get_secret_share(secret_share_id).ok();
-            if let Some(secret_share_tx) = secret_share_tx {
-                shares.push(secret_share_tx.secret_share.clone());
-            }
+        // Get all pubkeys mapped by trustee ID
+        let pubkeys: Vec<KeyGenPublicKeyTransaction> = store
+            .get_multiple(self.election_id, TransactionType::KeyGenPublicKey)
+            .into_iter()
+            .map(|tx| tx.into())
+            .map(|tx: Signed<KeyGenPublicKeyTransaction>| tx.tx)
+            .collect();
+
+        // Get all partial decryptions mapped by trustee ID
+        let mut partials = Vec::with_capacity(self.trustees.len());
+        for trustee_id in self.trustees.iter() {
+            let partial_id =
+                PartialDecryptionTransaction::build_id(self.election_id, self.vote_id, *trustee_id);
+            let partial = store.get_partial_decryption(partial_id)?;
+
+            partials.push(partial.tx);
         }
 
         // Make sure we have enough shares
         let required_shares = election.trustees_threshold as usize;
-        if shares.len() < required_shares {
+        if partials.len() < required_shares {
             return Err(ValidationError::NotEnoughShares(
                 required_shares,
-                shares.len(),
+                partials.len(),
             ));
         }
 
-        // TODO: Check the secret_shares.len() >= election.trustees_threshold
+        // Decrypt the vote
+        let decrypted = decrypt_vote(
+            &vote.encrypted_vote,
+            election.inner().trustees_threshold,
+            &election.inner().trustees,
+            &pubkeys,
+            &partials,
+        )
+        .map_err(|e| ValidationError::VoteDecryptionFailed(e))?;
 
-        // Recover election key from two trustees
-        let election_key = recover_secret_from_shares(election.trustees_threshold, shares)
-            .map_err(|_| ValidationError::SecretRecoveryFailed)?;
-        let election_key = EciesSecretKey::from_bytes(&election_key)?;
-
-        let decrypted_vote = decrypt_vote(&election_key, &vote.encrypted_vote)
-            .map_err(|_| ValidationError::DecryptVoteFailed)?;
-
-        if decrypted_vote != self.decrypted_vote {
-            return Err(ValidationError::MismatchedDecryptedVote);
+        if decrypted != self.decrypted_vote {
+            return Err(ValidationError::VoteDecryptionMismatch);
         }
 
         Ok(())
@@ -128,12 +245,36 @@ pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result
     Ok(secret)
 }
 
-/// Decrypt the vote from the given recovered decryption key.
-///
-/// `encrypted_vote` is taken from `VoteTransaction::encrypted_vote`.
+/// Decrypt the vote from the given partial decryptions.
 pub fn decrypt_vote(
-    election_key: &EciesSecretKey,
-    encrypted_vote: &[u8],
-) -> Result<Vec<u8>, Error> {
-    ecies_ed25519::decrypt(election_key, encrypted_vote).map_err(|_| Error::DecryptionError)
+    encrypted_vote: &Ciphertext,
+    trustees_threshold: usize,
+    trustees: &[Trustee],
+    pubkeys: &[KeyGenPublicKeyTransaction],
+    partials: &[PartialDecryptionTransaction],
+) -> Result<Vec<u8>, cryptid::CryptoError> {
+    // Map pubkeys by trustee ID
+    let pubkeys: HashMap<Uuid, &KeyGenPublicKeyTransaction> =
+        pubkeys.into_iter().map(|tx| (tx.trustee_id, tx)).collect();
+
+    // Map partials by trustee ID
+    let partials: HashMap<Uuid, &PartialDecryptionTransaction> =
+        partials.into_iter().map(|tx| (tx.trustee_id, tx)).collect();
+
+    // Decrypt the vote
+    let mut decrypt = cryptid::threshold::Decryption::new(trustees_threshold, encrypted_vote);
+
+    for trustee in trustees {
+        if let Some(partial) = partials.get(&trustee.id) {
+            if let Some(pubkey) = pubkeys.get(&trustee.id) {
+                decrypt.add_share(
+                    trustee.index,
+                    &pubkey.public_key_proof,
+                    &partial.partial_decryption,
+                );
+            }
+        };
+    }
+
+    decrypt.finish()
 }
