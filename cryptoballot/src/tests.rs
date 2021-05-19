@@ -352,8 +352,6 @@ fn end_to_end_election() {
 
 #[test]
 fn test_all_elections() {
-    return;
-
     for entry in std::fs::read_dir("../test_elections").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();

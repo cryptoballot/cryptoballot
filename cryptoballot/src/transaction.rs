@@ -173,6 +173,19 @@ impl SignedTransaction {
             SignedTransaction::Decryption(tx) => tx.validate(s),
         }
     }
+
+    pub fn verify_signature(&self) -> Result<(), ValidationError> {
+        match self {
+            SignedTransaction::Election(tx) => tx.verify_signature(),
+            SignedTransaction::KeyGenCommitment(tx) => tx.verify_signature(),
+            SignedTransaction::KeyGenShare(tx) => tx.verify_signature(),
+            SignedTransaction::KeyGenPublicKey(tx) => tx.verify_signature(),
+            SignedTransaction::EncryptionKey(tx) => tx.verify_signature(),
+            SignedTransaction::Vote(tx) => tx.verify_signature(),
+            SignedTransaction::PartialDecryption(tx) => tx.verify_signature(),
+            SignedTransaction::Decryption(tx) => tx.verify_signature(),
+        }
+    }
 }
 
 /// This trait should be considered sealed and should not be implemented outside this crate
@@ -316,6 +329,10 @@ impl Identifier {
         let bytes = self.to_array();
         bytes.to_vec()
     }
+
+    pub fn election_id_string(&self) -> String {
+        hex::encode(self.election_id)
+    }
 }
 
 impl FromStr for Identifier {
@@ -446,11 +463,9 @@ impl TransactionType {
             TransactionType::Decryption => "08",
         }
     }
-}
 
-impl std::fmt::Display for TransactionType {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let name = match self {
+    pub fn name(&self) -> &str {
+        match self {
             TransactionType::Election => "election",
             TransactionType::KeyGenCommitment => "keygen_commitment",
             TransactionType::KeyGenShare => "keygen_share",
@@ -459,7 +474,13 @@ impl std::fmt::Display for TransactionType {
             TransactionType::Vote => "vote",
             TransactionType::PartialDecryption => "partial_decryption",
             TransactionType::Decryption => "decryption",
-        };
+        }
+    }
+}
+
+impl std::fmt::Display for TransactionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let name = self.name();
         write!(f, "{}", name)
     }
 }
