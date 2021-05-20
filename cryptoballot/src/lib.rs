@@ -17,6 +17,9 @@
 #[macro_use]
 extern crate serde;
 
+pub extern crate cryptid;
+pub extern crate uuid;
+
 mod authn;
 mod decryption;
 mod election;

@@ -9,7 +9,7 @@ pub type Result<T, E = rocket::response::Debug<sqlx::Error>> = std::result::Resu
 
 async fn init_db(rocket: Rocket<Build>) -> fairing::Result {
     let mut opts = sqlx::sqlite::SqliteConnectOptions::new()
-        .filename("./test_elections/test_election.sqlite.db")
+        .filename(&crate::CONFIG.db_path)
         .create_if_missing(true);
 
     opts.disable_statement_logging();

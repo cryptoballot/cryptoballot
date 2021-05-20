@@ -637,7 +637,10 @@ name = "cryptoballod"
 version = "0.0.0"
 dependencies = [
  "cryptoballot",
+ "ed25519-dalek",
+ "hex 0.4.3",
  "lazy_static",
+ "rand 0.7.3",
  "rocket",
  "rocket_contrib",
  "serde",

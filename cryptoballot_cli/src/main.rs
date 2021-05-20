@@ -27,17 +27,7 @@ fn main() {
                 .required(false),
         )
         .setting(AppSettings::ArgRequiredElseHelp)
-        .subcommand(
-            SubCommand::with_name("keygen")
-                .about("Generate keypair")
-                .arg(
-                    Arg::with_name("secret")
-                        .long("secret")
-                        .help("File location to write secret key")
-                        .takes_value(true)
-                        .required(true), // TODO: allow PEM format with password
-                ),
-        )
+        .subcommand(SubCommand::with_name("keygen").about("Generate keypair"))
         .subcommand(
             SubCommand::with_name("sign")
                 .setting(AppSettings::ArgRequiredElseHelp)

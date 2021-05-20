@@ -1,0 +1,103 @@
+{
+  "db": "SQLite",
+  "06115fcbd4ec0c5826f61662d545865e36c0e0270d3f448fcb279a776a38c80a": {
+    "query": "SELECT tx_value FROM tx WHERE election_id = ? AND tx_type = 'election'",
+    "describe": {
+      "columns": [
+        {
+          "name": "tx_value",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "2519992b00921c50e2204ee302d44b0efb6015b3352f72af226cd76994ec80a3": {
+    "query": "INSERT INTO tx (id, election_id, tx_type, tx_value) VALUES (?, ?, ?, ?)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Right": 4
+      },
+      "nullable": []
+    }
+  },
+  "5fc03eda0d398067fda20bc663c7112985f2f489e14f7ab7793eb0f7b8d5e57c": {
+    "query": "SELECT tx_value FROM tx WHERE election_id = ? AND tx_type = ? ORDER BY id",
+    "describe": {
+      "columns": [
+        {
+          "name": "tx_value",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 2
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "6b46bd50de8caaad67e8e0238e63f4677cea72e911e4ef938df01745140c5d41": {
+    "query": "SELECT tx_value FROM tx WHERE election_id = ? ORDER BY id",
+    "describe": {
+      "columns": [
+        {
+          "name": "tx_value",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "9a1974b66dd34b3feaf99adc119c9ffd29053a2fb698a9ad1f17f4edcb95051a": {
+    "query": "SELECT tx_value FROM tx ORDER BY id",
+    "describe": {
+      "columns": [
+        {
+          "name": "tx_value",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 0
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "deeb60da170dfa81b3730ddf6e2b63f992a8b113fda8411afcccceea731cf6bd": {
+    "query": "SELECT tx_value FROM tx WHERE id = ?",
+    "describe": {
+      "columns": [
+        {
+          "name": "tx_value",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Right": 1
+      },
+      "nullable": [
+        false
+      ]
+    }
+  }
+}
