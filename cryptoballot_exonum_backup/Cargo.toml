@@ -1,0 +1,47 @@
+[package]
+name = "cryptoballot_exonum_backup"
+publish = false
+version = "0.1.0"
+edition = "2018"
+authors = ["Patrick Hayes <patrick.d.hayes@gmail.com>"]
+readme = "README.md"
+license = "Apache-2.0"
+keywords = ["exonum", "blockchain", "cryptoballot"]
+description = ""
+
+[dependencies]
+exonum = { version = "1.0.0" }
+exonum-crypto = { version = "1.0.0" }
+exonum-derive = { version = "1.0.0" }
+exonum-merkledb = { version = "1.0.0" }
+exonum-proto = { version = "1.0.0" }
+exonum-rust-runtime = { version = "1.0.0" }
+cryptoballot = { path = "../cryptoballot" }
+anyhow = "1.0"
+protobuf = "2.17.0"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+
+[dev-dependencies]
+exonum-cli = { version = "1.0.0" }
+exonum-explorer-service = { version = "1.0.0" }
+exonum-testkit = { version = "1.0.0" }
+assert_matches = "1.2.0"
+pretty_assertions = "0.7.1"
+rand = "0.8"
+
+[dev-dependencies.tokio]
+version = "0.2.13"
+features = [
+    "blocking",
+    "dns",
+    "io-util",
+    "macros",
+    "rt-threaded",
+    "tcp",
+    "time"
+]
+
+[build-dependencies]
+exonum-build = { version = "1.0.1" }

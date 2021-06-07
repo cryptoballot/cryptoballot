@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package exonum.examples.cryptocurrency;
+
+import "exonum/crypto/types.proto";
+
+// Cryptoballot Transaction
+message Transaction {
+  // Public key of the tx author.
+  exonum.crypto.PublicKey pub_key = 1;
+  // Transaction ID
+  string id = 2;
+  // Underlying data
+  bytes data = 3;
+}
