@@ -307,12 +307,43 @@ impl Identifier {
         unique_info: &[u8],
     ) -> Self {
         let election_id = election_id.election_id;
-        let unique_id: [u8; 16] = sha2::Sha512::digest(unique_info)[0..16].try_into().unwrap();
+
+        // Use directly when unique_info is is 16 bytes
+        let unique_id = if unique_info.len() == 16 {
+            unique_info.try_into().unwrap()
+        } else {
+            sha2::Sha512::digest(unique_info)[0..16].try_into().unwrap()
+        };
+
         Identifier {
             election_id,
             transaction_type,
             unique_id: Some(unique_id),
         }
+    }
+
+    /// Creat a new Identifier from an election-id string
+    /// Returns None when election_id is invalid
+    pub fn new_from_str_id(
+        election_id: &str,
+        transaction_type: TransactionType,
+        unique_info: &[u8],
+    ) -> Option<Self> {
+        let election_id_bits = match hex::decode(election_id) {
+            Ok(bits) => bits,
+            Err(_) => return None,
+        };
+
+        if election_id_bits.len() < 15 {
+            return None;
+        }
+
+        let election_id = Self {
+            election_id: election_id_bits[0..15].try_into().unwrap(),
+            transaction_type: TransactionType::Election,
+            unique_id: Some([0; 16]),
+        };
+        return Some(Self::new(election_id, transaction_type, unique_info));
     }
 
     /// Create a new identifier for an election

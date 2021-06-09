@@ -3,9 +3,8 @@ use exonum_derive::{exonum_interface, interface_method, ServiceDispatcher, Servi
 use exonum_rust_runtime::{api::ServiceApiBuilder, DefaultInstance, Service};
 
 use crate::api::CryptoballotApi;
-use cryptoballot::SignedTransaction;
+use cryptoballot::{SignedTransaction, Store};
 use cryptoballot_exonum::{Transaction, TransactionSchema};
-use exonum::runtime::InstanceStatus;
 use exonum_rust_runtime::AfterCommitContext;
 use std::sync::{Arc, Mutex};
 
@@ -35,7 +34,9 @@ impl CryptoballotInterface<ExecutionContext<'_>> for CryptoballotService {
     type Output = Result<(), ExecutionError>;
 
     fn submit_tx(&self, context: ExecutionContext<'_>, tx: Transaction) -> Self::Output {
+        let id = tx.id.clone();
         if let Err(err) = cryptoballot_exonum::verify_and_store(context, tx) {
+            eprintln!("Transaction verfication error for {}: {}", &id, err);
             return Err(err.into());
         }
 
@@ -69,45 +70,54 @@ impl Service for CryptoballotService {
             }
         }
 
+        // TODO: Check instance status and do something if we're frozen or stopped etc.
+        //       Also do nothing if we're just an auditor and not a full peer.
+
         // Always process one block behind, so schema storage is always caught up
-        let block_transactions = blockchain_data.block_transactions(blockchain_data.height());
+        let block_transactions =
+            blockchain_data.block_transactions(blockchain_data.height().previous());
 
         if block_transactions.len() != 0 {
             println!(
                 "Processing {} tx on block height {}",
                 block_transactions.len(),
-                blockchain_data.height()
+                blockchain_data.height().previous()
             );
 
             let all_txs = blockchain_data.transactions();
             let schema = TransactionSchema::new(ctx.service_data());
 
-            let mut store = cryptoballot::PendingStore::new(&schema);
             let broadcaster = ctx.generic_broadcaster().blocking();
 
             for tx_hash in block_transactions.into_iter() {
                 if let Some(raw_tx) = all_txs.get(&tx_hash) {
                     if let Ok(exonum_tx) = raw_tx.payload().parse::<Transaction>() {
-                        if let Ok(tx) = SignedTransaction::from_bytes(&exonum_tx.data) {
+                        let id = match exonum_tx.id.parse() {
+                            Ok(id) => id,
+                            Err(_) => {
+                                eprintln!("Error parsing id {}", exonum_tx.id);
+                                continue;
+                            }
+                        };
+                        if let Some(tx) = schema.get_transaction(id) {
                             let tx_json = serde_json::to_string_pretty(&tx).unwrap();
                             println!("{}", tx_json);
 
-                            store.add_pending(tx.clone());
+                            let dependent_txs = crate::tasks::generate_transactions(&tx, &schema);
 
-                            let dependent_txs = crate::tasks::generate_transactions(&tx, &store);
-
-                            //let mut stored_dependent_txs = DEPENDENT_TXS.lock().unwrap();
+                            // TODO: Vote decryptions in batches
+                            // let mut stored_dependent_txs = DEPENDENT_TXS.lock().unwrap();
                             for dependent_tx in dependent_txs {
-                                println!(
-                                    "Broadcasting dependent {} {}",
-                                    dependent_tx.transaction_type(),
-                                    dependent_tx.id()
-                                );
+                                if schema.get_transaction(dependent_tx.id()).is_none() {
+                                    println!(
+                                        "Broadcasting dependent {} {}",
+                                        dependent_tx.transaction_type(),
+                                        dependent_tx.id()
+                                    );
 
-                                store.add_pending(dependent_tx.clone());
-                                let exonum_tx = dependent_tx.into();
-                                broadcaster.submit_tx((), exonum_tx).ok();
-                                //stored_dependent_txs.push(dependent_tx);
+                                    let exonum_tx = dependent_tx.into();
+                                    broadcaster.submit_tx((), exonum_tx).ok();
+                                }
                             }
                         }
                     }
@@ -121,30 +131,4 @@ impl Service for CryptoballotService {
 impl DefaultInstance for CryptoballotService {
     const INSTANCE_ID: u32 = cryptoballot_exonum::CRYPTOBALLOT_SERVICE_ID;
     const INSTANCE_NAME: &'static str = "cryptoballot";
-}
-
-use exonum::messages::AnyTx;
-use exonum::messages::Verified;
-use exonum_crypto::Hash;
-use exonum_merkledb::MapIndex;
-use exonum_merkledb::Snapshot;
-
-pub struct BlockchainStore<'a> {
-    inner: &'a MapIndex<&'a dyn Snapshot, Hash, Verified<AnyTx>>,
-}
-
-impl<'a> cryptoballot::Store for BlockchainStore<'a> {
-    fn get_transaction(&self, id: cryptoballot::Identifier) -> Option<SignedTransaction> {
-        let id = id.to_string();
-
-        None
-    }
-
-    fn get_multiple(
-        &self,
-        election_id: cryptoballot::Identifier,
-        tx_type: cryptoballot::TransactionType,
-    ) -> Vec<SignedTransaction> {
-        vec![]
-    }
 }

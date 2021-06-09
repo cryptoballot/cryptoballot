@@ -1194,6 +1194,7 @@ dependencies = [
  "content_inspector",
  "cryptoballot",
  "cryptoballot_exonum",
+ "ed25519-dalek",
  "exonum-crypto",
  "hex 0.4.3",
  "lazy_static",

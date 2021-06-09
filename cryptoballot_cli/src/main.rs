@@ -13,6 +13,7 @@ mod command_election;
 mod command_keygen;
 mod command_post_transaction;
 mod command_trustee;
+mod command_vote;
 mod rest;
 
 fn main() {
@@ -162,7 +163,35 @@ fn main() {
                         .about("Generate new election")
                         .arg(
                             Arg::with_name("post")
-                                .long("post-transaction")
+                                .long("post")
+                                .help("Post the transaction")
+                                .takes_value(false)
+                                .required(false),
+                        )
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("vote")
+                .about("Voter related commands")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("generate")
+                        .about("Generate new vote")
+                        .arg(
+                            Arg::with_name("ELECTION-ID")
+                                .index(1)
+                                .required(true)
+                                .help("election identifier"),
+                        )
+                        .arg(
+                            Arg::with_name("VOTE")
+                                .index(2)
+                                .required(true)
+                                .help("vote payload value"),
+                        )
+                        .arg(
+                            Arg::with_name("post")
+                                .long("post")
                                 .help("Post the transaction")
                                 .takes_value(false)
                                 .required(false),
@@ -236,6 +265,10 @@ fn main() {
     }
     if let Some(matches) = matches.subcommand_matches("election") {
         command_election::command_election(matches, &uri, secret_key.as_ref());
+        std::process::exit(0);
+    }
+    if let Some(matches) = matches.subcommand_matches("vote") {
+        command_vote::command_vote(matches, &uri, secret_key.as_ref());
         std::process::exit(0);
     }
 

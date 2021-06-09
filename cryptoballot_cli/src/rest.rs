@@ -20,6 +20,13 @@ pub fn post_transaction(
     tx: SignedTransaction,
     _secret_key: Option<&SecretKey>,
 ) -> String {
+    eprintln!(
+        "> Posting {} transaction {} to {}",
+        tx.transaction_type(),
+        tx.id(),
+        base_uri
+    );
+
     let exonum_tx: Transaction = tx.into();
 
     // TODO: Use real keys
