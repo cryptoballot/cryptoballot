@@ -6,6 +6,7 @@ use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use ed25519_dalek::Signature;
 use ed25519_dalek::Verifier;
+use num_enum::IntoPrimitive;
 use num_enum::TryFromPrimitive;
 use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -492,7 +493,9 @@ impl From<Identifier> for [u8; 32] {
 
 /// A transaction type
 // TODO: Maybe make Election = 0 to align with identifiers in merkle-tree
-#[derive(Serialize, Deserialize, TryFromPrimitive, Copy, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(
+    Serialize, Deserialize, TryFromPrimitive, IntoPrimitive, Copy, Debug, Clone, PartialEq, Eq, Hash,
+)]
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum TransactionType {

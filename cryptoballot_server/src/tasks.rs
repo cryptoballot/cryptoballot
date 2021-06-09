@@ -14,12 +14,9 @@ pub fn generate_transactions<S: Store>(
     // On an election tx, check if we are a trustee, and if so, generate a commitment transaction
     if incoming_tx.transaction_type() == TransactionType::Election {
         let election_tx: ElectionTransaction = incoming_tx.clone().into(); // TODO: asRef
-        for trustee in &election_tx.trustees {
+        for trustee in &election_tx.get_full_trustees() {
             if trustee.public_key == public_key {
                 // Generate keygen_commitment transactions
-                let mut trustee = trustee.clone();
-                trustee.num_trustees = election_tx.trustees.len();
-                trustee.threshold = election_tx.trustees_threshold;
                 let commit = trustee.keygen_commitment(&secret_key);
                 let commit_tx = KeyGenCommitmentTransaction::new(
                     election_tx.id,
@@ -41,7 +38,7 @@ pub fn generate_transactions<S: Store>(
         let election_tx: ElectionTransaction =
             store.get_transaction(commit_tx.election).unwrap().into();
 
-        for trustee in &election_tx.trustees {
+        for trustee in &election_tx.get_full_trustees() {
             if trustee.public_key == public_key {
                 // Check that we have enough commitment transactions already
                 let commit_txs: Vec<KeyGenCommitmentTransaction> = store
@@ -51,11 +48,6 @@ pub fn generate_transactions<S: Store>(
                     .collect();
 
                 if commit_txs.len() == election_tx.trustees.len() {
-                    // We have enough commitments, generate a keyshare transactions
-                    let mut trustee = trustee.clone();
-                    trustee.num_trustees = election_tx.trustees.len();
-                    trustee.threshold = election_tx.trustees_threshold;
-
                     let commitments: Vec<(Uuid, KeygenCommitment)> = commit_txs
                         .into_iter()
                         .map(|tx| (tx.trustee_id, tx.commitment))
@@ -65,7 +57,7 @@ pub fn generate_transactions<S: Store>(
                     let shares = trustee.generate_shares(
                         &mut rng,
                         &secret_key,
-                        &election_tx.trustees,
+                        &election_tx.get_full_trustees(),
                         &commitments,
                     );
 
@@ -90,7 +82,7 @@ pub fn generate_transactions<S: Store>(
         let election_tx: ElectionTransaction =
             store.get_transaction(keygen_tx.election).unwrap().into();
 
-        for trustee in &election_tx.trustees {
+        for trustee in &election_tx.get_full_trustees() {
             if trustee.public_key == public_key {
                 // Check that we have enough keygen_tx transactions already
                 let share_txs: Vec<KeyGenShareTransaction> = store
@@ -100,11 +92,6 @@ pub fn generate_transactions<S: Store>(
                     .collect();
 
                 if share_txs.len() == election_tx.trustees.len() {
-                    // We have enough shares, generate a public_key transactions
-                    let mut trustee = trustee.clone();
-                    trustee.num_trustees = election_tx.trustees.len();
-                    trustee.threshold = election_tx.trustees_threshold;
-
                     // Get all commitments
                     let commitments: Vec<(Uuid, KeygenCommitment)> = store
                         .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
@@ -120,7 +107,7 @@ pub fn generate_transactions<S: Store>(
 
                     let (public_key, public_key_proof) = trustee.generate_public_key(
                         &secret_key,
-                        &election_tx.trustees,
+                        &election_tx.get_full_trustees(),
                         &commitments,
                         &shares,
                     );
@@ -173,8 +160,133 @@ pub fn generate_transactions<S: Store>(
         }
     }
 
-    // TODO: On an VotingEnd transaction start decrypting votes
-    // TODO: On a PartialDecrytion transaction see if we can do a full decryption
+    // On voting_end transaction, do partial-decryption transactions for all votes
+    // TODO: This needs to be batched, likely goes in a different function, also snouldn't happen on the consensus thread
+    if incoming_tx.transaction_type() == TransactionType::VotingEnd {
+        let voting_end_tx: VotingEndTransaction = incoming_tx.clone().into(); // TODO: asRef
+
+        // Get the election_tx
+        let election_tx: ElectionTransaction = store
+            .get_transaction(voting_end_tx.election)
+            .unwrap()
+            .into();
+
+        let mut rng = rand::thread_rng();
+
+        for trustee in &election_tx.get_full_trustees() {
+            if trustee.public_key == public_key {
+                let share_txs: Vec<KeyGenShareTransaction> = store
+                    .get_multiple(election_tx.id, TransactionType::KeyGenShare)
+                    .into_iter()
+                    .map(|tx| tx.into())
+                    .collect();
+
+                // Get all commitments
+                let commitments: Vec<(Uuid, KeygenCommitment)> = store
+                    .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
+                    .into_iter()
+                    .map(|tx| tx.into())
+                    .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_id, tx.commitment))
+                    .collect();
+
+                // Get all Shares shared with this trustee
+                let shares: Vec<(Uuid, EncryptedShare)> = share_txs
+                    .into_iter()
+                    .map(|tx| (tx.trustee_id, tx.shares.get(&trustee.id).unwrap().clone()))
+                    .collect();
+
+                // Get all vote transactions
+                let vote_txs = store.get_multiple(voting_end_tx.election, TransactionType::Vote);
+
+                let mut parial_txs = Vec::with_capacity(vote_txs.len());
+                for vote_tx in vote_txs {
+                    let vote_tx: VoteTransaction = vote_tx.into();
+
+                    let partial_decrypt = trustee.partial_decrypt(
+                        &mut rng,
+                        &secret_key,
+                        &election_tx.get_full_trustees(),
+                        &commitments,
+                        &shares,
+                        &vote_tx.encrypted_vote,
+                    );
+                    let partial_decrypt_tx = PartialDecryptionTransaction::new(
+                        election_tx.id,
+                        vote_tx.id,
+                        trustee.id,
+                        trustee.index,
+                        public_key,
+                        partial_decrypt,
+                    );
+
+                    let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx).unwrap();
+                    parial_txs.push(partial_decrypt_tx.into());
+                }
+                return parial_txs;
+            }
+        }
+    }
+
+    // On PartialDecrytion transaction, check if we have enough partials for a full decryption transaction
+    // TODO: This needs to be batched, likely goes in a different function, also snouldn't happen on the consensus thread
+    if incoming_tx.transaction_type() == TransactionType::PartialDecryption {
+        let partial_tx: PartialDecryptionTransaction = incoming_tx.clone().into(); // TODO: asRef
+
+        // Get the election_tx
+        let election_tx: ElectionTransaction = store
+            .get_transaction(partial_tx.election_id)
+            .unwrap()
+            .into();
+
+        // Get partials
+        let mut start = election_tx.id().clone();
+        start.transaction_type = TransactionType::PartialDecryption;
+        let mut unique_id = partial_tx.id.unique_id.unwrap();
+        unique_id[15] = 0;
+        start.unique_id = Some(unique_id).clone();
+
+        let mut end = start.clone();
+        end.transaction_type = TransactionType::Decryption; // Next tx-type (+1)
+
+        // TODO: Need some way of partitioning the work between trustee nodes,
+        //       while at the same time allowing them to pick up eachother's slack
+        //       Alternatively, only the election authority does full decryptions automatically
+        //       Alternatively, just do it all with no coordination and let consensus sort it out
+        let partial_txs = store.range(start, end);
+        if partial_txs.len() >= election_tx.trustees_threshold {
+            let partial_txs: Vec<PartialDecryptionTransaction> =
+                partial_txs.into_iter().map(|tx| tx.into()).collect();
+
+            // Get the vote
+            let vote_tx: VoteTransaction =
+                store.get_transaction(partial_tx.vote_id).unwrap().into();
+
+            // Get public key transactions
+            let pubkeys = store.get_multiple(election_tx.id, TransactionType::KeyGenPublicKey);
+            let pubkeys: Vec<KeyGenPublicKeyTransaction> =
+                pubkeys.into_iter().map(|tx| tx.into()).collect();
+
+            // Fully decrypt the vote
+            // TODO: No unwrap, real error
+            let decrypted = decrypt_vote(
+                &vote_tx.encrypted_vote,
+                election_tx.trustees_threshold,
+                &election_tx.get_full_trustees(),
+                &pubkeys,
+                &partial_txs,
+            )
+            .unwrap();
+
+            let trustee_ids = partial_txs.iter().map(|tx| tx.trustee_id).collect();
+
+            // Create a vote decryption transaction
+            let decrypted_tx =
+                DecryptionTransaction::new(election_tx.id, vote_tx.id, trustee_ids, decrypted);
+
+            let decrypted_tx = Signed::sign(&secret_key, decrypted_tx).unwrap().into();
+            return vec![decrypted_tx];
+        }
+    }
 
     // Nothing
     return vec![];

@@ -28,11 +28,12 @@ impl PartialDecryptionTransaction {
         election_id: Identifier,
         vote_id: Identifier,
         trustee_id: Uuid,
+        trustee_index: usize,
         trustee_public_key: PublicKey,
         partial_decryption: DecryptShare,
     ) -> Self {
         PartialDecryptionTransaction {
-            id: PartialDecryptionTransaction::build_id(election_id, vote_id, trustee_id),
+            id: PartialDecryptionTransaction::build_id(election_id, vote_id, trustee_index),
             election_id,
             vote_id,
             trustee_id,
@@ -41,10 +42,17 @@ impl PartialDecryptionTransaction {
         }
     }
 
-    pub fn build_id(election_id: Identifier, vote_id: Identifier, trustee_id: Uuid) -> Identifier {
-        let mut unique_info = [0; 48];
-        unique_info[0..16].copy_from_slice(trustee_id.as_bytes());
-        unique_info[16..].copy_from_slice(&vote_id.to_bytes());
+    // Has an ID format of <election-id><type><voter-anonymous-key><trustee-index>
+    pub fn build_id(
+        election_id: Identifier,
+        vote_id: Identifier,
+        trustee_index: usize,
+    ) -> Identifier {
+        let trustee_index: u8 = trustee_index as u8;
+
+        let mut unique_info = [0; 16];
+        unique_info[..15].copy_from_slice(&vote_id.unique_id.unwrap()[..15]);
+        unique_info[15] = trustee_index;
 
         Identifier::new(election_id, TransactionType::Decryption, &unique_info)
     }
@@ -167,19 +175,7 @@ impl Signable for DecryptionTransaction {
         inputs.push(self.election_id);
         inputs.push(self.vote_id);
 
-        for trustee in self.trustees.iter() {
-            inputs.push(Identifier::new(
-                self.election_id,
-                TransactionType::KeyGenPublicKey,
-                trustee.as_bytes(),
-            ));
-
-            inputs.push(PartialDecryptionTransaction::build_id(
-                self.election_id,
-                self.vote_id,
-                *trustee,
-            ));
-        }
+        // TODO: Somehow the partial-decrypt transactions?
 
         inputs
     }
@@ -206,8 +202,13 @@ impl Signable for DecryptionTransaction {
         // Get all partial decryptions mapped by trustee ID
         let mut partials = Vec::with_capacity(self.trustees.len());
         for trustee_id in self.trustees.iter() {
-            let partial_id =
-                PartialDecryptionTransaction::build_id(self.election_id, self.vote_id, *trustee_id);
+            // TODO: Bogus trustee-ids could exist, throw error instead of unwrap
+            let trustee = election.inner().get_trustee(*trustee_id).unwrap();
+            let partial_id = PartialDecryptionTransaction::build_id(
+                self.election_id,
+                self.vote_id,
+                trustee.index,
+            );
             let partial = store.get_partial_decryption(partial_id)?;
 
             partials.push(partial.tx);

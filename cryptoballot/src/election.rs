@@ -80,6 +80,18 @@ impl ElectionTransaction {
         }
         None
     }
+
+    /// Get all trustees with all info
+    pub fn get_full_trustees(&self) -> Vec<Trustee> {
+        let mut trustees = Vec::with_capacity(self.trustees.len());
+        for trustee in self.trustees.iter() {
+            let mut trustee = trustee.clone();
+            trustee.threshold = self.trustees_threshold;
+            trustee.num_trustees = self.trustees.len();
+            trustees.push(trustee);
+        }
+        trustees
+    }
 }
 
 impl Signable for ElectionTransaction {
@@ -100,6 +112,8 @@ impl Signable for ElectionTransaction {
     fn validate_tx<S: Store>(&self, _store: &S) -> Result<(), ValidationError> {
         // TODO: Make sure the encryption public-key is well-formed
         // TODO: check parsing of public key
+
+        // TODO: Hard Maximum of 255 trustees (index needs to fit in a non-zero u8)
 
         // Make sure trustees settings are sane
         if self.trustees_threshold > self.trustees.len() {

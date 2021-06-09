@@ -97,25 +97,15 @@ impl<T: Access> cryptoballot::Store for TransactionSchema<T> {
         }
     }
 
-    fn get_multiple(
-        &self,
-        election_id: Identifier,
-        tx_type: TransactionType,
-    ) -> Vec<SignedTransaction> {
+    fn range(&self, start: Identifier, exclusive_end: Identifier) -> Vec<SignedTransaction> {
         let mut results = Vec::new();
 
-        let mut start = election_id.clone();
-        start.transaction_type = tx_type;
         let start = start.to_string();
+        let end = exclusive_end.to_string();
 
         for (k, v) in self.transactions.iter_from(&start) {
-            // If we're an election type, and we're into the next election, break
-            if tx_type == TransactionType::Election && &start[0..30] != &k[0..30] {
-                break;
-            }
-
-            // If we're into the next type, break
-            if tx_type.hex_string() != &k[30..32] {
+            // If we're lexographically equal or larger than end, we've gone one past the end
+            if k >= end {
                 break;
             }
 

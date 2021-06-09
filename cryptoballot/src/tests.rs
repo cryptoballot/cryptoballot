@@ -261,6 +261,7 @@ fn end_to_end_election() {
         election.id,
         vote.id,
         trustee_1.id,
+        trustee_1.index,
         trustee_1.public_key,
         partial_decrypt_1,
     );
@@ -281,6 +282,7 @@ fn end_to_end_election() {
         election.id,
         vote.id,
         trustee_2.id,
+        trustee_2.index,
         trustee_2.public_key,
         partial_decrypt_2,
     );

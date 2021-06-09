@@ -167,14 +167,8 @@ impl<'a> Store for CbState<'a> {
         self.get(id).ok().flatten()
     }
 
-    fn get_multiple(
-        &self,
-        election_id: Identifier,
-        tx_type: TransactionType,
-    ) -> Vec<SignedTransaction> {
-        let _ = election_id;
-        let _ = tx_type;
-        unimplemented!();
+    fn range(&self, _start: Identifier, _end_exclusive: Identifier) -> Vec<SignedTransaction> {
+        todo!()
     }
 }
 

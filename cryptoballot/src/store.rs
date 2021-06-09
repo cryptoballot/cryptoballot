@@ -1,6 +1,7 @@
 use crate::*;
 use failure::Fail;
 use std::collections::BTreeMap;
+use std::convert::TryInto;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Fail)]
@@ -17,11 +18,31 @@ pub trait Store {
     /// Get a transaction of an unknown type
     fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction>;
 
+    fn range(&self, start: Identifier, end_exclusive: Identifier) -> Vec<SignedTransaction>;
+
     fn get_multiple(
         &self,
         election_id: Identifier,
         tx_type: TransactionType,
-    ) -> Vec<SignedTransaction>;
+    ) -> Vec<SignedTransaction> {
+        let mut start = election_id.clone();
+        start.transaction_type = tx_type;
+
+        let mut end = start.clone();
+
+        let mut end_type: u8 = tx_type.into();
+        end_type += 1;
+        match end_type.try_into() {
+            Ok(tx_type) => end.transaction_type = tx_type,
+            Err(_) => {
+                // Wrap around
+                end.transaction_type = TransactionType::Election;
+                end.unique_id = Some([0; 16]);
+            }
+        };
+
+        self.range(start, end)
+    }
 
     // TODO: Macro these methods
 
@@ -116,20 +137,11 @@ impl Store for MemStore {
         self.inner.get(&key).cloned()
     }
 
-    fn get_multiple(
-        &self,
-        election_id: Identifier,
-        tx_type: TransactionType,
-    ) -> Vec<SignedTransaction> {
+    fn range(&self, start: Identifier, end_exclusive: Identifier) -> Vec<SignedTransaction> {
         let mut results = Vec::new();
 
-        let mut start = election_id.clone();
-        start.transaction_type = tx_type;
         let start = start.to_string();
-
-        let mut end = start.clone();
-        end.truncate(32);
-        let end = format!("{:f<64}", end);
+        let end = end_exclusive.to_string();
 
         // TODO: Go back to using array keys (faster)
         // OLD CODE For Array Keys:
@@ -157,62 +169,5 @@ impl From<Vec<SignedTransaction>> for MemStore {
             memstore.set(tx);
         }
         memstore
-    }
-}
-
-// A store that wraps another store, with pending transactions added
-pub struct PendingStore<'a, T: Store> {
-    inner: &'a T,
-    pending: BTreeMap<String, SignedTransaction>,
-}
-
-impl<'a, T: Store> PendingStore<'a, T> {
-    pub fn new(store: &'a T) -> Self {
-        PendingStore {
-            inner: store,
-            pending: BTreeMap::new(),
-        }
-    }
-
-    pub fn add_pending(&mut self, tx: SignedTransaction) {
-        self.pending.insert(tx.id().to_string(), tx);
-    }
-}
-
-impl<'a, T: Store> Store for PendingStore<'a, T> {
-    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
-        let key = id.to_string();
-        match self.pending.get(&key).cloned() {
-            Some(item) => Some(item),
-            None => self.inner.get_transaction(id),
-        }
-    }
-
-    fn get_multiple(
-        &self,
-        election_id: Identifier,
-        tx_type: TransactionType,
-    ) -> Vec<SignedTransaction> {
-        let mut results = Vec::new();
-
-        let mut start = election_id.clone();
-        start.transaction_type = tx_type;
-        let start = start.to_string();
-
-        let mut end = start.clone();
-        end.truncate(32);
-        let end = format!("{:f<64}", end);
-
-        for (_, v) in self.pending.range(start..end) {
-            results.push(v.clone())
-        }
-
-        let mut inner_results = self.inner.get_multiple(election_id, tx_type);
-
-        results.append(&mut inner_results);
-
-        results.dedup_by(|a, b| a.id() == b.id());
-
-        results
     }
 }
