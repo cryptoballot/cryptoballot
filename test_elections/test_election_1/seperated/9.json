@@ -1,0 +1,14 @@
+{
+    "type": "key_gen_public_key",
+    "tx": {
+        "id": "d88a58bd5aecd57679822f979c21790455ca44ff7fa03ca339ca1d31a0a515b9",
+        "election": "d88a58bd5aecd57679822f979c21790100000000000000000000000000000000",
+        "trustee_id": "cd7c34ba-3d34-4e69-925e-7ca3ce1a15c6",
+        "trustee_public_key": "f837a7ee878f393ad9279f817b59cecc6b9a9dc02ea1be784776b9215bc9f59c",
+        "public_key": {
+            "y": "iuaYnny2LKiMtti31do2/S4Zyl9d/QsG3LnWaMaX8Rk="
+        },
+        "public_key_proof": "TJVJmB+A0Qg5Q84G97uLtZ3QMl2L6SBUZeU3gs1G4jg="
+    },
+    "sig": "8bc4ca40026c3fe65dc69b95cab213a4bc7039232c66ccd59e87f7e2bf785cc7de64be7e593a71637ca811dd0106e211e92ee57ec2d1065debb866c75614110e"
+}

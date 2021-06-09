@@ -1,0 +1,41 @@
+{
+    "type": "election",
+    "tx": {
+        "id": "d88a58bd5aecd57679822f979c21790100000000000000000000000000000000",
+        "authority_public": "9d09979994ea6d58676de7e2f6d43cf23b0d16855bd56db4a4fb6b6da23c32a7",
+        "ballots": [
+            "635f3fc7-ac3f-4be5-9218-fad139c87533"
+        ],
+        "trustees": [
+            {
+                "id": "b88a4b6e-d481-432c-84d3-fd363ba09129",
+                "public_key": "9080052a273807d5722b35265c20372404ca0d809d7a5b50ea61671a12c1c387",
+                "ecies_key": "c024a450864f80d04aa7a53c9bfcf0b2e527a4b0b1016fb2f8054a1c7c20b9cd",
+                "index": 1
+            },
+            {
+                "id": "cd7c34ba-3d34-4e69-925e-7ca3ce1a15c6",
+                "public_key": "f837a7ee878f393ad9279f817b59cecc6b9a9dc02ea1be784776b9215bc9f59c",
+                "ecies_key": "da236f4cf19ca877c6852c81a5605b9545e419a690a5d3ecb3bfa527b65fda5a",
+                "index": 2
+            },
+            {
+                "id": "30fe81c4-e617-45d1-bb22-a92f882bcf1c",
+                "public_key": "bae2896662985dae7717638f7ff55ce259de1f3d02c910a478af36322deddda3",
+                "ecies_key": "38f843751dc471cd30dacce8fb36bff2329c29cd9212f84aa10041b5a0eaf36b",
+                "index": 3
+            }
+        ],
+        "trustees_threshold": 2,
+        "authenticators": [
+            {
+                "id": "eccf67b9-4e86-449c-a4dd-13fdca1401b1",
+                "public_keys": {
+                    "635f3fc7-ac3f-4be5-9218-fad139c87533": "a2616e881a4c10df251a3cb59bc31a855f36011aee2cb8ae1a091e12361a7456aa5f1a7dd232891ad299840f6165811a00010001"
+                }
+            }
+        ],
+        "authenticators_threshold": 1
+    },
+    "sig": "6e846bc80bc7145ff9e4cc98e0a29714b4c9708e19c45da831abccdfff4b50b5f62ee986829d45f2ea42685d24774ec19a0322c2480fd6e3b27ff0e2ab1ecf0c"
+}

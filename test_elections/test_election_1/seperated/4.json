@@ -1,0 +1,16 @@
+{
+    "type": "key_gen_commitment",
+    "tx": {
+        "id": "d88a58bd5aecd57679822f979c217902bbcddbb99f115223c71bd8afe8463ed9",
+        "election": "d88a58bd5aecd57679822f979c21790100000000000000000000000000000000",
+        "trustee_id": "30fe81c4-e617-45d1-bb22-a92f882bcf1c",
+        "trustee_public_key": "bae2896662985dae7717638f7ff55ce259de1f3d02c910a478af36322deddda3",
+        "commitment": {
+            "elems": [
+                "AnuQTHHu5svXRrMDftCecu1pSuZXAlOKmg2oUNLsUnM=",
+                "JoaH8wGb4IOHNtuwrqWz8magrlufBFCnXOAUbXCnFBA="
+            ]
+        }
+    },
+    "sig": "e506578e9e93aa687ea2f0769f39ff8a09af9e7e68b3c39f19036090c011fba01199ab0acaf33c04953f7bf5301f2bb858ab8a861979ca4ddaf2e4e3d2c5e10b"
+}

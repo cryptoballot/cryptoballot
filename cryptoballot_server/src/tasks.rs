@@ -142,7 +142,13 @@ pub fn generate_transactions<S: Store>(
 
     // On public_key transaction, check if we have ALL public-keys, and if so, generate a encryption_key transaction (if we are the election authority)
     if incoming_tx.transaction_type() == TransactionType::KeyGenPublicKey {
-        let election_tx: ElectionTransaction = incoming_tx.clone().into(); // TODO: asRef
+        let keygen_public_key: KeyGenPublicKeyTransaction = incoming_tx.clone().into(); // TODO: asRef
+
+        // Get the election_tx
+        let election_tx: ElectionTransaction = store
+            .get_transaction(keygen_public_key.election)
+            .unwrap()
+            .into();
 
         if election_tx.authority_public == public_key {
             let pk_tx: KeyGenPublicKeyTransaction = incoming_tx.clone().into(); // TODO: asRef

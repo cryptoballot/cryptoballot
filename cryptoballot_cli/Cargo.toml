@@ -14,9 +14,9 @@ clap = "2.33.3"
 num_enum = "0.5.0"
 content_inspector = "0.2.4"
 cryptoballot = { path = "../cryptoballot" }
+cryptoballot_exonum = { path = "../cryptoballot_exonum" }
+exonum-crypto = "1.0"
 serde_json = "1.0.53"
-serde_cbor = "0.11.1"
-sawtooth-sdk = { version = "0.4.4", default-features = false }
 reqwest = { version = "0.10.4", features = ["blocking", "json"] }
 protobuf = "2.14.0"
 rand = "0.7.3"

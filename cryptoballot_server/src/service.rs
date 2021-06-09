@@ -81,6 +81,6 @@ impl Service for CryptoballotService {
 
 // Specify default instantiation parameters for the service.
 impl DefaultInstance for CryptoballotService {
-    const INSTANCE_ID: u32 = 101;
+    const INSTANCE_ID: u32 = cryptoballot_exonum::CRYPTOBALLOT_SERVICE_ID;
     const INSTANCE_NAME: &'static str = "cryptoballot";
 }

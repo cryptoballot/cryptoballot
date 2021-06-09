@@ -2,8 +2,6 @@ use clap::AppSettings;
 use clap::{App, Arg, SubCommand};
 use cryptoballot::*;
 use lazy_static::lazy_static;
-use sawtooth_sdk::signing::create_context;
-use sawtooth_sdk::signing::CryptoFactory;
 use sha2::Digest;
 use sha2::Sha512;
 use tallystick::plurality::DefaultPluralityTally;
@@ -12,9 +10,9 @@ mod command_authn;
 mod command_e2e;
 mod command_election;
 mod command_keygen;
+mod command_post_transaction;
 mod command_trustee;
 mod rest;
-mod transaction;
 
 fn main() {
     let mut app = App::new("CryptoBallot")
@@ -179,12 +177,12 @@ fn main() {
     let env_var = std::env::var("CRYPTOBALLOT_URI");
     let uri = match matches.value_of("uri") {
         Some(uri) => uri.to_string(),
-        None => env_var.unwrap_or("http://localhost:8008".to_string()),
+        None => env_var.unwrap_or("http://localhost:8080".to_string()),
     };
 
     // Subcommands
     if let Some(matches) = matches.subcommand_matches("post") {
-        command_post_transaction(matches, &uri);
+        command_post_transaction::command_post_transaction(matches, &uri);
         std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("keygen") {
@@ -223,49 +221,6 @@ fn main() {
     // No command, just print help
     app.print_help().expect("Unable to print help message");
     println!(""); // Trailing linebreak
-}
-
-fn command_post_transaction(matches: &clap::ArgMatches, uri: &str) {
-    let filename = expand(matches.value_of("INPUT").unwrap());
-
-    let file_bytes = match std::fs::read(&filename) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            eprintln!("cryptoballot post: unable to read {}: {}, ", &filename, e);
-            std::process::exit(1);
-        }
-    };
-
-    let tx = cryptoballot::SignedTransaction::from_bytes(&file_bytes).unwrap_or_else(|e| {
-        // Maybe it's an unsigned transaction?
-        if cryptoballot::Transaction::from_bytes(&file_bytes).is_ok() {
-            eprintln!(
-                "cryptoballot post: {} is unsigned, use `cryptoballot sign` to sign it first",
-                filename
-            );
-        } else {
-            eprintln!("cryptoballot post: unable to read {}: {}, ", &filename, e);
-        }
-
-        std::process::exit(1);
-    });
-
-    // Generate the sawtooth signer
-    // TODO: allow sawtooth signer to be passed in
-    let context = create_context("secp256k1").expect("Error creating the right context");
-    let private_key = context
-        .new_random_private_key()
-        .expect("Error generating a new Private Key");
-    let crypto_factory = CryptoFactory::new(context.as_ref());
-    let signer = crypto_factory.new_signer(private_key.as_ref());
-
-    // Create sawtooth transaction
-    let tx = transaction::create_tx(&signer, &tx);
-    let bl = transaction::create_batch_list(&signer, &tx);
-    rest::send_batch_list(bl, uri).unwrap_or_else(|e| {
-        eprintln!("cryptoballot post: error sending transaction: {}, ", e);
-        std::process::exit(1);
-    });
 }
 
 fn command_sign_transaction(matches: &clap::ArgMatches) {

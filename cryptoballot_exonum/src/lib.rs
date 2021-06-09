@@ -4,8 +4,12 @@
 extern crate serde_derive; // Required for Protobuf.
 
 use cryptoballot::{Identifier, SignedTransaction, TransactionType};
+use exonum::messages::SignedMessage;
+use exonum::messages::Verified;
+use exonum::runtime::{AnyTx, CallInfo};
 use exonum::{
     crypto::PublicKey,
+    crypto::SecretKey,
     merkledb::{
         access::{Access, FromAccess},
         MapIndex,
@@ -13,9 +17,12 @@ use exonum::{
 };
 use exonum_derive::ExecutionFail;
 use exonum_derive::{BinaryValue, FromAccess, ObjectHash};
+use exonum_explorer::api::TransactionHex;
 use exonum_proto::ProtobufConvert;
 
 pub mod proto;
+
+pub const CRYPTOBALLOT_SERVICE_ID: u32 = 5013;
 
 /// Cryptoballot Transaction
 #[derive(Clone, Debug, Serialize, Deserialize, ProtobufConvert, BinaryValue, ObjectHash)]
@@ -27,6 +34,19 @@ pub struct Transaction {
     pub id: String,
     /// Transaction payload
     pub data: Vec<u8>,
+}
+
+impl Transaction {
+    pub fn into_transaction_hex(self, public: PublicKey, secret: &SecretKey) -> TransactionHex {
+        use exonum_merkledb::BinaryValue;
+
+        let call_info = CallInfo::new(CRYPTOBALLOT_SERVICE_ID, 0);
+        let any_tx = AnyTx::new(call_info, self.to_bytes().to_owned());
+        let transaction = any_tx.sign(public, &secret);
+        let tx_hex = TransactionHex::new(&transaction);
+
+        tx_hex
+    }
 }
 
 impl From<SignedTransaction> for Transaction {
@@ -141,9 +161,10 @@ pub fn verify_and_store(context: ExecutionContext<'_>, tx: Transaction) -> Resul
     };
 
     if let Some(pkey) = unpacked_tx.public() {
-        if pkey.as_bytes() != &author.as_bytes() {
-            return Err(Error::AuthorPublicKeyMismatch);
-        }
+        // TODO: Check that exonum public-key matches inner public-key if it exists
+        //if pkey.as_bytes() != &author.as_bytes() {
+        //    return Err(Error::AuthorPublicKeyMismatch);
+        //}
     }
 
     if unpacked_tx.verify_signature().is_err() {
