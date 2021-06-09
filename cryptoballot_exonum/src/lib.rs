@@ -64,6 +64,14 @@ impl From<SignedTransaction> for Transaction {
     }
 }
 
+impl std::convert::TryInto<SignedTransaction> for Transaction {
+    type Error = cryptoballot::Error;
+
+    fn try_into(self) -> Result<SignedTransaction, Self::Error> {
+        SignedTransaction::from_bytes(&self.data)
+    }
+}
+
 /// Schema of the key-value storage used by the demo cryptocurrency service.
 #[derive(Debug, FromAccess)]
 pub struct TransactionSchema<T: Access> {

@@ -1,5 +1,6 @@
 use exonum_rust_runtime::api::{self, ServiceApiBuilder, ServiceApiState};
 
+use cryptoballot::SignedTransaction;
 use cryptoballot_exonum::{Transaction, TransactionSchema};
 
 /// Public service API description.
@@ -15,18 +16,39 @@ pub struct TxQuery {
 
 impl CryptoballotApi {
     /// Endpoint for getting a single transaction.
-    pub async fn get_tx(state: ServiceApiState, query: TxQuery) -> api::Result<Transaction> {
+    pub async fn get_tx(state: ServiceApiState, query: TxQuery) -> api::Result<SignedTransaction> {
+        use std::convert::TryInto;
+
         let schema = TransactionSchema::new(state.service_data());
-        schema
+        let exonum_tx = schema
             .transactions
             .get(&query.id)
-            .ok_or_else(|| api::Error::not_found().title("Transaction not found"))
+            .ok_or_else(|| api::Error::not_found().title("Transaction not found"))?;
+
+        Ok(exonum_tx
+            .try_into()
+            .map_err(|_| api::Error::internal("cryptoballot_server: Bad Transaction Format"))?)
     }
 
     /// Endpoint for dumping all transactions from the storage.
-    pub async fn get_all(state: ServiceApiState, _query: ()) -> api::Result<Vec<Transaction>> {
+    pub async fn get_all(
+        state: ServiceApiState,
+        _query: (),
+    ) -> api::Result<Vec<SignedTransaction>> {
+        use std::convert::TryInto;
+
         let schema = TransactionSchema::new(state.service_data());
-        Ok(schema.transactions.values().collect())
+
+        let mut txs = Vec::new();
+        for exonum_tx in schema.transactions.values() {
+            txs.push(
+                exonum_tx.try_into().map_err(|_| {
+                    api::Error::internal("cryptoballot_server: Bad Transaction Format")
+                })?,
+            )
+        }
+
+        Ok(txs)
     }
 
     /// Endpoint for dumping all wallets from the storage.
