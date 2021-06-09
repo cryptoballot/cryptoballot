@@ -8,6 +8,8 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
+/// Transaction 8: Partial Decryption
+///
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PartialDecryptionTransaction {
     pub id: Identifier,
@@ -64,6 +66,12 @@ impl Signable for PartialDecryptionTransaction {
     /// Validate the transaction
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
         let election = store.get_election(self.election_id)?;
+
+        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, &[0; 16]);
+        if store.get_transaction(voting_end_id).is_none() {
+            return Err(ValidationError::MisingVotingEndTransaction);
+        }
+
         let vote = store.get_vote(self.vote_id)?;
 
         // Get the public key transaction for this trustee
@@ -104,7 +112,7 @@ impl Signable for PartialDecryptionTransaction {
     }
 }
 
-/// Transaction 4: Decryption
+/// Transaction 9: Decryption
 ///
 /// After a quorum of Trustees have posted a PartialDecryption transactions, any node may produce
 /// a DecryptionTransaction. One DecryptionTransaction is produced for each Vote transaction,
@@ -179,6 +187,12 @@ impl Signable for DecryptionTransaction {
     /// Validate the transaction
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
         let election = store.get_election(self.election_id)?;
+
+        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, &[0; 16]);
+        if store.get_transaction(voting_end_id).is_none() {
+            return Err(ValidationError::MisingVotingEndTransaction);
+        }
+
         let vote = store.get_vote(self.vote_id)?;
 
         // Get all pubkeys mapped by trustee ID

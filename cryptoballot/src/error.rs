@@ -149,6 +149,9 @@ pub enum ValidationError {
     #[fail(display = "cryptoballot: {}", 0)]
     TransactionNotFound(TransactionNotFound),
 
+    #[fail(display = "cryptoballot: Missing voting_end transaction")]
+    MisingVotingEndTransaction,
+
     #[fail(display = "cryptoballot validation: signature error: {}", 0)]
     SignatureError(ed25519_dalek::SignatureError),
 

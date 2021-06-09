@@ -31,6 +31,7 @@ mod transaction;
 mod trustee;
 mod util;
 mod vote;
+mod voting_end;
 
 pub use authn::*;
 pub use decryption::*;
@@ -42,6 +43,7 @@ pub use transaction::*;
 pub use trustee::*;
 pub use util::*;
 pub use vote::*;
+pub use voting_end::*;
 
 pub(crate) use serde_hex::*;
 

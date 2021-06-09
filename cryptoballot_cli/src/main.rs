@@ -14,6 +14,7 @@ mod command_keygen;
 mod command_post_transaction;
 mod command_trustee;
 mod command_vote;
+mod command_voting_end;
 mod rest;
 
 fn main() {
@@ -156,11 +157,33 @@ fn main() {
         )
         .subcommand(
             SubCommand::with_name("election")
-                .about("Election authority related commands")
+                .about("Election related commands")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .subcommand(
                     SubCommand::with_name("generate")
                         .about("Generate new election")
+                        .arg(
+                            Arg::with_name("post")
+                                .long("post")
+                                .help("Post the transaction")
+                                .takes_value(false)
+                                .required(false),
+                        )
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("voting_end")
+                .about("Voting End commands")
+                .setting(AppSettings::ArgRequiredElseHelp)
+                .subcommand(
+                    SubCommand::with_name("generate")
+                        .about("End voting on an election with a voting_end transaction")
+                        .arg(
+                            Arg::with_name("ELECTION-ID")
+                                .index(1)
+                                .required(true)
+                                .help("election identifier"),
+                        )
                         .arg(
                             Arg::with_name("post")
                                 .long("post")
@@ -269,6 +292,10 @@ fn main() {
     }
     if let Some(matches) = matches.subcommand_matches("vote") {
         command_vote::command_vote(matches, &uri, secret_key.as_ref());
+        std::process::exit(0);
+    }
+    if let Some(matches) = matches.subcommand_matches("voting_end") {
+        command_voting_end::command_voting_end(matches, &uri, secret_key.as_ref());
         std::process::exit(0);
     }
 
