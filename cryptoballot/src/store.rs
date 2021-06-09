@@ -159,3 +159,60 @@ impl From<Vec<SignedTransaction>> for MemStore {
         memstore
     }
 }
+
+// A store that wraps another store, with pending transactions added
+pub struct PendingStore<'a, T: Store> {
+    inner: &'a T,
+    pending: BTreeMap<String, SignedTransaction>,
+}
+
+impl<'a, T: Store> PendingStore<'a, T> {
+    pub fn new(store: &'a T) -> Self {
+        PendingStore {
+            inner: store,
+            pending: BTreeMap::new(),
+        }
+    }
+
+    pub fn add_pending(&mut self, tx: SignedTransaction) {
+        self.pending.insert(tx.id().to_string(), tx);
+    }
+}
+
+impl<'a, T: Store> Store for PendingStore<'a, T> {
+    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
+        let key = id.to_string();
+        match self.pending.get(&key).cloned() {
+            Some(item) => Some(item),
+            None => self.inner.get_transaction(id),
+        }
+    }
+
+    fn get_multiple(
+        &self,
+        election_id: Identifier,
+        tx_type: TransactionType,
+    ) -> Vec<SignedTransaction> {
+        let mut results = Vec::new();
+
+        let mut start = election_id.clone();
+        start.transaction_type = tx_type;
+        let start = start.to_string();
+
+        let mut end = start.clone();
+        end.truncate(32);
+        let end = format!("{:f<64}", end);
+
+        for (_, v) in self.pending.range(start..end) {
+            results.push(v.clone())
+        }
+
+        let mut inner_results = self.inner.get_multiple(election_id, tx_type);
+
+        results.append(&mut inner_results);
+
+        results.dedup_by(|a, b| a.id() == b.id());
+
+        results
+    }
+}

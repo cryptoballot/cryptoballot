@@ -1,6 +1,7 @@
 use clap::AppSettings;
 use clap::{App, Arg, SubCommand};
 use cryptoballot::*;
+use ed25519_dalek::SecretKey;
 use lazy_static::lazy_static;
 use sha2::Digest;
 use sha2::Sha512;
@@ -22,6 +23,11 @@ fn main() {
         .arg(
             Arg::with_name("uri")
                 .help("Set the cryptoballot uri - can also be set with CRYPTOBALLOT_URI")
+                .required(false),
+        )
+        .arg(
+            Arg::with_name("secret-key")
+                .help("Set the cryptoballot secret-key - can also be set with CRYPTOBALLOT_SECRET_KEY")
                 .required(false),
         )
         .setting(AppSettings::ArgRequiredElseHelp)
@@ -155,34 +161,49 @@ fn main() {
                     SubCommand::with_name("generate")
                         .about("Generate new election")
                         .arg(
-                            Arg::with_name("authn-file")
-                                .long("authn-file")
-                                .help("File location to read authn definition")
-                                .takes_value(true)
-                                .required(true), // TODO: allow multiple
+                            Arg::with_name("post")
+                                .long("post-transaction")
+                                .help("Post the transaction")
+                                .takes_value(false)
+                                .required(false),
                         )
-                        .arg(
-                            Arg::with_name("trustee-file")
-                                .long("trustee-file")
-                                .help("File location to read trustee definition")
-                                .takes_value(true)
-                                .required(true), // TODO: allow multiple
-                        ),
                 ),
         );
 
     let matches = app.clone().get_matches();
 
-    // Gets a value for config if supplied by user, or defaults to "default.conf"
+    // Gets a value for config if supplied by user
     let env_var = std::env::var("CRYPTOBALLOT_URI");
     let uri = match matches.value_of("uri") {
         Some(uri) => uri.to_string(),
         None => env_var.unwrap_or("http://localhost:8080".to_string()),
     };
 
+    // Gets a value for config if supplied by user
+    let env_var = std::env::var("CRYPTOBALLOT_SECRET_KEY");
+    let secret_key = match matches.value_of("secret-key") {
+        Some(key) => Some(key.to_string()),
+        None => match env_var {
+            Ok(key) => Some(key),
+            Err(_) => None,
+        },
+    };
+    let secret_key = secret_key.map(|key| {
+        let bytes = hex::decode(key).unwrap_or_else(|e| {
+            eprintln!("Invalid secret key: {}", e);
+            std::process::exit(1);
+        });
+        let secret_key = SecretKey::from_bytes(&bytes).unwrap_or_else(|e| {
+            eprintln!("Invalid secret key: {}", e);
+            std::process::exit(1);
+        });
+
+        secret_key
+    });
+
     // Subcommands
     if let Some(matches) = matches.subcommand_matches("post") {
-        command_post_transaction::command_post_transaction(matches, &uri);
+        command_post_transaction::command_post_transaction(matches, &uri, secret_key.as_ref());
         std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("keygen") {
@@ -214,7 +235,7 @@ fn main() {
         std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("election") {
-        command_election::command_election(matches);
+        command_election::command_election(matches, &uri, secret_key.as_ref());
         std::process::exit(0);
     }
 
@@ -259,7 +280,7 @@ fn command_get_transaction(matches: &clap::ArgMatches, uri: &str) {
     let id = id.parse().unwrap();
 
     // TODO: remove unwrap
-    let tx = rest::get_transaction(id, uri).unwrap();
+    let tx = rest::get_transaction(uri, id).unwrap();
 
     let json_tx = if matches.is_present("pretty") {
         serde_json::to_string_pretty(&tx).unwrap()
@@ -276,61 +297,32 @@ fn command_tally(matches: &clap::ArgMatches, uri: &str) {
     let election_id = election_id.parse().unwrap();
 
     // TODO: remove these unwraps, use try_into();
-    let election = rest::get_transaction(election_id, uri).unwrap();
-    let election: Signed<ElectionTransaction> = election.into();
+    let election = rest::get_transaction(uri, election_id).unwrap();
+    let _election: ElectionTransaction = election.into();
 
-    let vote_txs =
-        rest::get_multiple_transactions(election.id(), Some(TransactionType::Decryption), uri)
-            .unwrap();
+    //let vote_txs =
+    //    rest::get_multiple_transactions(election.id(), Some(TransactionType::Decryption), uri)
+    //        .unwrap();
 
     // TODO: Use a real tally / ballot / contest system
-    let mut tally = DefaultPluralityTally::new(1);
+    //let mut tally = DefaultPluralityTally::new(1);
 
-    for vote in vote_txs {
-        // TODO: use try_into();
-        let vote: Signed<DecryptionTransaction> = vote.into();
+    //for vote in vote_txs {
+    // TODO: use try_into();
+    //    let vote: Signed<DecryptionTransaction> = vote.into();
 
-        let selection = std::str::from_utf8(&vote.decrypted_vote)
-            .unwrap()
-            .to_owned();
-        tally.add(selection);
-    }
+    //    let selection = std::str::from_utf8(&vote.decrypted_vote)
+    //        .unwrap()
+    //        .to_owned();
+    //    tally.add(selection);
+    //}
 
-    let winners = tally.winners().into_unranked();
-    println!("The winner is {}", winners[0]);
+    //let winners = tally.winners().into_unranked();
+    //println!("The winner is {}", winners[0]);
 }
 
 // Utility Functions
 // -----------------
-
-lazy_static! {
-    static ref CB_PREFIX: String = {
-        let mut sha = Sha512::new();
-        sha.input("cryptoballot");
-        hex::encode(&sha.result()[..3])
-    };
-}
-
-pub fn identifier_to_address(ident: cryptoballot::Identifier) -> String {
-    let prefix: &str = CB_PREFIX.as_ref();
-    format!("{}{}", prefix, ident.to_string())
-}
-
-pub fn identifier_to_address_prefix(
-    election_id: cryptoballot::Identifier,
-    tx_type: Option<TransactionType>,
-) -> String {
-    let prefix: &str = CB_PREFIX.as_ref();
-    let election_id = hex::encode(election_id.election_id);
-
-    match tx_type {
-        Some(tx_type) => {
-            let tx_type = hex::encode([tx_type as u8]);
-            format!("{}{}{}", prefix, election_id, tx_type)
-        }
-        None => format!("{}{}", prefix, election_id),
-    }
-}
 
 // Performs shell expansion on filenames (mostly to handle ~)
 pub fn expand(filename: &str) -> String {

@@ -15,6 +15,7 @@ num_enum = "0.5.0"
 content_inspector = "0.2.4"
 cryptoballot = { path = "../cryptoballot" }
 cryptoballot_exonum = { path = "../cryptoballot_exonum" }
+ed25519-dalek = { version = "1.0.1", features = ["serde"] }
 exonum-crypto = "1.0"
 serde_json = "1.0.53"
 reqwest = { version = "0.10.4", features = ["blocking", "json"] }

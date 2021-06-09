@@ -110,12 +110,12 @@ impl<T: Access> cryptoballot::Store for TransactionSchema<T> {
 
         for (k, v) in self.transactions.iter_from(&start) {
             // If we're an election type, and we're into the next election, break
-            if tx_type == TransactionType::Election && &start[0..32] != &k[0..32] {
+            if tx_type == TransactionType::Election && &start[0..30] != &k[0..30] {
                 break;
             }
 
             // If we're into the next type, break
-            if tx_type.hex_string() != &k[32..34] {
+            if tx_type.hex_string() != &k[30..32] {
                 break;
             }
 
@@ -175,11 +175,13 @@ pub fn verify_and_store(context: ExecutionContext<'_>, tx: Transaction) -> Resul
         //}
     }
 
-    if unpacked_tx.verify_signature().is_err() {
+    if let Err(err) = unpacked_tx.verify_signature() {
+        eprintln!("{}", err);
         return Err(Error::VerificationFailed);
     }
 
-    if unpacked_tx.validate(&schema).is_err() {
+    if let Err(err) = unpacked_tx.validate(&schema) {
+        eprintln!("{}", err);
         return Err(Error::VerificationFailed);
     }
 

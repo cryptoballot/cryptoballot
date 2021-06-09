@@ -7,6 +7,12 @@ use cryptoballot::SignedTransaction;
 use cryptoballot_exonum::{Transaction, TransactionSchema};
 use exonum::runtime::InstanceStatus;
 use exonum_rust_runtime::AfterCommitContext;
+use std::sync::{Arc, Mutex};
+
+lazy_static! {
+    pub static ref DEPENDENT_TXS: Arc<Mutex<Vec<SignedTransaction>>> =
+        Arc::new(Mutex::new(Vec::new()));
+}
 
 /// Cryptocurrency service transactions.
 #[exonum_interface]
@@ -42,20 +48,41 @@ impl Service for CryptoballotService {
         CryptoballotApi::wire(_builder);
     }
 
-    fn after_commit(&self, ctx: AfterCommitContext<'_>) {
-        if *ctx.status() != InstanceStatus::Active {
-            return;
-            // TODO: Store transaction for later when service is ready
-            // after_commit should tick about once a second, even when there are no new txs
-        }
-
+    fn after_commit(&self, ctx: AfterCommitContext) {
         let blockchain_data = ctx.data().for_core();
 
-        let block_transactions = blockchain_data.block_transactions(ctx.height());
+        // Check if we need to process any pending dependent transactions from the last block
+        {
+            let mut stored_dependent_txs = DEPENDENT_TXS.lock().unwrap();
+            if stored_dependent_txs.len() != 0 {
+                println!(
+                    "Submitting {} dependent tx on block height {}",
+                    stored_dependent_txs.len(),
+                    blockchain_data.height()
+                );
+
+                let broadcaster = ctx.generic_broadcaster().blocking();
+                for dependent_tx in stored_dependent_txs.drain(0..) {
+                    let exonum_tx: Transaction = dependent_tx.into();
+                    broadcaster.submit_tx((), exonum_tx).ok();
+                }
+            }
+        }
+
+        // Always process one block behind, so schema storage is always caught up
+        let block_transactions = blockchain_data.block_transactions(blockchain_data.height());
 
         if block_transactions.len() != 0 {
-            let schema = TransactionSchema::new(ctx.service_data());
+            println!(
+                "Processing {} tx on block height {}",
+                block_transactions.len(),
+                blockchain_data.height()
+            );
+
             let all_txs = blockchain_data.transactions();
+            let schema = TransactionSchema::new(ctx.service_data());
+
+            let mut store = cryptoballot::PendingStore::new(&schema);
             let broadcaster = ctx.generic_broadcaster().blocking();
 
             for tx_hash in block_transactions.into_iter() {
@@ -65,11 +92,22 @@ impl Service for CryptoballotService {
                             let tx_json = serde_json::to_string_pretty(&tx).unwrap();
                             println!("{}", tx_json);
 
-                            let dependent_txs = crate::tasks::generate_transactions(&tx, &schema);
+                            store.add_pending(tx.clone());
 
+                            let dependent_txs = crate::tasks::generate_transactions(&tx, &store);
+
+                            //let mut stored_dependent_txs = DEPENDENT_TXS.lock().unwrap();
                             for dependent_tx in dependent_txs {
-                                let exonum_tx: Transaction = dependent_tx.into();
+                                println!(
+                                    "Broadcasting dependent {} {}",
+                                    dependent_tx.transaction_type(),
+                                    dependent_tx.id()
+                                );
+
+                                store.add_pending(dependent_tx.clone());
+                                let exonum_tx = dependent_tx.into();
                                 broadcaster.submit_tx((), exonum_tx).ok();
+                                //stored_dependent_txs.push(dependent_tx);
                             }
                         }
                     }
@@ -83,4 +121,30 @@ impl Service for CryptoballotService {
 impl DefaultInstance for CryptoballotService {
     const INSTANCE_ID: u32 = cryptoballot_exonum::CRYPTOBALLOT_SERVICE_ID;
     const INSTANCE_NAME: &'static str = "cryptoballot";
+}
+
+use exonum::messages::AnyTx;
+use exonum::messages::Verified;
+use exonum_crypto::Hash;
+use exonum_merkledb::MapIndex;
+use exonum_merkledb::Snapshot;
+
+pub struct BlockchainStore<'a> {
+    inner: &'a MapIndex<&'a dyn Snapshot, Hash, Verified<AnyTx>>,
+}
+
+impl<'a> cryptoballot::Store for BlockchainStore<'a> {
+    fn get_transaction(&self, id: cryptoballot::Identifier) -> Option<SignedTransaction> {
+        let id = id.to_string();
+
+        None
+    }
+
+    fn get_multiple(
+        &self,
+        election_id: cryptoballot::Identifier,
+        tx_type: cryptoballot::TransactionType,
+    ) -> Vec<SignedTransaction> {
+        vec![]
+    }
 }

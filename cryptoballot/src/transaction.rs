@@ -481,9 +481,9 @@ impl TransactionType {
     pub fn name(&self) -> &str {
         match self {
             TransactionType::Election => "election",
-            TransactionType::KeyGenCommitment => "keygen_commitment",
-            TransactionType::KeyGenShare => "keygen_share",
-            TransactionType::KeyGenPublicKey => "keygen_public_key",
+            TransactionType::KeyGenCommitment => "key_gen_commitment",
+            TransactionType::KeyGenShare => "key_gen_share",
+            TransactionType::KeyGenPublicKey => "key_gen_public_key",
             TransactionType::EncryptionKey => "encryption_key",
             TransactionType::Vote => "vote",
             TransactionType::PartialDecryption => "partial_decryption",

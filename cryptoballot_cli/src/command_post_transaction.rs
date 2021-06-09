@@ -1,7 +1,12 @@
 use cryptoballot_exonum::Transaction;
+use ed25519_dalek::SecretKey;
 use reqwest::header::CONTENT_TYPE;
 
-pub fn command_post_transaction(matches: &clap::ArgMatches, uri: &str) {
+pub fn command_post_transaction(
+    matches: &clap::ArgMatches,
+    uri: &str,
+    secret_key: Option<&SecretKey>,
+) {
     let filename = crate::expand(matches.value_of("INPUT").unwrap());
 
     let file_bytes = match std::fs::read(&filename) {
@@ -26,22 +31,6 @@ pub fn command_post_transaction(matches: &clap::ArgMatches, uri: &str) {
         std::process::exit(1);
     });
 
-    let exonum_tx: Transaction = tx.into();
-
-    // TODO: Use real keys
-    let (public_key, sercet_key) = exonum_crypto::gen_keypair();
-    let transaction_hex = exonum_tx.into_transaction_hex(public_key, &sercet_key);
-
-    let client = reqwest::blocking::Client::new();
-    let full_url = format!("{}/api/explorer/v1/transactions", uri);
-
-    let res = client
-        .post(&full_url)
-        .json(&transaction_hex)
-        .send()
-        .unwrap();
-
-    let res = res.text().unwrap();
-
-    println!("{}", res);
+    let response = crate::rest::post_transaction(uri, tx, secret_key);
+    println!("{}", response);
 }

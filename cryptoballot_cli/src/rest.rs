@@ -1,6 +1,9 @@
 pub use super::*;
 use cryptoballot;
 use cryptoballot::SignedTransaction;
+use cryptoballot_exonum::Transaction;
+use ed25519_dalek::PublicKey;
+use ed25519_dalek::SecretKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -12,52 +15,49 @@ struct StateRespList {
     data: Vec<StateResp>,
 }
 
-pub fn send_batch_list(batch_list_bytes: Vec<u8>, uri: &str) -> Result<(), reqwest::Error> {
-    let full_uri = format!("{}/batches", uri);
-    let client = reqwest::blocking::Client::new();
-    client
-        .post(&full_uri)
-        .header("Content-Type", "application/octet-stream")
-        .body(batch_list_bytes)
-        .send()?;
+pub fn post_transaction(
+    base_uri: &str,
+    tx: SignedTransaction,
+    _secret_key: Option<&SecretKey>,
+) -> String {
+    let exonum_tx: Transaction = tx.into();
 
-    Ok(())
+    // TODO: Use real keys
+    let (public_key, sercet_key) = exonum_crypto::gen_keypair();
+    let transaction_hex = exonum_tx.into_transaction_hex(public_key, &sercet_key);
+
+    let client = reqwest::blocking::Client::new();
+    let full_url = format!("{}/api/explorer/v1/transactions", base_uri);
+
+    let res = client
+        .post(&full_url)
+        .json(&transaction_hex)
+        .send()
+        .unwrap();
+
+    let res = res.text().unwrap();
+
+    res
 }
 
 pub fn get_transaction(
+    base_uri: &str,
     id: cryptoballot::Identifier,
-    uri: &str,
 ) -> Result<SignedTransaction, reqwest::Error> {
-    let address = identifier_to_address(id);
-    let full_uri = format!("{}/state/{}", uri, address);
+    let full_uri = format!(
+        "{}/api/services/cryptoballot/transaction?id={}",
+        base_uri, id
+    );
     let client = reqwest::blocking::Client::new();
-    let res: StateResp = client.get(&full_uri).send()?.json()?;
+    let res: SignedTransaction = client.get(&full_uri).send()?.json()?;
 
-    // TODO: Remove these unwrap
-    let bytes = base64::decode(&res.data.as_bytes()).unwrap();
-    let tx = cryptoballot::SignedTransaction::from_bytes(&bytes).unwrap();
-
-    Ok(tx)
+    Ok(res)
 }
 
-pub fn get_multiple_transactions(
-    election_id: cryptoballot::Identifier,
-    tx_type: Option<cryptoballot::TransactionType>,
-    uri: &str,
-) -> Result<Vec<SignedTransaction>, reqwest::Error> {
-    let address = identifier_to_address_prefix(election_id, tx_type);
-
-    let full_uri = format!("{}/state?address={}", uri, address);
+pub fn get_public_key(base_uri: &str) -> Result<PublicKey, reqwest::Error> {
+    let full_uri = format!("{}/api/services/cryptoballot/public_key", base_uri);
     let client = reqwest::blocking::Client::new();
-    let res: StateRespList = client.get(&full_uri).send()?.json()?;
+    let res: PublicKey = client.get(&full_uri).send()?.json()?;
 
-    let mut txs = Vec::<SignedTransaction>::with_capacity(res.data.len());
-
-    for state_resp in res.data {
-        let bytes = base64::decode(&state_resp.data.as_bytes()).unwrap();
-        let tx = cryptoballot::SignedTransaction::from_bytes(&bytes).unwrap();
-        txs.push(tx);
-    }
-
-    Ok(txs)
+    Ok(res)
 }

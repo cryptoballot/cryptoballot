@@ -38,12 +38,25 @@ async fn main() -> anyhow::Result<()> {
     if let Some(node) = builder.execute_command()? {
         // Store the secret-key so we can access it from other contexts
         let keypair = node.blockchain().service_keypair();
-        let secret_key = hex::decode(keypair.secret_key().to_hex()).unwrap();
-        let secret_key = SecretKey::from_bytes(&secret_key[..32]).unwrap();
+        let secret_key_hex = hex::decode(keypair.secret_key().to_hex()).unwrap();
+        let secret_key = SecretKey::from_bytes(&secret_key_hex[..32]).unwrap();
         {
             let mut sk = SERVICE_SECRET.write().unwrap();
             *sk = Some(secret_key)
         }
+
+        // If we're in dev-mode, print the secret-key
+        if let Some(cmd) = std::env::args().nth(1) {
+            if cmd == "run-dev" {
+                println!("> Starting in development mode");
+                println!(
+                    "CRYPTOBALLOT_SECRET_KEY={}",
+                    &keypair.secret_key().to_hex()[..64]
+                );
+            }
+        }
+
+        println!("> Starting cryptoballot server, listening on port 8080");
 
         // Run the node
         return node.run().await;
