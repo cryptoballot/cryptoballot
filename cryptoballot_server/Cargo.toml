@@ -1,0 +1,35 @@
+[package]
+name = "cryptoballot_server"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+exonum = { version = "1.0.0" }
+exonum-rust-runtime = { version = "1.0.0" }
+exonum-derive = { version = "1.0.0" }
+exonum-merkledb = { version = "1.0.0" }
+exonum-cli = { version = "1.0.0" }
+exonum-crypto = { version = "1.0.0" }
+cryptoballot = { path = "../cryptoballot" }
+cryptoballot_exonum = { path = "../cryptoballot_exonum" }
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+anyhow = "1.0"
+lazy_static = "1.4.0"
+ed25519-dalek = "1.0"
+hex = "0.4.3"
+rand = "0.7"
+
+[dependencies.tokio]
+version = "0.2.22"
+features = [
+    "blocking",
+    "dns",
+    "io-util",
+    "macros",
+    "rt-threaded",
+    "tcp",
+    "time"
+]

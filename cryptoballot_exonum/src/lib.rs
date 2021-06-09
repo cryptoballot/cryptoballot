@@ -1,0 +1,162 @@
+#![deny(missing_debug_implementations, unsafe_code, bare_trait_objects)]
+
+#[macro_use]
+extern crate serde_derive; // Required for Protobuf.
+
+use cryptoballot::{Identifier, SignedTransaction, TransactionType};
+use exonum::{
+    crypto::PublicKey,
+    merkledb::{
+        access::{Access, FromAccess},
+        MapIndex,
+    },
+};
+use exonum_derive::ExecutionFail;
+use exonum_derive::{BinaryValue, FromAccess, ObjectHash};
+use exonum_proto::ProtobufConvert;
+
+pub mod proto;
+
+/// Cryptoballot Transaction
+#[derive(Clone, Debug, Serialize, Deserialize, ProtobufConvert, BinaryValue, ObjectHash)]
+#[protobuf_convert(source = "proto::Transaction")]
+pub struct Transaction {
+    /// Public key of transaction owner
+    pub pub_key: PublicKey,
+    /// Transaction ID
+    pub id: String,
+    /// Transaction payload
+    pub data: Vec<u8>,
+}
+
+impl From<SignedTransaction> for Transaction {
+    fn from(tx: SignedTransaction) -> Self {
+        let pub_key = match tx.public() {
+            Some(public) => PublicKey::from_slice(public.as_ref()).unwrap(),
+            None => PublicKey::zero(),
+        };
+
+        Transaction {
+            pub_key: pub_key,
+            id: tx.id().to_string(),
+            data: tx.as_bytes(),
+        }
+    }
+}
+
+/// Schema of the key-value storage used by the demo cryptocurrency service.
+#[derive(Debug, FromAccess)]
+pub struct TransactionSchema<T: Access> {
+    /// Correspondence of tx ids to the transaction payload
+    pub transactions: MapIndex<T::Base, String, Transaction>,
+}
+
+impl<T: Access> TransactionSchema<T> {
+    /// Creates a new schema.
+    pub fn new(access: T) -> Self {
+        Self::from_root(access).unwrap()
+    }
+}
+
+impl<T: Access> cryptoballot::Store for TransactionSchema<T> {
+    fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction> {
+        let key = id.to_string();
+        let encoded_tx = self.transactions.get(&key);
+
+        match encoded_tx {
+            Some(encoded_tx) => SignedTransaction::from_bytes(&encoded_tx.data).ok(),
+            None => None,
+        }
+    }
+
+    fn get_multiple(
+        &self,
+        election_id: Identifier,
+        tx_type: TransactionType,
+    ) -> Vec<SignedTransaction> {
+        let mut results = Vec::new();
+
+        let mut start = election_id.clone();
+        start.transaction_type = tx_type;
+        let start = start.to_string();
+
+        for (k, v) in self.transactions.iter_from(&start) {
+            // If we're an election type, and we're into the next election, break
+            if tx_type == TransactionType::Election && &start[0..32] != &k[0..32] {
+                break;
+            }
+
+            // If we're into the next type, break
+            if tx_type.hex_string() != &k[32..34] {
+                break;
+            }
+
+            if let Ok(decoded) = SignedTransaction::from_bytes(&v.data) {
+                results.push(decoded)
+            }
+        }
+        results
+    }
+}
+
+/// Error codes emitted by `TxCreateWallet` and/or `TxTransfer` transactions during execution.
+#[derive(Debug, ExecutionFail)]
+pub enum Error {
+    /// Transaction already exists.
+    TransactionAlreadyExists = 0,
+
+    /// Transaction author public key does not match Tranaction public key
+    AuthorPublicKeyMismatch = 1,
+
+    /// The public-key is not authorized to submit this transaction
+    NotAuthorized = 2,
+
+    /// Transaction Verification Failed
+    VerificationFailed = 3,
+
+    /// Invalid Transaction Format
+    InvalidTransactionFormat = 4,
+}
+
+use exonum::runtime::ExecutionContext;
+
+pub fn verify_and_store(context: ExecutionContext<'_>, tx: Transaction) -> Result<(), Error> {
+    let author = context
+        .caller()
+        .author()
+        .expect("Missing public key of submitter"); // TODO: Error not panic
+
+    let mut schema = TransactionSchema::new(context.service_data());
+    if schema.transactions.get(&tx.id).is_some() {
+        return Err(Error::TransactionAlreadyExists);
+    }
+
+    println!("Creating tx: {:?}", tx);
+
+    let unpacked_tx = match cryptoballot::SignedTransaction::from_bytes(&tx.data) {
+        Ok(tx) => tx,
+        Err(_) => {
+            return Err(Error::InvalidTransactionFormat);
+        }
+    };
+
+    if let Some(pkey) = unpacked_tx.public() {
+        if pkey.as_bytes() != &author.as_bytes() {
+            return Err(Error::AuthorPublicKeyMismatch);
+        }
+    }
+
+    if unpacked_tx.verify_signature().is_err() {
+        return Err(Error::VerificationFailed);
+    }
+
+    if unpacked_tx.validate(&schema).is_err() {
+        return Err(Error::VerificationFailed);
+    }
+
+    // TODO: Election Authority public key for election tx
+
+    // All checks pass, store the transaction
+    schema.transactions.put(&tx.id.clone(), tx);
+    Ok(())
+}

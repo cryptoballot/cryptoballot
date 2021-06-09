@@ -12,6 +12,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp::Ordering;
 use std::convert::AsRef;
 use std::convert::From;
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -184,6 +185,19 @@ impl SignedTransaction {
             SignedTransaction::Vote(tx) => tx.verify_signature(),
             SignedTransaction::PartialDecryption(tx) => tx.verify_signature(),
             SignedTransaction::Decryption(tx) => tx.verify_signature(),
+        }
+    }
+
+    pub fn public(&self) -> Option<PublicKey> {
+        match self {
+            SignedTransaction::Election(tx) => tx.public(),
+            SignedTransaction::KeyGenCommitment(tx) => tx.public(),
+            SignedTransaction::KeyGenShare(tx) => tx.public(),
+            SignedTransaction::KeyGenPublicKey(tx) => tx.public(),
+            SignedTransaction::EncryptionKey(tx) => tx.public(),
+            SignedTransaction::Vote(tx) => tx.public(),
+            SignedTransaction::PartialDecryption(tx) => tx.public(),
+            SignedTransaction::Decryption(tx) => tx.public(),
         }
     }
 }
@@ -475,6 +489,10 @@ impl TransactionType {
             TransactionType::PartialDecryption => "partial_decryption",
             TransactionType::Decryption => "decryption",
         }
+    }
+
+    pub fn from_u8(numeric: u8) -> Option<Self> {
+        Self::try_from(numeric).ok()
     }
 }
 

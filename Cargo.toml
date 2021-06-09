@@ -1,8 +1,9 @@
 [workspace]
 members = [
     'cryptoballot',
+    'cryptoballot_exonum',
     'cryptoballot_sawtooth_tp',
     'cryptoballot_cli',
-    'cryptoballod'
+    'cryptoballot_server'
 ]
 default-members = ['cryptoballot_cli']

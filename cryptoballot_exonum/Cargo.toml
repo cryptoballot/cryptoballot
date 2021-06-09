@@ -1,5 +1,5 @@
 [package]
-name = "cryptoballot_exonum_backup"
+name = "cryptoballot_exonum"
 publish = false
 version = "0.1.0"
 edition = "2018"
