@@ -31,7 +31,7 @@ Under active development. Not ready for production use!
 | ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
 |         | Blind-Signing (ed25519 / schnorr)       | Will replace current RSA bling-signing                         |
 | ✓       | Distributed key generation / decryption | Uses [cryptid](https://github.com/eleanor-em/cryptid/).        |
-| ⚠       | Optional Blockchain backend             | Uses [Hyperledger Sawtooth](https://sawtooth.hyperledger.org/) |
+| ✓       | Optional Blockchain backend             | Uses [Exonum](https://exonum.com/) |
 | ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 | ⚠       | REST frontend                           |                                                                |
 |         | Onion mixnet (likely Sphinx)            | Strengthened voter anonymity - Depends on REST frontend        |
