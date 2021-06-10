@@ -4,52 +4,46 @@ on: [push, pull_request]
 
 jobs:
   check:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+      - uses: actions/checkout@v1
 
-    - name: Cargo Cache
-      uses: actions/cache@v1
-      with:
-        path: ~/.cargo
-        key: check-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Cargo Target Cache
-      uses: actions/cache@v1
-      with:
-        path: target
-        key: check-${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Install packages
-      run: |
-        sudo apt-get -y install libzmq3-dev
-        PROTOC_ZIP=protoc-3.11.3-linux-x86_64.zip
-        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v3.11.3/$PROTOC_ZIP
-        sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
-        sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
-        sudo chmod a+x /usr/local/bin/protoc
-        rm -f $PROTOC_ZIP
+      - name: Cargo Cache
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo
+          key: check-${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: cargo check
-      run: |
-        cargo check
-        cargo clippy
-  
-    - name: cargo audit
-      run: |
-        cargo install cargo-audit
-        cargo audit
+      - name: Cargo Target Cache
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: check-${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Run Tests
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      run: |
-        cargo install cargo-tarpaulin
-        cargo tarpaulin --out Xml
-        bash <(curl -s https://codecov.io/bash)
+      - name: Install packages
+        run: |
+          sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+          librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 
-    - name: Prepare Cargo cache
-      run: |
-        sudo chmod -R a+w ~/.cargo
+      - name: cargo check
+        run: |
+          cargo check
+          cargo clippy
+
+      - name: cargo audit
+        run: |
+          cargo install cargo-audit
+          cargo audit
+
+      - name: Run Tests
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          cargo install cargo-tarpaulin
+          cargo tarpaulin --out Xml
+          bash <(curl -s https://codecov.io/bash)
+
+      - name: Prepare Cargo cache
+        run: |
+          sudo chmod -R a+w ~/.cargo
