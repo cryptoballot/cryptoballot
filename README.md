@@ -62,15 +62,8 @@ brew install jq libsodium rocksdb pkg-config protobuf
 #### Debian / Ubuntu
 
 ```bash
-# RocksDB
-add-apt-repository ppa:exonum/rocksdb
-apt-get update
-apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
-    librocksdb6.2 pkg-config clang-7 lldb-7 lld-7
-
-# Protobuf
-add-apt-repository ppa:maarten-fonville/protobuf
-apt install libprotobuf-dev protobuf-compiler
+sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 ```
 
 ## Quick Start
