@@ -2,10 +2,6 @@ use clap::AppSettings;
 use clap::{App, Arg, SubCommand};
 use cryptoballot::*;
 use ed25519_dalek::SecretKey;
-use lazy_static::lazy_static;
-use sha2::Digest;
-use sha2::Sha512;
-use tallystick::plurality::DefaultPluralityTally;
 
 mod command_authn;
 mod command_e2e;

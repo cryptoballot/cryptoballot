@@ -1172,6 +1172,7 @@ dependencies = [
  "hex-buffer-serde",
  "hex-serde",
  "hkdf 0.10.0",
+ "indexmap",
  "num_enum",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -2447,6 +2448,7 @@ checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
 dependencies = [
  "autocfg 1.0.1",
  "hashbrown 0.9.1",
+ "serde",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use crate::*;
 use cryptid::threshold::KeygenCommitment;
 use ed25519_dalek::PublicKey;
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use uuid::Uuid;
 /// Transaction 2: KeyGenCommitmentTransaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -22,7 +22,7 @@ pub struct KeyGenShareTransaction {
     pub trustee_id: Uuid,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
-    pub shares: HashMap<Uuid, EncryptedShare>,
+    pub shares: IndexMap<Uuid, EncryptedShare>,
 }
 
 /// Transaction 4: KeyGenPublicKeyTransaction
@@ -113,7 +113,7 @@ impl KeyGenShareTransaction {
         election: Identifier,
         trustee_id: Uuid,
         trustee_public_key: PublicKey,
-        shares: HashMap<Uuid, EncryptedShare>,
+        shares: IndexMap<Uuid, EncryptedShare>,
     ) -> Self {
         KeyGenShareTransaction {
             id: Identifier::new(

@@ -245,14 +245,20 @@ pub fn generate_transactions<S: Store>(
         unique_id[15] = 0;
         start.unique_id = Some(unique_id).clone();
 
+        dbg!(start.to_string());
+
         let mut end = start.clone();
         end.transaction_type = TransactionType::Decryption; // Next tx-type (+1)
+
+        dbg!(end.to_string());
 
         // TODO: Need some way of partitioning the work between trustee nodes,
         //       while at the same time allowing them to pick up eachother's slack
         //       Alternatively, only the election authority does full decryptions automatically
         //       Alternatively, just do it all with no coordination and let consensus sort it out
         let partial_txs = store.range(start, end);
+
+        dbg!(&partial_txs.len());
         if partial_txs.len() >= election_tx.trustees_threshold {
             let partial_txs: Vec<PartialDecryptionTransaction> =
                 partial_txs.into_iter().map(|tx| tx.into()).collect();

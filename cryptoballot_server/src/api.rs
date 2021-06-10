@@ -1,7 +1,7 @@
 use exonum_rust_runtime::api::{self, ServiceApiBuilder, ServiceApiState};
 
 use cryptoballot::SignedTransaction;
-use cryptoballot_exonum::{Transaction, TransactionSchema};
+use cryptoballot_exonum::TransactionSchema;
 
 /// Public service API description.
 #[derive(Debug, Clone, Copy)]

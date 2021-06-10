@@ -131,12 +131,7 @@ impl SignedTransaction {
 
     /// Unpack from bytes
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        // If it starts with `{` then it's JSON
-        if bytes[0] == 123 {
-            Ok(serde_json::from_slice(&bytes)?)
-        } else {
-            Ok(serde_cbor::from_slice(&bytes)?)
-        }
+        Ok(serde_cbor::from_slice(bytes)?)
     }
 
     /// Get the transaction ID

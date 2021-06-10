@@ -1,12 +1,9 @@
-use super::expand;
-use cryptoballot::Authenticator;
 use cryptoballot::ElectionTransaction;
 use cryptoballot::Signed;
 use cryptoballot::SignedTransaction;
 use cryptoballot::Trustee;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
-use std::fs::read_to_string;
 
 pub fn command_election(matches: &clap::ArgMatches, uri: &str, secret_key: Option<&SecretKey>) {
     // Subcommands
@@ -20,17 +17,12 @@ pub fn command_election(matches: &clap::ArgMatches, uri: &str, secret_key: Optio
             std::process::exit(1);
         });
 
-        command_election_generate(matches, uri, secret_key, post);
+        command_election_generate(uri, secret_key, post);
         std::process::exit(0);
     }
 }
 
-pub fn command_election_generate(
-    matches: &clap::ArgMatches,
-    uri: &str,
-    secret_key: &SecretKey,
-    post: bool,
-) {
+pub fn command_election_generate(uri: &str, secret_key: &SecretKey, post: bool) {
     let public_key: PublicKey = (secret_key).into();
 
     // Create an election transaction with a single ballot

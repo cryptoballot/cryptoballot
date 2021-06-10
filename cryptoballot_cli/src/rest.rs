@@ -2,7 +2,6 @@ pub use super::*;
 use cryptoballot;
 use cryptoballot::SignedTransaction;
 use cryptoballot_exonum::Transaction;
-use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use serde::{Deserialize, Serialize};
 
@@ -57,14 +56,6 @@ pub fn get_transaction(
     );
     let client = reqwest::blocking::Client::new();
     let res: SignedTransaction = client.get(&full_uri).send()?.json()?;
-
-    Ok(res)
-}
-
-pub fn get_public_key(base_uri: &str) -> Result<PublicKey, reqwest::Error> {
-    let full_uri = format!("{}/api/services/cryptoballot/public_key", base_uri);
-    let client = reqwest::blocking::Client::new();
-    let res: PublicKey = client.get(&full_uri).send()?.json()?;
 
     Ok(res)
 }

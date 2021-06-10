@@ -248,6 +248,13 @@ fn end_to_end_election() {
     // Voting is over!
     // ---------------
 
+    // Generate VotingEnd transaction to mark the end of voting
+    let voting_end_tx = VotingEndTransaction::new(election.id, election.authority_public);
+    let voting_end_tx = Signed::sign(&authority_secret, voting_end_tx).unwrap();
+    voting_end_tx.verify_signature().unwrap();
+    voting_end_tx.validate(&store).unwrap();
+    store.set(voting_end_tx.clone().into());
+
     // Generate a partial-decryption transactions
     let partial_decrypt_1 = trustee_1.partial_decrypt(
         &mut test_rng,
@@ -344,6 +351,7 @@ fn end_to_end_election() {
             SignedTransaction::from(pk_3_tx),
             SignedTransaction::from(encryption_key_tx),
             SignedTransaction::from(vote),
+            SignedTransaction::from(voting_end_tx),
             SignedTransaction::from(partial_decrypt_1_tx),
             SignedTransaction::from(partial_decrypt_2_tx),
             SignedTransaction::from(decrypted_tx),
@@ -367,6 +375,10 @@ fn test_all_elections() {
             paths.sort_by_key(|dir| dir.path());
 
             for path in paths {
+                if path.path().is_dir() {
+                    continue;
+                }
+
                 let file_bytes = std::fs::read(path.path()).unwrap();
 
                 let txs: Vec<SignedTransaction> = if file_bytes[0] == b"["[0] {

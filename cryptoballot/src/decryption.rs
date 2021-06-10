@@ -54,7 +54,11 @@ impl PartialDecryptionTransaction {
         unique_info[..15].copy_from_slice(&vote_id.unique_id.unwrap()[..15]);
         unique_info[15] = trustee_index;
 
-        Identifier::new(election_id, TransactionType::Decryption, &unique_info)
+        Identifier::new(
+            election_id,
+            TransactionType::PartialDecryption,
+            &unique_info,
+        )
     }
 }
 

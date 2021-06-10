@@ -3,9 +3,7 @@
 #[macro_use]
 extern crate serde_derive; // Required for Protobuf.
 
-use cryptoballot::{Identifier, SignedTransaction, TransactionType};
-use exonum::messages::SignedMessage;
-use exonum::messages::Verified;
+use cryptoballot::{Identifier, SignedTransaction};
 use exonum::runtime::{AnyTx, CallInfo};
 use exonum::{
     crypto::PublicKey,
@@ -134,16 +132,14 @@ pub enum Error {
 
     /// Invalid Transaction Format
     InvalidTransactionFormat = 4,
+
+    /// Invalid Transaction ID
+    InvalidTransactionID = 5,
 }
 
 use exonum::runtime::ExecutionContext;
 
 pub fn verify_and_store(context: ExecutionContext<'_>, tx: Transaction) -> Result<(), Error> {
-    let author = context
-        .caller()
-        .author()
-        .expect("Missing public key of submitter"); // TODO: Error not panic
-
     let mut schema = TransactionSchema::new(context.service_data());
     if schema.transactions.get(&tx.id).is_some() {
         return Err(Error::TransactionAlreadyExists);
@@ -158,11 +154,29 @@ pub fn verify_and_store(context: ExecutionContext<'_>, tx: Transaction) -> Resul
         }
     };
 
-    if let Some(pkey) = unpacked_tx.public() {
+    if let Some(_pkey) = unpacked_tx.public() {
         // TODO: Check that exonum public-key matches inner public-key if it exists
+        //let author = context
+        //    .caller()
+        //    .author()
+        //    .expect("Missing public key of submitter"); // TODO: Error not panic
+
         //if pkey.as_bytes() != &author.as_bytes() {
         //    return Err(Error::AuthorPublicKeyMismatch);
         //}
+    }
+
+    // Validate the ID
+    if unpacked_tx.id().transaction_type != unpacked_tx.transaction_type() {
+        eprintln!(
+            "id transaction_type does not match tx transaction_type for {}",
+            unpacked_tx.id()
+        );
+        return Err(Error::InvalidTransactionID);
+    }
+    if let Err(err) = unpacked_tx.verify_signature() {
+        eprintln!("{}", err);
+        return Err(Error::VerificationFailed);
     }
 
     if let Err(err) = unpacked_tx.verify_signature() {

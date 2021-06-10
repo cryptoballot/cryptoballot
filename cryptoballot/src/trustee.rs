@@ -10,6 +10,7 @@ use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use hex::{FromHex, ToHex};
 use hkdf::Hkdf;
+use indexmap::IndexMap;
 use rand::{CryptoRng, Rng};
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -18,7 +19,6 @@ use serde::{
     Serializer,
 };
 use sha2::Sha256;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
@@ -96,7 +96,7 @@ impl Trustee {
         sk: &SecretKey,
         trustees: &[Trustee],
         commitments: &[(Uuid, KeygenCommitment)],
-    ) -> HashMap<Uuid, EncryptedShare> {
+    ) -> IndexMap<Uuid, EncryptedShare> {
         let mut theshold_generator = self.generator(sk);
 
         for (trustee_id, commitment) in commitments {
@@ -119,7 +119,7 @@ impl Trustee {
                 .expect("Invalid commitment") // TODO Result
         }
 
-        let mut shares = HashMap::with_capacity(commitments.len());
+        let mut shares = IndexMap::with_capacity(commitments.len());
         for trustee in trustees {
             let share = theshold_generator
                 .get_polynomial_share(trustee.index)
@@ -364,7 +364,7 @@ impl<'d> Deserialize<'d> for EncryptedShare {
 
 #[test]
 fn trustee_e2e_test() {
-    use std::collections::HashMap;
+    use indexmap::IndexMap;
 
     let mut rng = rand::thread_rng();
 
@@ -385,7 +385,7 @@ fn trustee_e2e_test() {
     ];
 
     // Map of: recipient -> (sender, share)
-    let mut shares = HashMap::<Uuid, Vec<(Uuid, EncryptedShare)>>::new();
+    let mut shares = IndexMap::<Uuid, Vec<(Uuid, EncryptedShare)>>::new();
     for (to, share) in trustee_1.generate_shares(&mut rng, &skey_1, &trustees, &commitments) {
         shares
             .entry(to)
