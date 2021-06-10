@@ -9,7 +9,7 @@ CryptoBallot
 
 CryptoBallot is a cryptographically secure decentralized end-to-end verifiable voting system meant for real-world elections. It is a "backend" service providing vote storage, cryptographic operations, and an API. It does not provide a user interface - although it is built to make creating a UI that interfaces with it easy.
 
-It uses Distributed key-generation for election decryption keys, blind-signing and an elGamal re-encryption mixnet for voter anonymity, and an optional blockchain backend for distributed transaction storage and verification.  It supports all tally methods including write-in candidates. 
+It uses Distributed key-generation for election encryption keys, blind-signing and an elGamal re-encryption mixnet for voter anonymity, and an optional blockchain backend for distributed transaction storage and verification.  It supports all tally methods including write-in candidates. 
 
 ## Goals
 
