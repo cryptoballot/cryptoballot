@@ -91,10 +91,10 @@ fn main() {
                 .about("End-to-End Election Verification")
                 .setting(AppSettings::ArgRequiredElseHelp)
                 .arg(
-                    Arg::with_name("INPUT")
+                    Arg::with_name("ELECTION-ID")
                         .index(1)
-                        .required(true) // TODO: allow stdin
-                        .help("Entire Election is JSON format"),
+                        .required(true) 
+                        .help("Election ID"),
                 )
                 .arg(
                     Arg::with_name("print-votes")
@@ -271,7 +271,7 @@ fn main() {
         std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("e2e") {
-        command_e2e::command_e2e(matches);
+        command_e2e::command_e2e(matches, &uri);
         std::process::exit(0);
     }
     if let Some(matches) = matches.subcommand_matches("trustee") {

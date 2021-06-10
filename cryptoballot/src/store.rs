@@ -28,18 +28,10 @@ pub trait Store {
         let mut start = election_id.clone();
         start.transaction_type = tx_type;
 
+        // End is just saturated high-order bytes
+        // 1 in 2^128 (basically nil) chance this causes a problem
         let mut end = start.clone();
-
-        let mut end_type: u8 = tx_type.into();
-        end_type += 1;
-        match end_type.try_into() {
-            Ok(tx_type) => end.transaction_type = tx_type,
-            Err(_) => {
-                // Wrap around
-                end.transaction_type = TransactionType::Election;
-                end.unique_id = Some([0; 16]);
-            }
-        };
+        end.unique_id = Some([255; 16]);
 
         self.range(start, end)
     }

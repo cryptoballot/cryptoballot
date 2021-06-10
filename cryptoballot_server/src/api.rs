@@ -13,6 +13,11 @@ pub struct TxQuery {
     /// Transaction ID
     pub id: String,
 }
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TransactionsQuery {
+    /// Prefix
+    pub prefix: Option<String>,
+}
 
 impl CryptoballotApi {
     /// Endpoint for getting a single transaction.
@@ -33,19 +38,30 @@ impl CryptoballotApi {
     /// Endpoint for dumping all transactions from the storage.
     pub async fn get_all(
         state: ServiceApiState,
-        _query: (),
+        query: TransactionsQuery,
     ) -> api::Result<Vec<SignedTransaction>> {
         use std::convert::TryInto;
 
         let schema = TransactionSchema::new(state.service_data());
 
         let mut txs = Vec::new();
-        for exonum_tx in schema.transactions.values() {
-            txs.push(
-                exonum_tx.try_into().map_err(|_| {
+
+        if let Some(prefix) = query.prefix {
+            let start = format!("{:0<64}", prefix);
+            for (k, exonum_tx) in schema.transactions.iter_from(&start) {
+                if !k.starts_with(&prefix) {
+                    break;
+                }
+                txs.push(exonum_tx.try_into().map_err(|_| {
                     api::Error::internal("cryptoballot_server: Bad Transaction Format")
-                })?,
-            )
+                })?)
+            }
+        } else {
+            for exonum_tx in schema.transactions.values() {
+                txs.push(exonum_tx.try_into().map_err(|_| {
+                    api::Error::internal("cryptoballot_server: Bad Transaction Format")
+                })?)
+            }
         }
 
         Ok(txs)

@@ -1,23 +1,19 @@
-use crate::expand;
 use cryptoballot::*;
 use std::str;
 use tallystick::plurality::DefaultPluralityTally;
 
-pub fn command_e2e(matches: &clap::ArgMatches) {
-    let filename = expand(matches.value_of("INPUT").unwrap());
+pub fn command_e2e(matches: &clap::ArgMatches, uri: &str) {
+    let election_id = crate::expand(matches.value_of("ELECTION-ID").unwrap());
 
-    let file_bytes = match std::fs::read(&filename) {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            eprintln!("cryptoballot e2e: unable to read {}: {}, ", &filename, e);
-            std::process::exit(1);
-        }
-    };
+    if election_id.len() < 15 {
+        eprintln!("cryptoballot e2e: invalid election-id");
+        std::process::exit(1);
+    }
+    let prefix = &election_id[0..15];
 
     let mut store = MemStore::default();
 
-    let transactions: Vec<SignedTransaction> =
-        serde_json::from_slice(&file_bytes).expect("Unable to parse transactions");
+    let transactions = crate::rest::get_transactions_by_prefix(uri, &prefix).unwrap();
 
     if transactions.len() == 0 {
         eprint!("No Transactions present");
@@ -32,6 +28,14 @@ pub fn command_e2e(matches: &clap::ArgMatches) {
     let election_id = first_transaction.id();
 
     for tx in transactions {
+        match tx.verify_signature() {
+            Ok(()) => {}
+            Err(e) => {
+                eprint!("Failed to verify transaction signature {}: {}", tx.id(), e);
+                std::process::exit(1)
+            }
+        }
+
         match tx.validate(&store) {
             Ok(()) => store.set(tx),
             Err(e) => {
@@ -41,7 +45,7 @@ pub fn command_e2e(matches: &clap::ArgMatches) {
         }
     }
 
-    println!("Election verified OK");
+    println!("> Election verified OK");
 
     if matches.is_present("print-votes") {
         println!("Votes:");

@@ -59,3 +59,17 @@ pub fn get_transaction(
 
     Ok(res)
 }
+
+pub fn get_transactions_by_prefix(
+    base_uri: &str,
+    prefix: &str,
+) -> Result<Vec<SignedTransaction>, reqwest::Error> {
+    let full_uri = format!(
+        "{}/api/services/cryptoballot/transactions?prefix={}",
+        base_uri, prefix
+    );
+    let client = reqwest::blocking::Client::new();
+    let res: Vec<SignedTransaction> = client.get(&full_uri).send()?.json()?;
+
+    Ok(res)
+}
