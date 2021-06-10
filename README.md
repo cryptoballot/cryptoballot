@@ -48,6 +48,14 @@ Under active development. Not ready for production use!
 ## Quick Start
 
 ```bash
+
+# Install dependencies (Mac)
+brew install jq libsodium rocksdb pkg-config protobuf
+
+# Install dependencies (Debian / Ubuntu)
+sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
+
 # Clone the repository
 git clone git@github.com:cryptoballot/cryptoballot.git && cd cryptoballot
 
