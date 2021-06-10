@@ -1,7 +1,6 @@
 use crate::*;
 use failure::Fail;
 use std::collections::BTreeMap;
-use std::convert::TryInto;
 use std::fmt::Display;
 
 #[derive(Debug, Clone, Fail)]
