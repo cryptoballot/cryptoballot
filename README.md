@@ -45,6 +45,34 @@ Under active development. Not ready for production use!
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
 
+## Dependencies
+
+Cryptoballot depends on the following third-party system libraries:
+
+ - RocksDB (persistent storage)
+ - libsodium (cryptography engine)
+ - Protocol Buffers (mechanism for serializing structured data)
+
+### Mac
+
+```bash
+brew install jq libsodium rocksdb pkg-config protobuf
+```
+
+### Debian / Ubuntu
+
+```bash
+# RocksDB
+add-apt-repository ppa:exonum/rocksdb
+apt-get update
+apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+    librocksdb6.2 pkg-config clang-7 lldb-7 lld-7
+
+# Protobuf
+add-apt-repository ppa:maarten-fonville/protobuf
+apt install libprotobuf-dev protobuf-compiler
+```
+
 ## Quick Start
 
 ```bash
