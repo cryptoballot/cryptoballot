@@ -54,7 +54,8 @@ cargo install --force --path=cryptoballot_server
 # Make a directory to hold our cryptoballot database
 mkdir ~/.cryptoballot
 
-# Start the server in dev-mode and make note of the printed CRYPTOBALLOT_SECRET_KEY
+# Start the server in dev-mode
+# Make note of the printed CRYPTOBALLOT_SECRET_KEY (we will refer to this as <secret_key>)
 cryptoballot_server run-dev --blockchain-path=~/.cryptoballot
 
 # Example Output:
@@ -80,7 +81,7 @@ cryptoballot vote generate <election-id> "BARAK OBAMA" --post
 CRYPTOBALLOT_SECRET_KEY=<secret_key> cryptoballot voting_end generate <election-id> --post
 
 # After the voting is over, the server will automatically mix and decrypt the votes
-# Optionally http://localhost:8080/api/services/cryptoballot/transactions to see transactions
+# Optionally visit http://localhost:8080/api/services/cryptoballot/transactions to see transactions
 
 # Do an verifiable end-to-end verification of the election and get the results!
 cryptoballot e2e <election-id> --print-tally --print-results
