@@ -1,16 +1,10 @@
 use crate::*;
-use failure::Fail;
 use std::collections::BTreeMap;
-use std::fmt::Display;
+use thiserror::Error;
 
-#[derive(Debug, Clone, Fail)]
+#[derive(Debug, Clone, Error)]
+#[error("transaction {0} not found")]
 pub struct TransactionNotFound(pub Identifier);
-
-impl Display for TransactionNotFound {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "transaction {} not found", self.0)
-    }
-}
 
 /// A transaction store
 pub trait Store {

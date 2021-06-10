@@ -1,5 +1,4 @@
 use crate::*;
-use content_inspector::ContentType;
 use digest::Digest;
 use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
@@ -69,11 +68,7 @@ impl Transaction {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        match content_inspector::inspect(&bytes) {
-            ContentType::UTF_8 => Ok(serde_json::from_slice(&bytes)?),
-            ContentType::BINARY => Ok(serde_cbor::from_slice(&bytes)?),
-            _ => Err(Error::DeserializationUnknownFormat),
-        }
+        Ok(serde_cbor::from_slice(&bytes)?)
     }
 
     pub fn validate_tx<S: Store>(&self, s: &S) -> Result<(), ValidationError> {
