@@ -10,13 +10,13 @@ keywords = ["exonum", "blockchain", "cryptoballot"]
 description = ""
 
 [dependencies]
-exonum = { version = "1.0.0" }
-exonum-crypto = { version = "1.0.0" }
-exonum-derive = { version = "1.0.0" }
-exonum-merkledb = { version = "1.0.0" }
-exonum-proto = { version = "1.0.0" }
-exonum-rust-runtime = { version = "1.0.0" }
-exonum-explorer = { version = "1.0.0" }
+exonum = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-crypto = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-derive = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-merkledb = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-proto = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-rust-runtime = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-explorer = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
 cryptoballot = { path = "../cryptoballot" }
 anyhow = "1.0"
 protobuf = "2.17.0"
@@ -26,9 +26,9 @@ serde_json = "1.0"
 hex = "0.4.3"
 
 [dev-dependencies]
-exonum-cli = { version = "1.0.0" }
-exonum-explorer-service = { version = "1.0.0" }
-exonum-testkit = { version = "1.0.0" }
+exonum-cli = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-explorer-service = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-testkit = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
 assert_matches = "1.2.0"
 pretty_assertions = "0.7.1"
 rand = "0.8"
@@ -46,4 +46,4 @@ features = [
 ]
 
 [build-dependencies]
-exonum-build = { version = "1.0.1" }
+exonum-build = { version = "1.0.1", git = "https://github.com/exonum/exonum" }

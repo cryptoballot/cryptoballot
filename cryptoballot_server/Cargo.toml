@@ -5,12 +5,12 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
-exonum = { version = "1.0.0" }
-exonum-rust-runtime = { version = "1.0.0" }
-exonum-derive = { version = "1.0.0" }
-exonum-merkledb = { version = "1.0.0" }
-exonum-cli = { version = "1.0.0" }
-exonum-crypto = { version = "1.0.0" }
+exonum = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-rust-runtime = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-derive = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-merkledb = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-cli = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
+exonum-crypto = { version = "1.0.0", git = "https://github.com/exonum/exonum" }
 cryptoballot = { path = "../cryptoballot" }
 cryptoballot_exonum = { path = "../cryptoballot_exonum" }
 serde = "1.0"
