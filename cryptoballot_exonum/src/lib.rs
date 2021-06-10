@@ -132,9 +132,6 @@ pub enum Error {
 
     /// Invalid Transaction Format
     InvalidTransactionFormat = 4,
-
-    /// Invalid Transaction ID
-    InvalidTransactionID = 5,
 }
 
 use exonum::runtime::ExecutionContext;
@@ -166,24 +163,7 @@ pub fn verify_and_store(context: ExecutionContext<'_>, tx: Transaction) -> Resul
         //}
     }
 
-    // Validate the ID
-    if unpacked_tx.id().transaction_type != unpacked_tx.transaction_type() {
-        eprintln!(
-            "id transaction_type does not match tx transaction_type for {}",
-            unpacked_tx.id()
-        );
-        return Err(Error::InvalidTransactionID);
-    }
-    if let Err(err) = unpacked_tx.verify_signature() {
-        eprintln!("{}", err);
-        return Err(Error::VerificationFailed);
-    }
-
-    if let Err(err) = unpacked_tx.verify_signature() {
-        eprintln!("{}", err);
-        return Err(Error::VerificationFailed);
-    }
-
+    // Validate the transaction
     if let Err(err) = unpacked_tx.validate(&schema) {
         eprintln!("{}", err);
         return Err(Error::VerificationFailed);
