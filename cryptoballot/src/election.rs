@@ -113,7 +113,7 @@ impl Signable for ElectionTransaction {
         // TODO: Make sure the encryption public-key is well-formed
         // TODO: check parsing of public key
 
-        // TODO: Hard Maximum of 255 trustees (index needs to fit in a non-zero u8)
+        // TODO: Hard Maximum of 254 trustees (index needs to fit in a non-zero u8 plus an extra high bit for exclusive saturation queries)
 
         // Make sure trustees settings are sane
         if self.trustees_threshold > self.trustees.len() {

@@ -243,14 +243,11 @@ pub fn generate_transactions<S: Store>(
         start.transaction_type = TransactionType::PartialDecryption;
         let mut unique_id = partial_tx.id.unique_id.unwrap();
         unique_id[15] = 0;
-        start.unique_id = Some(unique_id).clone();
-
-        dbg!(start.to_string());
+        start.unique_id = Some(unique_id.clone());
 
         let mut end = start.clone();
-        end.transaction_type = TransactionType::Decryption; // Next tx-type (+1)
-
-        dbg!(end.to_string());
+        unique_id[15] = 255;
+        end.unique_id = Some(unique_id);
 
         // TODO: Need some way of partitioning the work between trustee nodes,
         //       while at the same time allowing them to pick up eachother's slack
@@ -258,7 +255,6 @@ pub fn generate_transactions<S: Store>(
         //       Alternatively, just do it all with no coordination and let consensus sort it out
         let partial_txs = store.range(start, end);
 
-        dbg!(&partial_txs.len());
         if partial_txs.len() >= election_tx.trustees_threshold {
             let partial_txs: Vec<PartialDecryptionTransaction> =
                 partial_txs.into_iter().map(|tx| tx.into()).collect();
