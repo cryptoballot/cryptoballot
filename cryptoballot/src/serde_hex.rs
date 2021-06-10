@@ -10,6 +10,8 @@ pub use hex_buffer_serde::Hex;
 pub enum EdPublicKeyHex {}
 
 impl Hex<PublicKey> for EdPublicKeyHex {
+    type Error = String; // TODO Change to real error
+
     fn create_bytes(public_key: &PublicKey) -> Cow<[u8]> {
         public_key.as_ref().into()
     }
@@ -23,6 +25,8 @@ impl Hex<PublicKey> for EdPublicKeyHex {
 pub enum EdSignatureHex {}
 
 impl Hex<Signature> for EdSignatureHex {
+    type Error = String; // TODO Change to real error
+
     fn create_bytes(sig: &Signature) -> Cow<[u8]> {
         let bytes = sig.to_bytes().to_vec();
         Cow::from(bytes)
@@ -37,6 +41,8 @@ impl Hex<Signature> for EdSignatureHex {
 pub enum RSAPublicKeyHex {}
 
 impl Hex<RSAPublicKey> for RSAPublicKeyHex {
+    type Error = String; // TODO Change to real error
+
     fn create_bytes(public_key: &RSAPublicKey) -> Cow<[u8]> {
         serde_cbor::to_vec(public_key).unwrap().into()
     }
