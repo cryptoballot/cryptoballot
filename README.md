@@ -37,6 +37,7 @@ Under active development. Not ready for production use!
 |         | Onion mixnet (likely Sphinx)            | Strengthened voter anonymity - Depends on REST frontend        |
 | ⚠       | Re-encryption mixnet                    | Provides coercion resistance. Will use [cryptid](https://github.com/eleanor-em/cryptid/).|
 |         | Optional TiKV Backend                   | High performance (non-blockchain) backend                      |
+|         | TypeScript/ JS Client Library           |                                                                |
 | ⚠       | End-User Device Verification            | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
