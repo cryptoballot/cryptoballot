@@ -28,14 +28,6 @@ pub fn command_e2e(matches: &clap::ArgMatches, uri: &str) {
     let election_id = first_transaction.id();
 
     for tx in transactions {
-        match tx.verify_signature() {
-            Ok(()) => {}
-            Err(e) => {
-                eprint!("Failed to verify transaction signature {}: {}", tx.id(), e);
-                std::process::exit(1)
-            }
-        }
-
         match tx.validate(&store) {
             Ok(()) => store.set(tx),
             Err(e) => {
