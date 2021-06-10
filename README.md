@@ -119,6 +119,8 @@ Cryptoballot Server depends on the following third-party system libraries:
  - libsodium (cryptography engine)
  - Protocol Buffers (mechanism for serializing structured data)
 
+Other components (core library, command-line tools) don't require these dependencies.
+
 **Mac**
 
 ```bash
