@@ -54,8 +54,9 @@ cargo install --force --path=cryptoballot_server
 # Make a directory to hold our cryptoballot database
 mkdir ~/.cryptoballot
 
-# Start the server in dev-mode
-# Make note of the printed CRYPTOBALLOT_SECRET_KEY (we will refer to this as <secret_key>)
+# Start the server in development mode (dev-mode will autogenerate and print the private-key). 
+# Make note of the printed CRYPTOBALLOT_SECRET_KEY. We will refer to this as <secret_key>.
+# WARNING: Don't use `run-dev` for production.
 cryptoballot_server run-dev --blockchain-path=~/.cryptoballot
 
 # Example Output:
