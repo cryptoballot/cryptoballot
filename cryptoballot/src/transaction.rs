@@ -37,7 +37,6 @@ pub enum Transaction {
 impl Transaction {
     /// Get the transaction type
     pub fn transaction_type(&self) -> TransactionType {
-        // TODO: use a macro
         match self {
             Transaction::Election(_) => TransactionType::Election,
             Transaction::KeyGenCommitment(_) => TransactionType::KeyGenCommitment,
@@ -52,7 +51,6 @@ impl Transaction {
     }
 
     /// Get the transaction ID
-    // TODO: use a macro
     pub fn id(&self) -> Identifier {
         match self {
             Transaction::Election(tx) => tx.id,
@@ -105,7 +103,6 @@ pub enum SignedTransaction {
 impl SignedTransaction {
     /// Get the transaction type
     pub fn transaction_type(&self) -> TransactionType {
-        // TODO: use a macro
         match self {
             SignedTransaction::Election(_) => TransactionType::Election,
             SignedTransaction::KeyGenCommitment(_) => TransactionType::KeyGenCommitment,
@@ -130,7 +127,6 @@ impl SignedTransaction {
     }
 
     /// Get the transaction ID
-    // TODO: use a macro
     pub fn id(&self) -> Identifier {
         match self {
             SignedTransaction::Election(signed) => signed.tx.id,
@@ -146,7 +142,6 @@ impl SignedTransaction {
     }
 
     /// Get the transaction ID
-    // TODO: use a macro
     pub fn inputs(&self) -> Vec<Identifier> {
         match self {
             SignedTransaction::Election(signed) => signed.inputs(),
@@ -161,7 +156,14 @@ impl SignedTransaction {
         }
     }
 
+    /// Validate the transaction. This does the following:
+    /// 1. Checks that the id-type matches the transaction-type
+    /// 2. Validates the signature
+    /// 3. Validates the transaction against the store
     pub fn validate<S: Store>(&self, s: &S) -> Result<(), ValidationError> {
+        if self.id().transaction_type != self.transaction_type() {
+            return Err(ValidationError::MismatchedTransactionType);
+        }
         match self {
             SignedTransaction::Election(tx) => tx.validate(s),
             SignedTransaction::KeyGenCommitment(tx) => tx.validate(s),

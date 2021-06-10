@@ -118,4 +118,7 @@ pub enum ValidationError {
 
     #[error("cryptoballot: partial decryption proof failed to verify")]
     PartialDecryptionProofFailed,
+
+    #[error("cryptoballot: mismatched transaction type and id type")]
+    MismatchedTransactionType,
 }

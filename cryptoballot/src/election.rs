@@ -110,23 +110,20 @@ impl Signable for ElectionTransaction {
 
     /// Validate the election transaction
     fn validate_tx<S: Store>(&self, _store: &S) -> Result<(), ValidationError> {
-        // TODO: Make sure the encryption public-key is well-formed
-        // TODO: check parsing of public key
-
-        // TODO: Hard Maximum of 254 trustees (index needs to fit in a non-zero u8 plus an extra high bit for exclusive saturation queries)
-
         // Make sure trustees settings are sane
         if self.trustees_threshold > self.trustees.len() {
             return Err(ValidationError::InvalidTrusteeThreshold);
         }
-        // TODO: check that we have at least 1 trustee
 
         // Make sure authenticator settings are sane
         if self.authenticators_threshold > self.authenticators.len() as u8 {
             return Err(ValidationError::InvalidAuthThreshold);
         }
-        // TODO: check that we have at least 1 authenticator
 
+        // TODO: Make sure the encryption public-key is well-formed
+        // TODO: check parsing of public key
+        // TODO: check that we have at least 1 trustee
+        // TODO: Hard Maximum of 254 trustees (index needs to fit in a non-zero u8 plus an extra high bit for exclusive saturation queries)
         // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
 
         Ok(())
@@ -196,6 +193,7 @@ mod tests {
         // Validate the election transaction
         election.verify_signature().unwrap();
         election.validate(&store).unwrap();
+        election_generic.validate(&store).unwrap();
 
         // Getting non-existent things shouldn't work
         let some_uuid = Uuid::new_v4();

@@ -101,7 +101,7 @@ impl Signable for KeyGenCommitmentTransaction {
             return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
         }
 
-        // TODO: Validate the commitment somehow?
+        // TODO: Validate the commitment?
 
         Ok(())
     }

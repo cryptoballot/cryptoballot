@@ -34,7 +34,6 @@ fn end_to_end_election() {
     let election = Signed::sign(&authority_secret, election).unwrap();
 
     // Validate the election transaction and store it
-    election.verify_signature().unwrap();
     election.validate(&store).unwrap();
     store.set(election.clone().into());
 
@@ -43,7 +42,6 @@ fn end_to_end_election() {
     let commit_1_tx =
         KeyGenCommitmentTransaction::new(election.id, trustee_1.id, trustee_1.public_key, commit_1);
     let commit_1_tx = Signed::sign(&trustee_1_secret, commit_1_tx).unwrap();
-    commit_1_tx.verify_signature().unwrap();
     commit_1_tx.validate(&store).unwrap();
     store.set(commit_1_tx.clone().into());
 
@@ -51,7 +49,6 @@ fn end_to_end_election() {
     let commit_2_tx =
         KeyGenCommitmentTransaction::new(election.id, trustee_2.id, trustee_2.public_key, commit_2);
     let commit_2_tx = Signed::sign(&trustee_2_secret, commit_2_tx).unwrap();
-    commit_2_tx.verify_signature().unwrap();
     commit_2_tx.validate(&store).unwrap();
     store.set(commit_2_tx.clone().into());
 
@@ -59,7 +56,6 @@ fn end_to_end_election() {
     let commit_3_tx =
         KeyGenCommitmentTransaction::new(election.id, trustee_3.id, trustee_3.public_key, commit_3);
     let commit_3_tx = Signed::sign(&trustee_3_secret, commit_3_tx).unwrap();
-    commit_3_tx.verify_signature().unwrap();
     commit_3_tx.validate(&store).unwrap();
     store.set(commit_3_tx.clone().into());
 
@@ -93,7 +89,6 @@ fn end_to_end_election() {
         share_1.clone(),
     );
     let share_1_tx = Signed::sign(&trustee_1_secret, share_1_tx).unwrap();
-    share_1_tx.verify_signature().unwrap();
     share_1_tx.validate(&store).unwrap();
     store.set(share_1_tx.clone().into());
 
@@ -110,7 +105,6 @@ fn end_to_end_election() {
         share_2.clone(),
     );
     let share_2_tx = Signed::sign(&trustee_2_secret, share_2_tx).unwrap();
-    share_2_tx.verify_signature().unwrap();
     share_2_tx.validate(&store).unwrap();
     store.set(share_2_tx.clone().into());
 
@@ -127,7 +121,6 @@ fn end_to_end_election() {
         share_3.clone(),
     );
     let share_3_tx = Signed::sign(&trustee_3_secret, share_3_tx).unwrap();
-    share_3_tx.verify_signature().unwrap();
     share_3_tx.validate(&store).unwrap();
     store.set(share_3_tx.clone().into());
 
@@ -156,7 +149,6 @@ fn end_to_end_election() {
         pk_1_proof,
     );
     let pk_1_tx = Signed::sign(&trustee_1_secret, pk_1_tx).unwrap();
-    pk_1_tx.verify_signature().unwrap();
     pk_1_tx.validate(&store).unwrap();
     store.set(pk_1_tx.clone().into());
 
@@ -178,7 +170,6 @@ fn end_to_end_election() {
         pk_2_proof,
     );
     let pk_2_tx = Signed::sign(&trustee_2_secret, pk_2_tx).unwrap();
-    pk_2_tx.verify_signature().unwrap();
     pk_2_tx.validate(&store).unwrap();
     store.set(pk_2_tx.clone().into());
 
@@ -200,7 +191,6 @@ fn end_to_end_election() {
         pk_3_proof,
     );
     let pk_3_tx = Signed::sign(&trustee_3_secret, pk_3_tx).unwrap();
-    pk_3_tx.verify_signature().unwrap();
     pk_3_tx.validate(&store).unwrap();
     store.set(pk_3_tx.clone().into());
 
@@ -208,7 +198,6 @@ fn end_to_end_election() {
     let encryption_key_tx =
         EncryptionKeyTransaction::new(election.id, authority_public, pk_1_tx.inner().public_key);
     let encryption_key_tx = Signed::sign(&authority_secret, encryption_key_tx).unwrap();
-    encryption_key_tx.verify_signature().unwrap();
     encryption_key_tx.validate(&store).unwrap();
     store.set(encryption_key_tx.clone().into());
 
@@ -241,7 +230,6 @@ fn end_to_end_election() {
     let vote = Signed::sign(&voter_secret, vote).unwrap();
 
     // Validate the vote transaction and store it
-    vote.verify_signature().unwrap();
     vote.validate(&store).unwrap();
     store.set(vote.clone().into());
 
@@ -251,7 +239,6 @@ fn end_to_end_election() {
     // Generate VotingEnd transaction to mark the end of voting
     let voting_end_tx = VotingEndTransaction::new(election.id, election.authority_public);
     let voting_end_tx = Signed::sign(&authority_secret, voting_end_tx).unwrap();
-    voting_end_tx.verify_signature().unwrap();
     voting_end_tx.validate(&store).unwrap();
     store.set(voting_end_tx.clone().into());
 
@@ -273,7 +260,6 @@ fn end_to_end_election() {
         partial_decrypt_1,
     );
     let partial_decrypt_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_1_tx).unwrap();
-    partial_decrypt_1_tx.verify_signature().unwrap();
     partial_decrypt_1_tx.validate(&store).unwrap();
     store.set(partial_decrypt_1_tx.clone().into());
 
@@ -294,7 +280,6 @@ fn end_to_end_election() {
         partial_decrypt_2,
     );
     let partial_decrypt_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_2_tx).unwrap();
-    partial_decrypt_2_tx.verify_signature().unwrap();
     partial_decrypt_2_tx.validate(&store).unwrap();
     store.set(partial_decrypt_2_tx.clone().into());
 
@@ -324,7 +309,6 @@ fn end_to_end_election() {
 
     // TODO: Add a decryptor public key to make it meaningful??  It does't really matter..
     let decrypted_tx = Signed::sign(&trustee_1_secret, decrypted_tx).unwrap();
-    decrypted_tx.verify_signature().unwrap();
     decrypted_tx.validate(&store).unwrap();
     store.set(decrypted_tx.clone().into());
 
