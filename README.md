@@ -53,13 +53,13 @@ Cryptoballot depends on the following third-party system libraries:
  - libsodium (cryptography engine)
  - Protocol Buffers (mechanism for serializing structured data)
 
-### Mac
+#### Mac
 
 ```bash
 brew install jq libsodium rocksdb pkg-config protobuf
 ```
 
-### Debian / Ubuntu
+#### Debian / Ubuntu
 
 ```bash
 # RocksDB
