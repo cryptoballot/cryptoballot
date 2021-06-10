@@ -4,7 +4,6 @@ CryptoBallot
 [![docs](https://docs.rs/cryptoballot/badge.svg)](https://docs.rs/cryptoballot)
 [![crates.io](https://meritbadge.herokuapp.com/cryptoballot)](https://crates.io/crates/cryptoballot)
 [![checks](https://github.com/cryptoballot/cryptoballot/workflows/checks/badge.svg)](https://github.com/cryptoballot/cryptoballot/actions)
-[![codecov](https://codecov.io/gh/cryptoballot/cryptoballot/branch/master/graph/badge.svg)](https://codecov.io/gh/cryptoballot/cryptoballot)
 
 
 CryptoBallot is a cryptographically secure decentralized end-to-end verifiable voting system meant for real-world elections. It is a "backend" service providing vote storage, cryptographic operations, and an API. It does not provide a user interface - although it is built to make creating a UI that interfaces with it easy.
@@ -45,30 +44,17 @@ Under active development. Not ready for production use!
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
 
-## Dependencies
-
-Cryptoballot depends on the following third-party system libraries:
-
- - RocksDB (persistent storage)
- - libsodium (cryptography engine)
- - Protocol Buffers (mechanism for serializing structured data)
-
-#### Mac
-
-```bash
-brew install jq libsodium rocksdb pkg-config protobuf
-```
-
-#### Debian / Ubuntu
-
-```bash
-sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
-librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
-```
-
 ## Quick Start
 
 ```bash
+
+# Install dependencies (Mac)
+brew install jq libsodium rocksdb pkg-config protobuf
+
+# Install dependencies (Debian / Ubuntu)
+sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
+
 # Clone the repository
 git clone git@github.com:cryptoballot/cryptoballot.git && cd cryptoballot
 
@@ -122,11 +108,35 @@ cryptoballot e2e <election-id> --print-tally --print-results
 
 ### [Command-line tool](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_cli)
 
-1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
+1. Install [Rust](https://www.rust-lang.org), 
 2. Run `cargo install --path=cryptoballot_cli`
 
-### [Sawtooth Transaction Processor](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_sawtooth_tp)
 
-1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
-2. Install [Sawtooth](https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/installing_sawtooth.html)
-3. Run `cargo install --path=cryptoballot_sawtooth_tp`
+### [Cryptoballot Server](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_server)
+
+1. Install [Rust](https://www.rust-lang.org), 
+2. Install dependencies (see below)
+3. Run `cargo install --path=cryptoballot_cli`
+
+#### Dependencies
+
+Cryptoballot Server depends on the following third-party system libraries:
+
+ - RocksDB (persistent storage)
+ - libsodium (cryptography engine)
+ - Protocol Buffers (mechanism for serializing structured data)
+
+Other components (core library, command-line tools) don't require these dependencies.
+
+**Mac**
+
+```bash
+brew install jq libsodium rocksdb pkg-config protobuf
+```
+
+**Debian / Ubuntu**
+
+```bash
+sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
+```
