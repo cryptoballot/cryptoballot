@@ -10,7 +10,6 @@ repository = "https://github.com/cryptoballot/cryptoballot"
 homepage = "https://cryptoballot.com"
 
 [dependencies]
-sharks = "0.3.3" # Wait until upgrade to rand 0.8
 rand = '0.7.3'
 rand_chacha = '0.2.0'
 ed25519-dalek = { version = "1.0.1", features = ["serde"] }

@@ -3,9 +3,7 @@ use cryptid::elgamal::Ciphertext;
 use cryptid::threshold::DecryptShare;
 use cryptid::threshold::Threshold;
 use ed25519_dalek::PublicKey;
-use sharks::{Share, Sharks};
 use std::collections::HashMap;
-use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// Transaction 8: Partial Decryption
@@ -206,8 +204,10 @@ impl Signable for DecryptionTransaction {
         // Get all partial decryptions mapped by trustee ID
         let mut partials = Vec::with_capacity(self.trustees.len());
         for trustee_id in self.trustees.iter() {
-            // TODO: Bogus trustee-ids could exist, throw error instead of unwrap
-            let trustee = election.inner().get_trustee(*trustee_id).unwrap();
+            let trustee = election
+                .inner()
+                .get_trustee(*trustee_id)
+                .ok_or(ValidationError::TrusteeDoesNotExist(*trustee_id))?;
             let partial_id = PartialDecryptionTransaction::build_id(
                 self.election_id,
                 self.vote_id,
@@ -234,8 +234,7 @@ impl Signable for DecryptionTransaction {
             &election.inner().trustees,
             &pubkeys,
             &partials,
-        )
-        .map_err(|e| ValidationError::VoteDecryptionFailed(e))?;
+        )?;
 
         if decrypted != self.decrypted_vote {
             return Err(ValidationError::VoteDecryptionMismatch);
@@ -245,25 +244,6 @@ impl Signable for DecryptionTransaction {
     }
 }
 
-/// Given a set of secret shares recovered from all SecretShareTransaction, reconstruct
-/// the secret decryption key. The decryption key can then be used to decrypt votes and create
-/// a DecryptionTransaction.
-pub fn recover_secret_from_shares(threshold: u8, shares: Vec<Vec<u8>>) -> Result<Vec<u8>, Error> {
-    // TODO: Remove this unwrap
-    let shares: Vec<Share> = shares
-        .iter()
-        .map(|s| Share::try_from(s.as_slice()).unwrap())
-        .collect();
-
-    let sharks = Sharks(threshold);
-
-    let secret = sharks
-        .recover(&shares)
-        .map_err(|_| Error::SecretRecoveryFailed)?;
-
-    Ok(secret)
-}
-
 /// Decrypt the vote from the given partial decryptions.
 pub fn decrypt_vote(
     encrypted_vote: &Ciphertext,
@@ -271,7 +251,7 @@ pub fn decrypt_vote(
     trustees: &[Trustee],
     pubkeys: &[KeyGenPublicKeyTransaction],
     partials: &[PartialDecryptionTransaction],
-) -> Result<Vec<u8>, cryptid::CryptoError> {
+) -> Result<Vec<u8>, ValidationError> {
     // Map pubkeys by trustee ID
     let pubkeys: HashMap<Uuid, &KeyGenPublicKeyTransaction> =
         pubkeys.into_iter().map(|tx| (tx.trustee_id, tx)).collect();
@@ -295,5 +275,7 @@ pub fn decrypt_vote(
         };
     }
 
-    decrypt.finish()
+    decrypt
+        .finish()
+        .map_err(|e| ValidationError::VoteDecryptionFailed(e))
 }

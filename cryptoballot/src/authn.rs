@@ -89,10 +89,11 @@ impl Authenticator {
         secret: &RSAPrivateKey,
         blinded_auth_package: &[u8],
     ) -> Authentication {
-        let mut rng = rand::rngs::OsRng {};
-        let blind_signature = blind::sign(&mut rng, &secret, blinded_auth_package).unwrap();
+        let mut rng = rand::thread_rng();
+        let blind_signature = blind::sign(&mut rng, &secret, blinded_auth_package)
+            .expect("Error generating blind signature");
 
-       Authentication {
+        Authentication {
             authenticator: self.id,
             signature: blind_signature,
         }

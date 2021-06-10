@@ -1117,7 +1117,6 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "sha2 0.9.5",
- "sharks",
  "thiserror",
  "uuid 0.7.4",
 ]
@@ -4015,15 +4014,6 @@ dependencies = [
  "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
-]
-
-[[package]]
-name = "sharks"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "447a097bc278607b85f882181e7cfca7aff11db77c8464867752f6d5ac1decb3"
-dependencies = [
- "rand 0.7.3",
 ]
 
 [[package]]
