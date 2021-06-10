@@ -41,6 +41,51 @@ Under active development. Not ready for production use!
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
 
+## Quick Start
+
+```bash
+# Clone the repository
+git clone git@github.com:cryptoballot/cryptoballot.git && cd cryptoballot
+
+# Install the server and command-line tools (go make some tea, this will take a while)
+cargo install --force --path=cryptoballot_cli
+cargo install --force --path=cryptoballot_server
+
+# Make a directory to hold our cryptoballot database
+mkdir ~/.cryptoballot
+
+# Start the server in dev-mode and make note of the printed CRYPTOBALLOT_SECRET_KEY
+cryptoballot_server run-dev --blockchain-path=~/.cryptoballot
+
+# Example Output:
+#   > Starting in development mode
+#   CRYPTOBALLOT_SECRET_KEY=ddcd9d786ba3975f1c4ba215226f632c455cdd4de51d2183bc985f20f7abc3c9
+#   > Starting cryptoballot server, listening on port 8080
+
+# In another window, generate an election-transaction using the secret key from before
+# This election is very basic with a single trustee, no authentication, and a single write-in-only plurality ballot-type
+# Optionally visit http://localhost:8080/api/services/cryptoballot/transactions to see transactions
+CRYPTOBALLOT_SECRET_KEY=<secret_key> cryptoballot election generate --post
+
+# Make note of the generated election ID (we will refer to this as <election-id>)
+
+# Create some votes
+cryptoballot vote generate <election-id> "BARAK OBAMA" --post
+cryptoballot vote generate <election-id> "SANTA CLAUSE" --post
+cryptoballot vote generate <election-id> "BARAK OBAMA" --post
+cryptoballot vote generate <election-id> "BARAK OBAMA" --post
+
+# As the election-authority, you decide when the voting is over and votes should be mixed and decrypted
+# This can be automated by setting an end-time in the election transaction
+CRYPTOBALLOT_SECRET_KEY=<secret_key> cryptoballot voting_end generate <election-id> --post
+
+# After the voting is over, the server will automatically mix and decrypt the votes
+# Optionally http://localhost:8080/api/services/cryptoballot/transactions to see transactions
+
+# Do an verifiable end-to-end verification of the election and get the results!
+cryptoballot e2e <election-id> --print-tally --print-results
+
+```
 
 ## Components
 
