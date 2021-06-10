@@ -18,6 +18,7 @@ It uses distributed key-generation for election encryption keys, blind-signing a
 3. **Fast** - 5,000 votes per second
 4. **Scalable** - Millions of voters.
 5. **Secure** - Rock solid security guarantees, byzantine fault tolerance. 
+6. **Distributed** - Trust and redundency is distributed amongst an operator-selected set of trustees.
 
 ## Current State
 
