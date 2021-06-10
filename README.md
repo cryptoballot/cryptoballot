@@ -15,7 +15,7 @@ It uses distributed key-generation for election encryption keys, blind-signing a
 
 1. **Verifiable** - the entire voting process should be end-to-end verifiable.
 2. **Ergonomic** - Easy to use.
-3. **Fast** - 10,000 votes per second
+3. **Fast** - 5,000 votes per second
 4. **Scalable** - Millions of voters.
 5. **Secure** - Rock solid security guarantees, byzantine fault tolerance. 
 
