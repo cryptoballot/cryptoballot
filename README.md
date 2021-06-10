@@ -45,27 +45,6 @@ Under active development. Not ready for production use!
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
 
-## Dependencies
-
-Cryptoballot depends on the following third-party system libraries:
-
- - RocksDB (persistent storage)
- - libsodium (cryptography engine)
- - Protocol Buffers (mechanism for serializing structured data)
-
-#### Mac
-
-```bash
-brew install jq libsodium rocksdb pkg-config protobuf
-```
-
-#### Debian / Ubuntu
-
-```bash
-sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
-librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
-```
-
 ## Quick Start
 
 ```bash
@@ -122,11 +101,33 @@ cryptoballot e2e <election-id> --print-tally --print-results
 
 ### [Command-line tool](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_cli)
 
-1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
+1. Install [Rust](https://www.rust-lang.org), 
 2. Run `cargo install --path=cryptoballot_cli`
 
-### [Sawtooth Transaction Processor](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_sawtooth_tp)
 
-1. Install [Rust](https://www.rust-lang.org), [ZeroMQ](https://zeromq.org/download), and [Protoc](http://google.github.io/proto-lens/installing-protoc.html)
-2. Install [Sawtooth](https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/installing_sawtooth.html)
-3. Run `cargo install --path=cryptoballot_sawtooth_tp`
+### [Cryptoballot Server](https://github.com/cryptoballot/cryptoballot/tree/master/cryptoballot_server)
+
+1. Install [Rust](https://www.rust-lang.org), 
+2. Install dependencies (see below)
+3. Run `cargo install --path=cryptoballot_cli`
+
+#### Dependencies
+
+Cryptoballot Server depends on the following third-party system libraries:
+
+ - RocksDB (persistent storage)
+ - libsodium (cryptography engine)
+ - Protocol Buffers (mechanism for serializing structured data)
+
+**Mac**
+
+```bash
+brew install jq libsodium rocksdb pkg-config protobuf
+```
+
+**Debian / Ubuntu**
+
+```bash
+sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
+librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
+```
