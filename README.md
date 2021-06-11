@@ -140,3 +140,14 @@ brew install jq libsodium rocksdb pkg-config protobuf
 sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
 librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 ```
+
+
+## Related papers
+
+These papers will help in understanding the underlying theory and mathematical foundations involved in CryptoBallot:
+
+1. [A Threshold Cryptosystem
+without a Trusted Party](https://link.springer.com/content/pdf/10.1007/3-540-46416-6_47.pdf), *Pederson*
+2. [Pseudo-Code Algorithms for Verifiable
+Re-Encryption Mix-Nets](https://fc17.ifca.ai/voting/papers/voting17_HLKD17.pdf), *Haenni et al.*
+3. [Exonum: Byzantine fault tolerant protocol](https://bitfury.com/content/downloads/wp_consensus_181227.pdf), *Yanovich et al.*
