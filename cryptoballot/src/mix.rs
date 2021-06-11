@@ -167,7 +167,7 @@ impl Signable for MixTransaction {
                 .into();
 
             // Make sure this is the correct previous mix
-            if self.mix_index - 1 != prev_mix.mix_index
+            if self.mix_index != prev_mix.mix_index + 1
                 || self.election_id != prev_mix.election_id
                 || self.contest_index != prev_mix.contest_index
                 || self.batch != prev_mix.batch
@@ -188,7 +188,6 @@ impl Signable for MixTransaction {
             }
 
             // TODO: Check that vote_ids.len() <= batch-size
-
             // TODO: Validate batching - make sure batched votes are exactly correct
             // This will require reading the votes in order and checking for first, or ranging off the final vote_ids of prev mix
 
