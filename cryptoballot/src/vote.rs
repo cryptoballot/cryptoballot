@@ -1,9 +1,9 @@
 use crate::*;
+use cryptid::elgamal::Ciphertext;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use rand::{CryptoRng, RngCore};
 use uuid::Uuid;
-use cryptid::elgamal::Ciphertext;
 
 /// Transaction 2: Vote
 ///
@@ -32,7 +32,11 @@ pub struct VoteTransaction {
 
 impl VoteTransaction {
     /// Create a new vote transaction.
-    pub fn new(election_id: Identifier, ballot_id: Uuid, encrypted_vote: Ciphertext) -> (Self, SecretKey) {
+    pub fn new(
+        election_id: Identifier,
+        ballot_id: Uuid,
+        encrypted_vote: Ciphertext,
+    ) -> (Self, SecretKey) {
         let (secret_key, public_key) = generate_keypair();
 
         let vote = VoteTransaction {
@@ -73,6 +77,14 @@ impl Signable for VoteTransaction {
         }
         if election.get_ballot(self.ballot_id).is_none() {
             return Err(ValidationError::BallotDoesNotExist);
+        }
+
+        // Validate that there is a EncryptionKeyTransaction
+        // TODO: Add a "transaction_exists" function to store
+        let enc_key_tx = Identifier::new(self.election, TransactionType::EncryptionKey, &[0; 16]);
+        let key_tx = store.get_transaction(enc_key_tx);
+        if key_tx.is_none() {
+            return Err(ValidationError::EncryptionKeyTransactionDoesNotExist);
         }
 
         // TODO: minimum authentication needed to be defined in election

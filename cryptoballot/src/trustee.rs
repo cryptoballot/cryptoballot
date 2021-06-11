@@ -33,7 +33,7 @@ pub struct Trustee {
     #[serde(with = "EdPublicKeyHex")]
     pub public_key: PublicKey,
     pub ecies_key: ecies_ed25519::PublicKey,
-    pub index: usize,
+    pub index: u8,
 
     #[serde(default)]
     #[serde(skip_serializing)]
@@ -66,7 +66,7 @@ impl Trustee {
     }
 
     /// Create a new trustee
-    pub fn new(index: usize, num_trustees: usize, threshold: usize) -> (Self, SecretKey) {
+    pub fn new(index: u8, num_trustees: usize, threshold: usize) -> (Self, SecretKey) {
         if index == 0 {
             panic!("Trustee index cannot be zero");
         }
@@ -77,7 +77,7 @@ impl Trustee {
 
         let trustee = Trustee {
             id: Uuid::new_v4(),
-            index,
+            index: index,
             public_key,
             ecies_key,
             num_trustees,
@@ -115,14 +115,14 @@ impl Trustee {
             }
 
             theshold_generator
-                .receive_commitment(index, commitment)
+                .receive_commitment(index as usize, commitment)
                 .expect("Invalid commitment") // TODO Result
         }
 
         let mut shares = IndexMap::with_capacity(commitments.len());
         for trustee in trustees {
             let share = theshold_generator
-                .get_polynomial_share(trustee.index)
+                .get_polynomial_share(trustee.index as usize)
                 .unwrap();
 
             // Encrypt the share with the public key such that only the holder of the secret key can decrypt.
@@ -171,11 +171,11 @@ impl Trustee {
         sk: &SecretKey,
         trustees: &[Trustee],
         shares: &[(Uuid, EncryptedShare)],
-    ) -> Vec<(usize, Scalar)> {
+    ) -> Vec<(u8, Scalar)> {
         // Grab our ecies private key for decryption
         let (ecies_secret_key, _public_key) = Self::ecies_keys(sk);
 
-        let mut decrypted_shared = Vec::<(usize, Scalar)>::with_capacity(shares.len());
+        let mut decrypted_shared = Vec::<(u8, Scalar)>::with_capacity(shares.len());
         for (sender_uuid, share) in shares {
             match trustees.iter().position(|t| t.id == *sender_uuid) {
                 Some(i) => {
@@ -199,7 +199,7 @@ impl Trustee {
         &self,
         trustees: &[Trustee],
         commitments: &[(Uuid, KeygenCommitment)],
-    ) -> Vec<(usize, KeygenCommitment)> {
+    ) -> Vec<(u8, KeygenCommitment)> {
         let mut mapped_commitments = Vec::with_capacity(commitments.len());
         for trustee in trustees {
             for (trustee_id, commitment) in commitments {
@@ -240,26 +240,31 @@ impl Trustee {
 
         let mut rng = ChaCha20Rng::from_seed(seed);
 
-        ThresholdGenerator::new(&mut rng, self.index, self.threshold, self.num_trustees)
+        ThresholdGenerator::new(
+            &mut rng,
+            self.index as usize,
+            self.threshold,
+            self.num_trustees,
+        )
     }
 
     fn generate_party(
         &self,
         sk: &SecretKey,
-        commitments: &[(usize, KeygenCommitment)],
-        shares: &[(usize, Scalar)],
+        commitments: &[(u8, KeygenCommitment)],
+        shares: &[(u8, Scalar)],
     ) -> ThresholdParty {
         let mut theshold_generator = self.generator(sk);
 
         for (index, commitment) in commitments {
             theshold_generator
-                .receive_commitment(*index, commitment)
+                .receive_commitment(*index as usize, commitment)
                 .expect("Invalid commitment") // TODO Result
         }
 
         for (index, share) in shares {
             theshold_generator
-                .receive_share(*index, &share)
+                .receive_share(*index as usize, &share)
                 .expect("Invalid share") // TODO Result
         }
 
@@ -443,8 +448,16 @@ fn trustee_e2e_test() {
 
     // TODO: Full decryption
     let mut decrypt = cryptid::threshold::Decryption::new(2, &ciphertext);
-    decrypt.add_share(trustee_1.index, &trustee_1_pk_proof, &partial_decrypt_1);
-    decrypt.add_share(trustee_2.index, &trustee_2_pk_proof, &partial_decrypt_2);
+    decrypt.add_share(
+        trustee_1.index as usize,
+        &trustee_1_pk_proof,
+        &partial_decrypt_1,
+    );
+    decrypt.add_share(
+        trustee_2.index as usize,
+        &trustee_2_pk_proof,
+        &partial_decrypt_2,
+    );
 
     let decrypted = decrypt.finish().unwrap();
 

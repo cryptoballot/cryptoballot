@@ -37,6 +37,9 @@ pub enum Error {
 
     #[error("cryptoballot: failed to decrypt vote")]
     DecryptionError,
+
+    #[error("cryptoballot: shuffle error: {0}")]
+    ShuffleError(cryptid::CryptoError),
 }
 
 /// Transaction Validation errors
@@ -89,6 +92,9 @@ pub enum ValidationError {
     #[error("cryptoballot validation: authentication failed")]
     AuthFailed,
 
+    #[error("cryptoballot: encryption_key transaction not does yet exist")]
+    EncryptionKeyTransactionDoesNotExist,
+
     #[error("cryptoballot: secret recovery failed")]
     SecretRecoveryFailed,
 
@@ -121,4 +127,22 @@ pub enum ValidationError {
 
     #[error("cryptoballot: mismatched transaction type and id type")]
     MismatchedTransactionType,
+
+    #[error("cryptoballot: shuffle verification failed")]
+    ShuffleVerificationFailed,
+
+    #[error("cryptoballot: no mixnet configured for election")]
+    NoMixnetConfig,
+
+    #[error("cryptoballot: out of order mix")]
+    OutOfOrderMix,
+
+    #[error("cryptoballot: missing previous mix transaction")]
+    MissingPrevMixTransaction,
+
+    #[error("cryptoballot: invalid previous mix transaction")]
+    InvalidPrevMixTransaction,
+
+    #[error("cryptoballot: mix vote_ids are not sorted ascending")]
+    MixVoteIdsNotSorted,
 }

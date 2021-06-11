@@ -32,6 +32,9 @@ pub struct ElectionTransaction {
     /// Mininum number of authenticators that might provide a signature for a voter
     /// for that voter to post a Vote transaction.
     pub authenticators_threshold: u8,
+
+    /// Mixnet configuration, None implies no mix-net
+    pub mixnet: Option<MixConfig>,
 }
 
 impl ElectionTransaction {
@@ -47,6 +50,7 @@ impl ElectionTransaction {
             trustees_threshold: 1,
             authenticators: vec![],
             authenticators_threshold: 1,
+            mixnet: None,
         }
     }
 
@@ -125,6 +129,7 @@ impl Signable for ElectionTransaction {
         // TODO: check that we have at least 1 trustee
         // TODO: Hard Maximum of 254 trustees (index needs to fit in a non-zero u8 plus an extra high bit for exclusive saturation queries)
         // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
+        // TODO: MixConfig validation: non-zero on all three params
 
         Ok(())
     }

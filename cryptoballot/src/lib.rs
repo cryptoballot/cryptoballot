@@ -14,6 +14,8 @@
 //!  - **Authenticator** - Certifies that a voter can vote an election and ballot using blind-signing.
 //!  - **Ballot** - A set of contests for an election, usually restricted to a geographic area.
 
+#![feature(is_sorted)]
+
 #[macro_use]
 extern crate serde;
 
@@ -25,6 +27,7 @@ mod decryption;
 mod election;
 mod error;
 mod keygen;
+mod mix;
 mod serde_hex;
 mod store;
 mod transaction;
@@ -38,6 +41,7 @@ pub use decryption::*;
 pub use election::*;
 pub use error::*;
 pub use keygen::*;
+pub use mix::*;
 pub use store::*;
 pub use transaction::*;
 pub use trustee::*;

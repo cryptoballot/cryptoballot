@@ -30,6 +30,7 @@ pub enum Transaction {
     EncryptionKey(EncryptionKeyTransaction),
     Vote(VoteTransaction),
     VotingEnd(VotingEndTransaction),
+    Mix(MixTransaction),
     PartialDecryption(PartialDecryptionTransaction),
     Decryption(DecryptionTransaction),
 }
@@ -45,6 +46,7 @@ impl Transaction {
             Transaction::EncryptionKey(_) => TransactionType::EncryptionKey,
             Transaction::Vote(_) => TransactionType::Vote,
             Transaction::VotingEnd(_) => TransactionType::VotingEnd,
+            Transaction::Mix(_) => TransactionType::Mix,
             Transaction::PartialDecryption(_) => TransactionType::PartialDecryption,
             Transaction::Decryption(_) => TransactionType::Decryption,
         }
@@ -60,6 +62,7 @@ impl Transaction {
             Transaction::EncryptionKey(tx) => tx.id,
             Transaction::Vote(tx) => tx.id,
             Transaction::VotingEnd(tx) => tx.id,
+            Transaction::Mix(tx) => tx.id,
             Transaction::PartialDecryption(tx) => tx.id,
             Transaction::Decryption(tx) => tx.id,
         }
@@ -78,6 +81,7 @@ impl Transaction {
             Transaction::EncryptionKey(tx) => tx.validate_tx(s),
             Transaction::Vote(tx) => tx.validate_tx(s),
             Transaction::VotingEnd(tx) => tx.validate_tx(s),
+            Transaction::Mix(tx) => tx.validate_tx(s),
             Transaction::PartialDecryption(tx) => tx.validate_tx(s),
             Transaction::Decryption(tx) => tx.validate_tx(s),
         }
@@ -96,6 +100,7 @@ pub enum SignedTransaction {
     EncryptionKey(Signed<EncryptionKeyTransaction>),
     Vote(Signed<VoteTransaction>),
     VotingEnd(Signed<VotingEndTransaction>),
+    Mix(Signed<MixTransaction>),
     PartialDecryption(Signed<PartialDecryptionTransaction>),
     Decryption(Signed<DecryptionTransaction>),
 }
@@ -111,6 +116,7 @@ impl SignedTransaction {
             SignedTransaction::EncryptionKey(_) => TransactionType::EncryptionKey,
             SignedTransaction::Vote(_) => TransactionType::Vote,
             SignedTransaction::VotingEnd(_) => TransactionType::VotingEnd,
+            SignedTransaction::Mix(_) => TransactionType::Mix,
             SignedTransaction::PartialDecryption(_) => TransactionType::PartialDecryption,
             SignedTransaction::Decryption(_) => TransactionType::Decryption,
         }
@@ -136,6 +142,7 @@ impl SignedTransaction {
             SignedTransaction::EncryptionKey(signed) => signed.tx.id,
             SignedTransaction::Vote(signed) => signed.tx.id,
             SignedTransaction::VotingEnd(signed) => signed.tx.id,
+            SignedTransaction::Mix(signed) => signed.tx.id,
             SignedTransaction::PartialDecryption(signed) => signed.tx.id,
             SignedTransaction::Decryption(signed) => signed.tx.id,
         }
@@ -151,6 +158,7 @@ impl SignedTransaction {
             SignedTransaction::EncryptionKey(signed) => signed.inputs(),
             SignedTransaction::Vote(signed) => signed.inputs(),
             SignedTransaction::VotingEnd(signed) => signed.inputs(),
+            SignedTransaction::Mix(signed) => signed.inputs(),
             SignedTransaction::PartialDecryption(signed) => signed.inputs(),
             SignedTransaction::Decryption(signed) => signed.inputs(),
         }
@@ -172,6 +180,7 @@ impl SignedTransaction {
             SignedTransaction::EncryptionKey(tx) => tx.validate(s),
             SignedTransaction::Vote(tx) => tx.validate(s),
             SignedTransaction::VotingEnd(tx) => tx.validate(s),
+            SignedTransaction::Mix(tx) => tx.validate(s),
             SignedTransaction::PartialDecryption(tx) => tx.validate(s),
             SignedTransaction::Decryption(tx) => tx.validate(s),
         }
@@ -186,6 +195,7 @@ impl SignedTransaction {
             SignedTransaction::EncryptionKey(tx) => tx.verify_signature(),
             SignedTransaction::Vote(tx) => tx.verify_signature(),
             SignedTransaction::VotingEnd(tx) => tx.verify_signature(),
+            SignedTransaction::Mix(tx) => tx.verify_signature(),
             SignedTransaction::PartialDecryption(tx) => tx.verify_signature(),
             SignedTransaction::Decryption(tx) => tx.verify_signature(),
         }
@@ -200,6 +210,7 @@ impl SignedTransaction {
             SignedTransaction::EncryptionKey(tx) => tx.public(),
             SignedTransaction::Vote(tx) => tx.public(),
             SignedTransaction::VotingEnd(tx) => tx.public(),
+            SignedTransaction::Mix(tx) => tx.public(),
             SignedTransaction::PartialDecryption(tx) => tx.public(),
             SignedTransaction::Decryption(tx) => tx.public(),
         }
@@ -498,8 +509,9 @@ pub enum TransactionType {
     EncryptionKey = 5,
     Vote = 6,
     VotingEnd = 7,
-    PartialDecryption = 8,
-    Decryption = 9,
+    Mix = 8,
+    PartialDecryption = 9,
+    Decryption = 10,
 }
 
 impl TransactionType {
@@ -512,8 +524,9 @@ impl TransactionType {
             TransactionType::EncryptionKey => "05",
             TransactionType::Vote => "06",
             TransactionType::VotingEnd => "07",
-            TransactionType::PartialDecryption => "08",
-            TransactionType::Decryption => "09",
+            TransactionType::Mix => "08",
+            TransactionType::PartialDecryption => "09",
+            TransactionType::Decryption => "0A",
         }
     }
 
@@ -526,6 +539,7 @@ impl TransactionType {
             TransactionType::EncryptionKey => "encryption_key",
             TransactionType::Vote => "vote",
             TransactionType::VotingEnd => "voting_end",
+            TransactionType::Mix => "mix",
             TransactionType::PartialDecryption => "partial_decryption",
             TransactionType::Decryption => "decryption",
         }
@@ -605,6 +619,15 @@ impl From<SignedTransaction> for Signed<VotingEndTransaction> {
     fn from(tx: SignedTransaction) -> Self {
         match tx {
             SignedTransaction::VotingEnd(tx) => tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
+impl From<SignedTransaction> for Signed<MixTransaction> {
+    fn from(tx: SignedTransaction) -> Self {
+        match tx {
+            SignedTransaction::Mix(tx) => tx,
             _ => panic!("wrong transaction type expected"),
         }
     }
@@ -691,6 +714,15 @@ impl From<SignedTransaction> for VotingEndTransaction {
     }
 }
 
+impl From<SignedTransaction> for MixTransaction {
+    fn from(tx: SignedTransaction) -> Self {
+        match tx {
+            SignedTransaction::Mix(tx) => tx.tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
 impl From<SignedTransaction> for DecryptionTransaction {
     fn from(tx: SignedTransaction) -> Self {
         match tx {
@@ -748,6 +780,12 @@ impl From<Signed<VoteTransaction>> for SignedTransaction {
 impl From<Signed<VotingEndTransaction>> for SignedTransaction {
     fn from(tx: Signed<VotingEndTransaction>) -> Self {
         SignedTransaction::VotingEnd(tx)
+    }
+}
+
+impl From<Signed<MixTransaction>> for SignedTransaction {
+    fn from(tx: Signed<MixTransaction>) -> Self {
+        SignedTransaction::Mix(tx)
     }
 }
 
@@ -826,6 +864,15 @@ impl AsRef<VotingEndTransaction> for SignedTransaction {
     }
 }
 
+impl AsRef<MixTransaction> for SignedTransaction {
+    fn as_ref(&self) -> &MixTransaction {
+        match self {
+            SignedTransaction::Mix(signed) => &signed.tx,
+            _ => panic!("wrong transaction type expected"),
+        }
+    }
+}
+
 impl AsRef<PartialDecryptionTransaction> for SignedTransaction {
     fn as_ref(&self) -> &PartialDecryptionTransaction {
         match self {
@@ -857,9 +904,10 @@ mod test {
         assert!(TransactionType::KeyGenPublicKey as u8 == 4);
         assert!(TransactionType::EncryptionKey as u8 == 5);
         assert!(TransactionType::Vote as u8 == 6);
-        assert!(TransactionType::VotingEnd as u8 == 7);
-        assert!(TransactionType::PartialDecryption as u8 == 8);
-        assert!(TransactionType::Decryption as u8 == 9);
+        assert!(TransactionType::Mix as u8 == 7);
+        assert!(TransactionType::VotingEnd as u8 == 8);
+        assert!(TransactionType::PartialDecryption as u8 == 9);
+        assert!(TransactionType::Decryption as u8 == 10);
 
         let election_id = Identifier::new_for_election();
         let election_id_bytes = election_id.to_bytes();

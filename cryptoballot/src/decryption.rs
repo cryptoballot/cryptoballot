@@ -26,7 +26,7 @@ impl PartialDecryptionTransaction {
         election_id: Identifier,
         vote_id: Identifier,
         trustee_id: Uuid,
-        trustee_index: usize,
+        trustee_index: u8,
         trustee_public_key: PublicKey,
         partial_decryption: DecryptShare,
     ) -> Self {
@@ -41,13 +41,7 @@ impl PartialDecryptionTransaction {
     }
 
     // Has an ID format of <election-id><type><voter-anonymous-key><trustee-index>
-    pub fn build_id(
-        election_id: Identifier,
-        vote_id: Identifier,
-        trustee_index: usize,
-    ) -> Identifier {
-        let trustee_index: u8 = trustee_index as u8;
-
+    pub fn build_id(election_id: Identifier, vote_id: Identifier, trustee_index: u8) -> Identifier {
         let mut unique_info = [0; 16];
         unique_info[..15].copy_from_slice(&vote_id.unique_id.unwrap()[..15]);
         unique_info[15] = trustee_index;
@@ -267,7 +261,7 @@ pub fn decrypt_vote(
         if let Some(partial) = partials.get(&trustee.id) {
             if let Some(pubkey) = pubkeys.get(&trustee.id) {
                 decrypt.add_share(
-                    trustee.index,
+                    trustee.index as usize,
                     &pubkey.public_key_proof,
                     &partial.partial_decryption,
                 );
