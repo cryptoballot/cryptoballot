@@ -146,7 +146,7 @@ librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 
 These papers will help in understanding the underlying theory and mathematical foundations involved in CryptoBallot:
 
-1. (Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing)[https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF], *Pederson*
-2. (Pseudo-Code Algorithms for Verifiable
-Re-Encryption Mix-Nets)[https://fc17.ifca.ai/voting/papers/voting17_HLKD17.pdf], *Haenni et al.*
-3. (Exonum: Byzantine fault tolerant protocol)[https://bitfury.com/content/downloads/wp_consensus_181227.pdf], *Yanovich et al.*
+1. [Non-Interactive and Information-Theoretic Secure Verifiable Secret Sharing](https://www.cs.cornell.edu/courses/cs754/2001fa/129.PDF), *Pederson*
+2. [Pseudo-Code Algorithms for Verifiable
+Re-Encryption Mix-Nets](https://fc17.ifca.ai/voting/papers/voting17_HLKD17.pdf), *Haenni et al.*
+3. [Exonum: Byzantine fault tolerant protocol](https://bitfury.com/content/downloads/wp_consensus_181227.pdf), *Yanovich et al.*
