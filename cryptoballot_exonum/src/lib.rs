@@ -95,15 +95,15 @@ impl<T: Access> cryptoballot::Store for TransactionSchema<T> {
         }
     }
 
-    fn range(&self, start: Identifier, exclusive_end: Identifier) -> Vec<SignedTransaction> {
+    fn range(&self, start: Identifier, end_inclusive: Identifier) -> Vec<SignedTransaction> {
         let mut results = Vec::new();
 
         let start = start.to_string();
-        let end = exclusive_end.to_string();
+        let end = end_inclusive.to_string();
 
         for (k, v) in self.transactions.iter_from(&start) {
-            // If we're lexographically equal or larger than end, we've gone one past the end
-            if k >= end {
+            // If we're lexographically larger than end, we've gone one past the end
+            if k > end {
                 break;
             }
 

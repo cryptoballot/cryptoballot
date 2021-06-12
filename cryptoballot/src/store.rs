@@ -11,7 +11,7 @@ pub trait Store {
     /// Get a transaction of an unknown type
     fn get_transaction(&self, id: Identifier) -> Option<SignedTransaction>;
 
-    fn range(&self, start: Identifier, end_exclusive: Identifier) -> Vec<SignedTransaction>;
+    fn range(&self, start: Identifier, end_inclusive: Identifier) -> Vec<SignedTransaction>;
 
     fn get_multiple(
         &self,
@@ -22,7 +22,6 @@ pub trait Store {
         start.transaction_type = tx_type;
 
         // End is just saturated high-order bytes
-        // 1 in 2^128 (basically nil) chance this causes a problem
         let mut end = start.clone();
         end.unique_id = Some([255; 16]);
 
@@ -122,11 +121,11 @@ impl Store for MemStore {
         self.inner.get(&key).cloned()
     }
 
-    fn range(&self, start: Identifier, end_exclusive: Identifier) -> Vec<SignedTransaction> {
+    fn range(&self, start: Identifier, end_inclusive: Identifier) -> Vec<SignedTransaction> {
         let mut results = Vec::new();
 
         let start = start.to_string();
-        let end = end_exclusive.to_string();
+        let end = end_inclusive.to_string();
 
         // TODO: Go back to using array keys (faster)
         // OLD CODE For Array Keys:
@@ -140,7 +139,7 @@ impl Store for MemStore {
         //end[..15].copy_from_slice(&election_id[..15]);
         //end[16] = (tx_type as u8) + 1;
 
-        for (_, v) in self.inner.range(start..end) {
+        for (_, v) in self.inner.range(start..=end) {
             results.push(v.clone())
         }
         results
