@@ -23,8 +23,8 @@ jobs:
 
       - name: Install packages
         run: |
-          sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
-          librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
+          sudo apt-get install build-essential jq libsnappy-dev libssl-dev \
+          pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 
       - name: cargo check
         run: |
