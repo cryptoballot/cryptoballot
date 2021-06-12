@@ -127,7 +127,7 @@ impl Signable for ElectionTransaction {
         // TODO: Make sure the encryption public-key is well-formed
         // TODO: check parsing of public key
         // TODO: check that we have at least 1 trustee
-        // TODO: Hard Maximum of 254 trustees (index needs to fit in a non-zero u8 plus an extra high bit for exclusive saturation queries)
+        // TODO: Hard Maximum of 255 trustees (index needs to fit in a non-zero u8)
         // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
         // TODO: MixConfig validation: non-zero on all three params
 

@@ -526,7 +526,7 @@ impl TransactionType {
             TransactionType::VotingEnd => "07",
             TransactionType::Mix => "08",
             TransactionType::PartialDecryption => "09",
-            TransactionType::Decryption => "0A",
+            TransactionType::Decryption => "0a",
         }
     }
 
@@ -904,8 +904,8 @@ mod test {
         assert!(TransactionType::KeyGenPublicKey as u8 == 4);
         assert!(TransactionType::EncryptionKey as u8 == 5);
         assert!(TransactionType::Vote as u8 == 6);
-        assert!(TransactionType::Mix as u8 == 7);
-        assert!(TransactionType::VotingEnd as u8 == 8);
+        assert!(TransactionType::VotingEnd as u8 == 7);
+        assert!(TransactionType::Mix as u8 == 8);
         assert!(TransactionType::PartialDecryption as u8 == 9);
         assert!(TransactionType::Decryption as u8 == 10);
 
