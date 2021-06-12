@@ -7,7 +7,6 @@ use ed25519_dalek::Signature;
 use ed25519_dalek::Verifier;
 use num_enum::IntoPrimitive;
 use num_enum::TryFromPrimitive;
-use rand::Rng;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp::Ordering;
 use std::convert::AsRef;
@@ -231,7 +230,7 @@ pub trait Signable: Serialize {
 }
 
 /// A generic signed transaction
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Signed<T: Signable + Serialize> {
     pub tx: T,
 
@@ -323,7 +322,7 @@ impl Identifier {
     ) -> Self {
         let election_id = election_id.election_id;
 
-        // Use directly when unique_info is is 16 bytes
+        // Use directly when unique_info is 16 bytes
         let unique_id = if unique_info.len() == 16 {
             unique_info.try_into().unwrap()
         } else {
@@ -334,6 +333,24 @@ impl Identifier {
             election_id,
             transaction_type,
             unique_id: Some(unique_id),
+        }
+    }
+
+    // Create a new identifier that starts at the start of a transaction type
+    pub fn start(election_id: Identifier, transaction_type: TransactionType) -> Self {
+        Self {
+            election_id: election_id.election_id,
+            transaction_type: transaction_type,
+            unique_id: Some([0; 16]),
+        }
+    }
+
+    // Create a new identifier that marks the end of a transaction type
+    pub fn end(election_id: Identifier, transaction_type: TransactionType) -> Self {
+        Self {
+            election_id: election_id.election_id,
+            transaction_type: transaction_type,
+            unique_id: Some([255; 16]),
         }
     }
 
@@ -359,20 +376,6 @@ impl Identifier {
             unique_id: Some([0; 16]),
         };
         return Some(Self::new(election_id, transaction_type, unique_info));
-    }
-
-    /// Create a new identifier for an election
-    pub fn new_for_election() -> Self {
-        let mut csprng = rand::rngs::OsRng {};
-
-        let election_id: [u8; 15] = csprng.gen();
-        let transaction_type = TransactionType::Election;
-        let unique_id: [u8; 16] = [0; 16]; // All zeroes
-        Identifier {
-            election_id,
-            transaction_type,
-            unique_id: Some(unique_id),
-        }
     }
 
     pub fn to_array(&self) -> [u8; 32] {
@@ -895,6 +898,7 @@ impl AsRef<DecryptionTransaction> for SignedTransaction {
 mod test {
 
     use super::*;
+    use rand::Rng;
 
     #[test]
     fn test_identifier() {
@@ -909,7 +913,8 @@ mod test {
         assert!(TransactionType::PartialDecryption as u8 == 9);
         assert!(TransactionType::Decryption as u8 == 10);
 
-        let election_id = Identifier::new_for_election();
+        let mut rng = rand::thread_rng();
+        let election_id = ElectionTransaction::build_id(rng.gen());
         let election_id_bytes = election_id.to_bytes();
         assert_eq!(election_id_bytes[15], 1);
 

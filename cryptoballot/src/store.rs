@@ -72,6 +72,18 @@ pub trait Store {
         }
     }
 
+    /// Get an Mix transaction
+    fn get_mix(&self, id: Identifier) -> Result<Signed<MixTransaction>, TransactionNotFound> {
+        let tx = self.get_transaction(id);
+        match tx {
+            Some(tx) => match tx {
+                SignedTransaction::Mix(e) => Ok(e),
+                _ => Err(TransactionNotFound(id)),
+            },
+            None => Err(TransactionNotFound(id)),
+        }
+    }
+
     /// Get a PartialDecryption transaction
     fn get_partial_decryption(
         &self,

@@ -201,11 +201,13 @@ impl Authentication {
 mod tests {
 
     use crate::*;
+    use rand::Rng;
     use uuid::Uuid;
 
     #[test]
     fn test_blind_signing() {
-        let election_id = Identifier::new_for_election();
+        let mut rng = rand::thread_rng();
+        let election_id = ElectionTransaction::build_id(rng.gen());
         let ballot_id = Uuid::new_v4();
         let (_voter_secret, voter_public) = generate_keypair();
 

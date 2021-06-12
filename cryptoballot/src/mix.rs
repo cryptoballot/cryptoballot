@@ -6,6 +6,7 @@ use crate::Store;
 use crate::TransactionType;
 use crate::Trustee;
 use crate::ValidationError;
+use crate::VoteTransaction;
 use cryptid::commit::PedersenCtx;
 use cryptid::elgamal::Ciphertext;
 use cryptid::elgamal::PublicKey as EncryptionPublicKey;
@@ -17,8 +18,8 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MixConfig {
     pub timeout_secs: u64,
-    pub min_shuffles: u8,
-    pub batch_size: Option<usize>,
+    pub num_shuffles: u8,
+    pub batch_size: Option<u16>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -160,6 +161,11 @@ impl Signable for MixTransaction {
             return Err(ValidationError::OutOfOrderMix);
         }
 
+        // Make sure we have all the ciphertexts in the mix
+        if self.reencryption.len() != self.vote_ids.len() {
+            return Err(ValidationError::MixWrongNumberOfVotes);
+        }
+
         let input_ciphertexts = if self.prev_mix_id.is_some() {
             let prev_mix: MixTransaction = store
                 .get_transaction(self.prev_mix_id.unwrap())
@@ -187,16 +193,34 @@ impl Signable for MixTransaction {
                 return Err(ValidationError::MixVoteIdsNotSorted);
             }
 
-            // TODO: Check that vote_ids.len() <= batch-size
-            // TODO: Validate batching - make sure batched votes are exactly correct
-            // This will require reading the votes in order and checking for first, or ranging off the final vote_ids of prev mix
+            // TODO: Support batching
+            //       - Check that vote_ids.len() <= batch-size
+            //       - Validate batching - make sure batched votes are exactly correct
+            //       - This will require reading the votes in order and checking for first, or ranging off the final vote_ids of prev mix
 
-            let mut vote_txs = Vec::with_capacity(self.vote_ids.len());
-            for vote_id in &self.vote_ids {
-                vote_txs.push(store.get_vote(*vote_id)?.tx.encrypted_vote);
+            // Make sure all votes are accounted for
+            let votes = store.range(
+                Identifier::start(self.election_id, TransactionType::Vote),
+                Identifier::start(self.election_id, TransactionType::Vote),
+            );
+
+            if votes.len() != self.vote_ids.len() {
+                return Err(ValidationError::MixWrongNumberOfVotes);
             }
 
-            vote_txs
+            for (i, vote) in votes.iter().enumerate() {
+                if self.vote_ids[i] != vote.id() {
+                    return Err(ValidationError::MixVotesNotAccountedFor);
+                }
+            }
+
+            let mut ciphertexts = Vec::with_capacity(self.vote_ids.len());
+            for vote in votes {
+                let vote: VoteTransaction = vote.into();
+                ciphertexts.push(vote.encrypted_vote);
+            }
+
+            ciphertexts
         };
 
         let enc_key_tx =

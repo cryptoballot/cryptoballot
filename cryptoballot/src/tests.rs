@@ -254,6 +254,7 @@ fn end_to_end_election() {
     let partial_decrypt_1_tx = PartialDecryptionTransaction::new(
         election.id,
         vote.id,
+        0,
         trustee_1.id,
         trustee_1.index,
         trustee_1.public_key,
@@ -274,6 +275,7 @@ fn end_to_end_election() {
     let partial_decrypt_2_tx = PartialDecryptionTransaction::new(
         election.id,
         vote.id,
+        0,
         trustee_2.id,
         trustee_2.index,
         trustee_2.public_key,

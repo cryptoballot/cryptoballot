@@ -45,6 +45,9 @@ pub enum Error {
 /// Transaction Validation errors
 #[derive(Debug, Error)]
 pub enum ValidationError {
+    #[error("cryptoballot: invalid identifier - incorrectly composed")]
+    IdentifierBadComposition,
+
     #[error("cryptoballot validation: election authority public key mismatch")]
     AuthorityPublicKeyMismatch,
 
@@ -145,4 +148,19 @@ pub enum ValidationError {
 
     #[error("cryptoballot: mix vote_ids are not sorted ascending")]
     MixVoteIdsNotSorted,
+
+    #[error("cryptoballot: wrong number of votes in mix")]
+    MixWrongNumberOfVotes,
+
+    #[error("cryptoballot: not all votes accounted for in mix")]
+    MixVotesNotAccountedFor,
+
+    #[error("cryptoballot: invalid upstream transaction ID")]
+    InvalidUpstreamID,
+
+    #[error("cryptoballot: invalid upstream index")]
+    InvalidUpstreamIndex,
+
+    #[error("cryptoballot: wrong mix selected for decryption")]
+    WrongMixSelected,
 }

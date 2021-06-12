@@ -1,5 +1,6 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
+use rand::Rng;
 use uuid::Uuid;
 
 /// Transaction 1: Election
@@ -42,8 +43,10 @@ impl ElectionTransaction {
     ///
     /// The returned SecretKey should be distributed to the trustees using Shamir Secret Sharing
     pub fn new(authority_public: PublicKey) -> Self {
+        let mut csprng = rand::thread_rng();
+
         ElectionTransaction {
-            id: Identifier::new_for_election(),
+            id: Self::build_id(csprng.gen()),
             authority_public: authority_public,
             ballots: vec![],
             trustees: vec![],
@@ -51,6 +54,17 @@ impl ElectionTransaction {
             authenticators: vec![],
             authenticators_threshold: 1,
             mixnet: None,
+        }
+    }
+
+    /// Create a new identifier for an election
+    pub fn build_id(election_id: [u8; 15]) -> Identifier {
+        let transaction_type = TransactionType::Election;
+        let unique_id: [u8; 16] = [0; 16]; // All zeroes
+        Identifier {
+            election_id,
+            transaction_type,
+            unique_id: Some(unique_id),
         }
     }
 
@@ -114,6 +128,10 @@ impl Signable for ElectionTransaction {
 
     /// Validate the election transaction
     fn validate_tx<S: Store>(&self, _store: &S) -> Result<(), ValidationError> {
+        if Self::build_id(self.id.election_id) != self.id {
+            return Err(ValidationError::IdentifierBadComposition);
+        }
+
         // Make sure trustees settings are sane
         if self.trustees_threshold > self.trustees.len() {
             return Err(ValidationError::InvalidTrusteeThreshold);
