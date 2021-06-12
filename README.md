@@ -121,7 +121,7 @@ cryptoballot e2e <election-id> --print-tally --print-results
 #### Dependencies
 
 Cryptoballot Server depends on the following third-party system libraries:
-
+ - RocksDB (storage engine)
  - libsodium (cryptography engine)
  - Protocol Buffers (mechanism for serializing structured data)
 
