@@ -122,7 +122,6 @@ cryptoballot e2e <election-id> --print-tally --print-results
 
 Cryptoballot Server depends on the following third-party system libraries:
 
- - RocksDB (persistent storage)
  - libsodium (cryptography engine)
  - Protocol Buffers (mechanism for serializing structured data)
 
@@ -131,14 +130,14 @@ Other components (core library, command-line tools) don't require these dependen
 **Mac**
 
 ```bash
-brew install jq libsodium rocksdb pkg-config protobuf
+brew install jq libsodium pkg-config protobuf
 ```
 
 **Debian / Ubuntu**
 
 ```bash
 sudo apt-get install build-essential jq libsodium-dev libsnappy-dev libssl-dev \
-librocksdb-dev pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
+pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 ```
 
 
