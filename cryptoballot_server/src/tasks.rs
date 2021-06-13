@@ -213,6 +213,7 @@ pub fn generate_transactions<S: Store>(
                     let partial_decrypt_tx = PartialDecryptionTransaction::new(
                         election_tx.id,
                         vote_tx.id,
+                        0,
                         trustee.id,
                         trustee.index,
                         public_key,
@@ -260,8 +261,10 @@ pub fn generate_transactions<S: Store>(
                 partial_txs.into_iter().map(|tx| tx.into()).collect();
 
             // Get the vote
-            let vote_tx: VoteTransaction =
-                store.get_transaction(partial_tx.vote_id).unwrap().into();
+            let vote_tx: VoteTransaction = store
+                .get_transaction(partial_tx.upstream_id)
+                .unwrap()
+                .into();
 
             // Get public key transactions
             let pubkeys = store.get_multiple(election_tx.id, TransactionType::KeyGenPublicKey);
