@@ -113,7 +113,13 @@ impl Signable for PartialDecryptionTransaction {
 
         // Get the ciphertext either from the vote or the mix
         let ciphertext: Ciphertext = match self.upstream_id.transaction_type {
-            TransactionType::Vote => store.get_vote(self.upstream_id)?.tx.encrypted_vote,
+            TransactionType::Vote => {
+                if self.upstream_index != 0 {
+                    return Err(ValidationError::InvalidUpstreamIndex);
+                }
+
+                store.get_vote(self.upstream_id)?.tx.encrypted_vote
+            }
             TransactionType::Mix => {
                 let mix = store.get_mix(self.upstream_id)?.tx;
 

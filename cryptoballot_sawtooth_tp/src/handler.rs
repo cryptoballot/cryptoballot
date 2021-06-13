@@ -171,17 +171,3 @@ impl<'a> Store for CbState<'a> {
         todo!()
     }
 }
-
-#[cfg(test)]
-mod test {
-
-    use super::*;
-
-    #[test]
-    fn test_address_translation() {
-        let identifier = cryptoballot::Identifier::new_for_election();
-        let address = cb_address(&identifier);
-
-        assert!(address.len() == 70);
-    }
-}
