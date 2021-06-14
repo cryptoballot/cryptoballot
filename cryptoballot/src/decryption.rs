@@ -17,7 +17,7 @@ pub struct PartialDecryptionTransaction {
     pub upstream_id: Identifier,
 
     /// If this is from a mix, the index of the ciphertext in the `reencryption` field, or `0` if from a vote transaction
-    pub upstream_index: usize,
+    pub upstream_index: u16,
 
     pub trustee_id: Uuid,
 
@@ -32,14 +32,19 @@ impl PartialDecryptionTransaction {
     pub fn new(
         election_id: Identifier,
         upstream_id: Identifier,
-        upstream_index: usize,
+        upstream_index: u16,
         trustee_id: Uuid,
         trustee_index: u8,
         trustee_public_key: PublicKey,
         partial_decryption: DecryptShare,
     ) -> Self {
         PartialDecryptionTransaction {
-            id: PartialDecryptionTransaction::build_id(election_id, upstream_id, trustee_index),
+            id: PartialDecryptionTransaction::build_id(
+                election_id,
+                upstream_id,
+                upstream_index,
+                trustee_index,
+            ),
             election_id,
             upstream_id,
             upstream_index,
@@ -53,17 +58,29 @@ impl PartialDecryptionTransaction {
     pub fn build_id(
         election_id: Identifier,
         upstream_id: Identifier,
+        upstream_index: u16,
         trustee_index: u8,
     ) -> Identifier {
+        let upstream_index = upstream_index.to_be_bytes();
         let mut unique_info = [0; 16];
-        unique_info[0] = upstream_id.transaction_type.into();
-        unique_info[1..15].copy_from_slice(&upstream_id.unique_id.unwrap()[..14]);
-        unique_info[15] = trustee_index;
+
+        unique_info[0] = upstream_id.transaction_type.into(); // 1 byte
+
+        if upstream_id.transaction_type == TransactionType::Mix {
+            unique_info[1..14].copy_from_slice(&upstream_id.unique_info[..13]); // 12 bytes
+            unique_info[14..15].copy_from_slice(&upstream_index); // 2 bytes
+        }
+        if upstream_id.transaction_type == TransactionType::Vote {
+            // 14 bytes
+            unique_info[1..15].copy_from_slice(&upstream_id.unique_info[..14]);
+        }
+
+        unique_info[15] = trustee_index; // 1 byte
 
         Identifier::new(
             election_id,
             TransactionType::PartialDecryption,
-            &unique_info,
+            Some(unique_info),
         )
     }
 }
@@ -100,13 +117,19 @@ impl Signable for PartialDecryptionTransaction {
         }
 
         // Check the ID
-        if Self::build_id(self.election_id, self.upstream_id, trustee.unwrap().index) != self.id {
+        if Self::build_id(
+            self.election_id,
+            self.upstream_id,
+            self.upstream_index,
+            trustee.unwrap().index,
+        ) != self.id
+        {
             return Err(ValidationError::IdentifierBadComposition);
         }
         // Make sure the mix index is equal to the minimum number of mixes
 
         // Make sure voting end exists
-        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, &[0; 16]);
+        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, None);
         if store.get_transaction(voting_end_id).is_none() {
             return Err(ValidationError::MisingVotingEndTransaction);
         }
@@ -114,6 +137,9 @@ impl Signable for PartialDecryptionTransaction {
         // Get the ciphertext either from the vote or the mix
         let ciphertext: Ciphertext = match self.upstream_id.transaction_type {
             TransactionType::Vote => {
+                if election.tx.mixnet.is_some() {
+                    return Err(ValidationError::InvalidUpstreamID);
+                }
                 if self.upstream_index != 0 {
                     return Err(ValidationError::InvalidUpstreamIndex);
                 }
@@ -132,12 +158,12 @@ impl Signable for PartialDecryptionTransaction {
                     return Err(ValidationError::InvalidUpstreamID);
                 }
 
-                if self.upstream_index >= mix.reencryption.len() {
+                if self.upstream_index >= mix.reencryption.len() as u16 {
                     return Err(ValidationError::InvalidUpstreamIndex);
                 }
 
                 let mut rencryptions = mix.reencryption;
-                rencryptions.swap_remove(self.upstream_index)
+                rencryptions.swap_remove(self.upstream_index as usize)
             }
             _ => {
                 return Err(ValidationError::InvalidUpstreamID);
@@ -145,11 +171,7 @@ impl Signable for PartialDecryptionTransaction {
         };
 
         // Get the public key transaction for this trustee
-        let pkey_tx_id = Identifier::new(
-            self.election_id,
-            TransactionType::KeyGenPublicKey,
-            self.trustee_id.as_bytes(),
-        );
+        let pkey_tx_id = KeyGenPublicKeyTransaction::build_id(self.election_id, self.trustee_id);
         let public_key = store.get_keygen_public_key(pkey_tx_id)?;
 
         // Validate that the public_key transaction matches
@@ -180,7 +202,8 @@ impl Signable for PartialDecryptionTransaction {
 pub struct DecryptionTransaction {
     pub id: Identifier,
     pub election_id: Identifier,
-    pub vote_id: Identifier,
+    pub upstream_id: Identifier,
+    pub upstream_index: u16,
     pub trustees: Vec<Uuid>,
 
     #[serde(with = "hex_serde")]
@@ -191,23 +214,33 @@ impl DecryptionTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
         election_id: Identifier,
-        vote_id: Identifier,
+        upstream_id: Identifier,
+        upstream_index: u16,
         trustees: Vec<Uuid>,
         decrypted_vote: Vec<u8>,
     ) -> DecryptionTransaction {
-        // TODO: sanity check to make sure election and vote are in same election
-        // This could be a debug assert
+        debug_assert!(election_id.election_id == upstream_id.election_id);
+
         DecryptionTransaction {
-            id: Identifier::new(
-                election_id,
-                TransactionType::Decryption,
-                &vote_id.to_bytes(),
-            ),
+            id: Self::build_id(election_id, upstream_id, upstream_index),
             election_id,
-            vote_id,
+            upstream_id,
+            upstream_index,
             trustees,
             decrypted_vote,
         }
+    }
+
+    pub fn build_id(
+        election_id: Identifier,
+        upstream_id: Identifier,
+        upstream_index: u16,
+    ) -> Identifier {
+        // TODO: Review code to make sure this is correct against both the mix ID and the vote ID
+        let upstream_index = upstream_index.to_be_bytes();
+        let mut unique_info = upstream_id.unique_info;
+        unique_info[14..16].copy_from_slice(&upstream_index);
+        Identifier::new(election_id, TransactionType::Decryption, Some(unique_info))
     }
 }
 
@@ -224,7 +257,7 @@ impl Signable for DecryptionTransaction {
     fn inputs(&self) -> Vec<Identifier> {
         let mut inputs = Vec::<Identifier>::with_capacity(2 + self.trustees.len());
         inputs.push(self.election_id);
-        inputs.push(self.vote_id);
+        inputs.push(self.upstream_id);
 
         // TODO: Somehow the partial-decrypt transactions?
 
@@ -237,12 +270,12 @@ impl Signable for DecryptionTransaction {
 
         let election = store.get_election(self.election_id)?;
 
-        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, &[0; 16]);
+        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, None);
         if store.get_transaction(voting_end_id).is_none() {
             return Err(ValidationError::MisingVotingEndTransaction);
         }
 
-        let vote = store.get_vote(self.vote_id)?;
+        let vote = store.get_vote(self.upstream_id)?;
 
         // Get all pubkeys mapped by trustee ID
         let pubkeys: Vec<KeyGenPublicKeyTransaction> = store
@@ -261,7 +294,8 @@ impl Signable for DecryptionTransaction {
                 .ok_or(ValidationError::TrusteeDoesNotExist(*trustee_id))?;
             let partial_id = PartialDecryptionTransaction::build_id(
                 self.election_id,
-                self.vote_id,
+                self.upstream_id,
+                self.upstream_index,
                 trustee.index,
             );
             let partial = store.get_partial_decryption(partial_id)?;

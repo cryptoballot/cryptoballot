@@ -1,5 +1,4 @@
 use cryptoballot::EncryptionKeyTransaction;
-use cryptoballot::Identifier;
 use cryptoballot::Signed;
 use cryptoballot::SignedTransaction;
 use cryptoballot::TransactionType;
@@ -39,7 +38,7 @@ pub fn command_vote_generate(
     let enc_id = cryptoballot::Identifier::new_from_str_id(
         &election_id,
         TransactionType::EncryptionKey,
-        &[0; 16],
+        None,
     )
     .unwrap_or_else(|| {
         // TODO: Replace with real error
@@ -63,7 +62,7 @@ pub fn command_vote_generate(
     // Generate an empty vote transaction
     let election_id = encryption_key_tx.election;
     let vote = VoteTransaction {
-        id: Identifier::new(election_id, TransactionType::Vote, &public_key.to_bytes()),
+        id: VoteTransaction::build_id(election_id, &public_key),
         election: election_id,
         ballot_id: uuid::Uuid::nil(),
         encrypted_vote,

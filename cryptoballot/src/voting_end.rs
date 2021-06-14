@@ -14,7 +14,7 @@ impl VotingEndTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(election: Identifier, authority_public_key: PublicKey) -> Self {
         VotingEndTransaction {
-            id: Identifier::new(election, TransactionType::VotingEnd, &[0; 16]),
+            id: Identifier::new(election, TransactionType::VotingEnd, None),
             election: election,
             authority_public_key,
         }

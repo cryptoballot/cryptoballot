@@ -1,5 +1,4 @@
 use crate::*;
-use digest::Digest;
 use ed25519_dalek::ExpandedSecretKey;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
@@ -310,7 +309,7 @@ impl<T: Signable + Serialize> Deref for Signed<T> {
 pub struct Identifier {
     pub election_id: [u8; 15],
     pub transaction_type: TransactionType,
-    pub unique_id: Option<[u8; 16]>,
+    pub unique_info: [u8; 16],
 }
 
 impl Identifier {
@@ -318,21 +317,15 @@ impl Identifier {
     pub fn new(
         election_id: Identifier,
         transaction_type: TransactionType,
-        unique_info: &[u8],
+        unique_info: Option<[u8; 16]>,
     ) -> Self {
+        let unique_info = unique_info.unwrap_or([0; 16]);
         let election_id = election_id.election_id;
-
-        // Use directly when unique_info is 16 bytes
-        let unique_id = if unique_info.len() == 16 {
-            unique_info.try_into().unwrap()
-        } else {
-            sha2::Sha512::digest(unique_info)[0..16].try_into().unwrap()
-        };
 
         Identifier {
             election_id,
             transaction_type,
-            unique_id: Some(unique_id),
+            unique_info,
         }
     }
 
@@ -341,7 +334,7 @@ impl Identifier {
         Self {
             election_id: election_id.election_id,
             transaction_type: transaction_type,
-            unique_id: Some([0; 16]),
+            unique_info: [0; 16],
         }
     }
 
@@ -350,7 +343,7 @@ impl Identifier {
         Self {
             election_id: election_id.election_id,
             transaction_type: transaction_type,
-            unique_id: Some([255; 16]),
+            unique_info: [255; 16],
         }
     }
 
@@ -359,8 +352,10 @@ impl Identifier {
     pub fn new_from_str_id(
         election_id: &str,
         transaction_type: TransactionType,
-        unique_info: &[u8],
+        unique_info: Option<[u8; 16]>,
     ) -> Option<Self> {
+        let unique_info = unique_info.unwrap_or([0; 16]);
+
         let election_id_bits = match hex::decode(election_id) {
             Ok(bits) => bits,
             Err(_) => return None,
@@ -373,18 +368,16 @@ impl Identifier {
         let election_id = Self {
             election_id: election_id_bits[0..15].try_into().unwrap(),
             transaction_type: TransactionType::Election,
-            unique_id: Some([0; 16]),
+            unique_info: [0; 16],
         };
-        return Some(Self::new(election_id, transaction_type, unique_info));
+        return Some(Self::new(election_id, transaction_type, Some(unique_info)));
     }
 
     pub fn to_array(&self) -> [u8; 32] {
         let mut bytes: [u8; 32] = [0; 32];
         bytes[0..15].clone_from_slice(&self.election_id);
         bytes[15] = self.transaction_type as u8;
-        if let Some(unique_id) = self.unique_id {
-            bytes[16..32].clone_from_slice(&unique_id);
-        }
+        bytes[16..32].clone_from_slice(&self.unique_info);
         bytes
     }
 
@@ -407,23 +400,17 @@ impl FromStr for Identifier {
         if bytes.len() != 32 && bytes.len() != 16 {
             return Err(Error::IdentifierBadLen);
         }
-        let has_unique_id = bytes.len() == 32;
 
         // These unwraps are OK - we know the length is valid
         let election_id: [u8; 15] = bytes[0..15].try_into().unwrap();
         let transaction_type = TransactionType::try_from_primitive(bytes[15]).unwrap();
 
-        let unique_id = if has_unique_id {
-            let unique_id: [u8; 16] = bytes[16..].try_into().unwrap();
-            Some(unique_id)
-        } else {
-            None
-        };
+        let unique_info: [u8; 16] = bytes[16..].try_into().unwrap();
 
         Ok(Identifier {
             election_id,
             transaction_type,
-            unique_id,
+            unique_info,
         })
     }
 }
@@ -462,7 +449,7 @@ impl PartialOrd for Identifier {
             let other_tx_type = other.transaction_type as u8;
             let tx_type_ord = tx_type.cmp(&other_tx_type);
             if let Ordering::Equal = tx_type_ord {
-                Some(self.unique_id.cmp(&other.unique_id))
+                Some(self.unique_info.cmp(&other.unique_info))
             } else {
                 Some(tx_type_ord)
             }
@@ -481,7 +468,7 @@ impl Ord for Identifier {
             let other_tx_type = other.transaction_type as u8;
             let tx_type_ord = tx_type.cmp(&other_tx_type);
             if let Ordering::Equal = tx_type_ord {
-                self.unique_id.cmp(&other.unique_id)
+                self.unique_info.cmp(&other.unique_info)
             } else {
                 tx_type_ord
             }

@@ -106,17 +106,19 @@ impl MixTransaction {
         mix_index: u8,
         trustee_index: u8,
     ) -> Identifier {
-        let contest_index = contest_index.to_be_bytes(); // 4 bytes
-        let batch = batch.to_be_bytes(); // 4 bytes
+        let contest_index = contest_index.to_be_bytes();
+        let batch = batch.to_be_bytes();
 
         let mut unique_info = [0; 16];
-        unique_info[0..4].copy_from_slice(&contest_index);
-        unique_info[4..8].copy_from_slice(&batch);
-        unique_info[8] = mix_index;
-        unique_info[9] = trustee_index;
-        // 6 NULL bytes left-over at the end
+        unique_info[0..4].copy_from_slice(&contest_index); // 4 bytes
+        unique_info[4..8].copy_from_slice(&batch); // 4 bytes
+        unique_info[8] = mix_index; // 1 byte
+        unique_info[9] = trustee_index; // 1 byte
 
-        Identifier::new(election_id, TransactionType::Mix, &unique_info)
+        // Only 10 bytes used (6 NULL bytes left-over at the end)
+        // NOTE: Can only ever use a max of 12 bytes here given the construction of PartialDecryption ID And Decryption ID
+
+        Identifier::new(election_id, TransactionType::Mix, Some(unique_info))
     }
 }
 
@@ -223,8 +225,7 @@ impl Signable for MixTransaction {
             ciphertexts
         };
 
-        let enc_key_tx =
-            Identifier::new(self.election_id, TransactionType::EncryptionKey, &[0; 16]);
+        let enc_key_tx = Identifier::new(self.election_id, TransactionType::EncryptionKey, None);
         let key_tx: EncryptionKeyTransaction = store
             .get_transaction(enc_key_tx)
             .ok_or(ValidationError::EncryptionKeyTransactionDoesNotExist)?

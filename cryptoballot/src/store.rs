@@ -18,12 +18,8 @@ pub trait Store {
         election_id: Identifier,
         tx_type: TransactionType,
     ) -> Vec<SignedTransaction> {
-        let mut start = election_id.clone();
-        start.transaction_type = tx_type;
-
-        // End is just saturated high-order bytes
-        let mut end = start.clone();
-        end.unique_id = Some([255; 16]);
+        let start = Identifier::start(election_id, tx_type);
+        let end = Identifier::end(election_id, tx_type);
 
         self.range(start, end)
     }
@@ -118,7 +114,7 @@ pub trait Store {
 /// A simple store that uses an in-memory BTreeMap
 #[derive(Default, Clone)]
 pub struct MemStore {
-    inner: BTreeMap<String, SignedTransaction>,
+    pub(crate) inner: BTreeMap<String, SignedTransaction>,
 }
 
 impl MemStore {

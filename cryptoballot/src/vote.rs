@@ -3,6 +3,7 @@ use cryptid::elgamal::Ciphertext;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use rand::{CryptoRng, RngCore};
+use std::convert::TryInto;
 use uuid::Uuid;
 
 /// Transaction 2: Vote
@@ -40,7 +41,7 @@ impl VoteTransaction {
         let (secret_key, public_key) = generate_keypair();
 
         let vote = VoteTransaction {
-            id: Identifier::new(election_id, TransactionType::Vote, &public_key.to_bytes()),
+            id: Self::build_id(election_id, &public_key),
             election: election_id,
             ballot_id: ballot_id,
             encrypted_vote,
@@ -49,6 +50,15 @@ impl VoteTransaction {
         };
 
         (vote, secret_key)
+    }
+
+    pub fn build_id(election_id: Identifier, public_key: &PublicKey) -> Identifier {
+        let unique_info = public_key.as_bytes();
+        Identifier::new(
+            election_id,
+            TransactionType::Vote,
+            Some(unique_info[0..16].try_into().unwrap()),
+        )
     }
 }
 
@@ -81,7 +91,7 @@ impl Signable for VoteTransaction {
 
         // Validate that there is a EncryptionKeyTransaction
         // TODO: Add a "transaction_exists" function to store
-        let enc_key_tx = Identifier::new(self.election, TransactionType::EncryptionKey, &[0; 16]);
+        let enc_key_tx = Identifier::new(self.election, TransactionType::EncryptionKey, None);
         let key_tx = store.get_transaction(enc_key_tx);
         if key_tx.is_none() {
             return Err(ValidationError::EncryptionKeyTransactionDoesNotExist);

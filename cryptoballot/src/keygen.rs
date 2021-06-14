@@ -2,6 +2,8 @@ use crate::*;
 use cryptid::threshold::KeygenCommitment;
 use ed25519_dalek::PublicKey;
 use indexmap::IndexMap;
+use sha2::Digest;
+use std::convert::TryInto;
 use uuid::Uuid;
 /// Transaction 2: KeyGenCommitmentTransaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -50,22 +52,28 @@ pub struct EncryptionKeyTransaction {
 impl KeyGenCommitmentTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
-        election: Identifier,
+        election_id: Identifier,
         trustee_id: Uuid,
         trustee_public_key: PublicKey,
         commitment: KeygenCommitment,
     ) -> Self {
         KeyGenCommitmentTransaction {
-            id: Identifier::new(
-                election,
-                TransactionType::KeyGenCommitment,
-                trustee_id.as_bytes(),
-            ),
-            election: election,
+            id: Self::build_id(election_id, trustee_id),
+            election: election_id,
             trustee_id,
             trustee_public_key,
             commitment,
         }
+    }
+
+    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(trustee_id.as_bytes());
+        Identifier::new(
+            election_id,
+            TransactionType::KeyGenCommitment,
+            Some(hasher.finalize().as_slice()[0..16].try_into().unwrap()),
+        )
     }
 }
 
@@ -110,22 +118,28 @@ impl Signable for KeyGenCommitmentTransaction {
 impl KeyGenShareTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
-        election: Identifier,
+        election_id: Identifier,
         trustee_id: Uuid,
         trustee_public_key: PublicKey,
         shares: IndexMap<Uuid, EncryptedShare>,
     ) -> Self {
         KeyGenShareTransaction {
-            id: Identifier::new(
-                election,
-                TransactionType::KeyGenShare,
-                trustee_id.as_bytes(),
-            ),
-            election: election,
+            id: Self::build_id(election_id, trustee_id),
+            election: election_id,
             trustee_id,
             trustee_public_key,
             shares,
         }
+    }
+
+    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(trustee_id.as_bytes());
+        Identifier::new(
+            election_id,
+            TransactionType::KeyGenShare,
+            Some(hasher.finalize().as_slice()[0..16].try_into().unwrap()),
+        )
     }
 }
 
@@ -182,24 +196,30 @@ impl Signable for KeyGenShareTransaction {
 impl KeyGenPublicKeyTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
-        election: Identifier,
+        election_id: Identifier,
         trustee_id: Uuid,
         trustee_public_key: PublicKey,
         public_key: cryptid::elgamal::PublicKey,
         public_key_proof: cryptid::threshold::PubkeyProof,
     ) -> Self {
         KeyGenPublicKeyTransaction {
-            id: Identifier::new(
-                election,
-                TransactionType::KeyGenPublicKey,
-                trustee_id.as_bytes(),
-            ),
-            election: election,
+            id: Self::build_id(election_id, trustee_id),
+            election: election_id,
             trustee_id,
             trustee_public_key,
             public_key,
             public_key_proof,
         }
+    }
+
+    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(trustee_id.as_bytes());
+        Identifier::new(
+            election_id,
+            TransactionType::KeyGenPublicKey,
+            Some(hasher.finalize().as_slice()[0..16].try_into().unwrap()),
+        )
     }
 }
 
@@ -248,7 +268,7 @@ impl EncryptionKeyTransaction {
         encryption_key: cryptid::elgamal::PublicKey,
     ) -> Self {
         EncryptionKeyTransaction {
-            id: Identifier::new(election, TransactionType::EncryptionKey, &[0; 16]),
+            id: Identifier::new(election, TransactionType::EncryptionKey, None),
             election: election,
             authority_public_key,
             encryption_key,

@@ -242,13 +242,12 @@ pub fn generate_transactions<S: Store>(
         // Get partials
         let mut start = election_tx.id().clone();
         start.transaction_type = TransactionType::PartialDecryption;
-        let mut unique_id = partial_tx.id.unique_id.unwrap();
-        unique_id[15] = 0;
-        start.unique_id = Some(unique_id.clone());
+        let mut unique_info = partial_tx.id.unique_info;
+        unique_info[15] = 0;
+        start.unique_info = unique_info;
 
         let mut end = start.clone();
-        unique_id[15] = 255;
-        end.unique_id = Some(unique_id);
+        end.unique_info[15] = 255;
 
         // TODO: Need some way of partitioning the work between trustee nodes,
         //       while at the same time allowing them to pick up eachother's slack
@@ -286,7 +285,7 @@ pub fn generate_transactions<S: Store>(
 
             // Create a vote decryption transaction
             let decrypted_tx =
-                DecryptionTransaction::new(election_tx.id, vote_tx.id, trustee_ids, decrypted);
+                DecryptionTransaction::new(election_tx.id, vote_tx.id, 0, trustee_ids, decrypted);
 
             let decrypted_tx = Signed::sign(&secret_key, decrypted_tx).unwrap().into();
             return vec![decrypted_tx];

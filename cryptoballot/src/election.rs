@@ -59,12 +59,10 @@ impl ElectionTransaction {
 
     /// Create a new identifier for an election
     pub fn build_id(election_id: [u8; 15]) -> Identifier {
-        let transaction_type = TransactionType::Election;
-        let unique_id: [u8; 16] = [0; 16]; // All zeroes
         Identifier {
             election_id,
-            transaction_type,
-            unique_id: Some(unique_id),
+            transaction_type: TransactionType::Election,
+            unique_info: [0; 16],
         }
     }
 

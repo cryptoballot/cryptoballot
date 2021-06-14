@@ -31,15 +31,12 @@ pub fn command_voting_end_generate(
     let public_key: PublicKey = (secret_key).into();
 
     let election_id = crate::expand(matches.value_of("ELECTION-ID").unwrap());
-    let election_id = cryptoballot::Identifier::new_from_str_id(
-        &election_id,
-        TransactionType::Election,
-        &[0; 16],
-    )
-    .unwrap_or_else(|| {
-        // TODO: Replace with real error
-        panic!("Invalid election-id");
-    });
+    let election_id =
+        cryptoballot::Identifier::new_from_str_id(&election_id, TransactionType::Election, None)
+            .unwrap_or_else(|| {
+                // TODO: Replace with real error
+                panic!("Invalid election-id");
+            });
 
     // Create a voting-end transaction
     let voting_end_tx = VotingEndTransaction::new(election_id, public_key);
