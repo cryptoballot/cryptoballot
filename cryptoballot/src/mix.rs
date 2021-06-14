@@ -13,7 +13,6 @@ use cryptid::elgamal::PublicKey as EncryptionPublicKey;
 use cryptid::shuffle::{Shuffle, ShuffleProof};
 use ed25519_dalek::PublicKey;
 use rand::{CryptoRng, Rng};
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MixConfig {
@@ -31,9 +30,6 @@ pub struct MixTransaction {
 
     /// The previous mix ID, or None if this is the first mix
     pub prev_mix_id: Option<Identifier>,
-
-    /// The ID of the trustee producing this mix transaction
-    pub trustee_id: Uuid,
 
     /// The trustee index
     pub trustee_index: u8,
@@ -86,7 +82,6 @@ impl MixTransaction {
             ),
             election_id,
             prev_mix_id,
-            trustee_id: trustee.id,
             trustee_index: trustee.index,
             trustee_public_key: trustee.public_key,
             mix_index,
@@ -147,15 +142,13 @@ impl Signable for MixTransaction {
         // Validate that this trustee exists
         let mut trustee_exists = false;
         for trustee in &election.trustees {
-            if trustee.id == self.trustee_id
-                && trustee.public_key == self.trustee_public_key
-                && trustee.index == self.trustee_index
+            if trustee.index == self.trustee_index && trustee.public_key == self.trustee_public_key
             {
                 trustee_exists = true;
             }
         }
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_index));
         }
 
         // TODO: Deal with timeouts and mix index orderings
@@ -237,7 +230,7 @@ impl Signable for MixTransaction {
             self.reencryption.clone(),
             &key_tx.encryption_key,
             &self.proof,
-            self.trustee_id,
+            self.trustee_index,
             self.mix_index,
             self.contest_index,
             self.batch,
@@ -253,12 +246,12 @@ pub fn shuffle<R: Rng + CryptoRng>(
     rng: &mut R,
     ciphertexts: Vec<Ciphertext>,
     encryption_key: &EncryptionPublicKey,
-    trustee_id: Uuid,
+    trustee_index: u8,
     mix_index: u8,
     contest_index: u64,
     batch: u64,
 ) -> Result<(Vec<Ciphertext>, ShuffleProof), Error> {
-    let seed = generate_pedersen_seed(trustee_id, mix_index, contest_index, batch);
+    let seed = generate_pedersen_seed(trustee_index, mix_index, contest_index, batch);
     let (commit_ctx, generators) = PedersenCtx::with_generators(&seed, ciphertexts.len());
 
     let shuffle =
@@ -281,12 +274,12 @@ pub fn verify_shuffle(
     output_ciphertexts: Vec<Ciphertext>,
     encryption_key: &EncryptionPublicKey,
     proof: &ShuffleProof,
-    trustee_id: Uuid,
+    trustee_index: u8,
     mix_index: u8,
     contest_index: u64,
     batch: u64,
 ) -> Result<(), ValidationError> {
-    let seed = generate_pedersen_seed(trustee_id, mix_index, contest_index, batch);
+    let seed = generate_pedersen_seed(trustee_index, mix_index, contest_index, batch);
     let (commit_ctx, generators) = PedersenCtx::with_generators(&seed, input_ciphertexts.len());
 
     if !proof.verify(
@@ -303,13 +296,12 @@ pub fn verify_shuffle(
 }
 
 fn generate_pedersen_seed(
-    trustee_id: Uuid,
+    trustee_index: u8,
     mix_index: u8,
     contest_index: u64,
     batch: u64,
 ) -> Vec<u8> {
-    let mut seed = trustee_id.as_bytes().to_vec();
-    seed.extend_from_slice(&[mix_index]);
+    let mut seed = vec![trustee_index, mix_index];
     seed.extend_from_slice(&contest_index.to_be_bytes());
     seed.extend_from_slice(&batch.to_be_bytes());
 

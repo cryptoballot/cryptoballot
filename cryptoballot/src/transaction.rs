@@ -305,11 +305,14 @@ impl<T: Signable + Serialize> Deref for Signed<T> {
 /// Transaction identifier
 ///
 /// The identifier defines the election, transction-type, and a unique identifier.
+///
+/// TODO: Entire aligned-struct is 40 bytes, larger than our ideal Copy limit of 32 bytes
+///       We should combine election_id and tx_type and have utility functions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier {
-    pub election_id: [u8; 15],
-    pub transaction_type: TransactionType,
-    pub unique_info: [u8; 16],
+    pub election_id: [u8; 15],             // Will align to 16 bytes
+    pub transaction_type: TransactionType, // Will align to 8 bytes
+    pub unique_info: [u8; 16],             // Will align to 16 bytes
 }
 
 impl Identifier {

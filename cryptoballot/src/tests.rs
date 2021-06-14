@@ -39,22 +39,34 @@ fn end_to_end_election() {
 
     // Generate keygen_commitment transactions for each trustee
     let commit_1 = trustee_1.keygen_commitment(&trustee_1_secret);
-    let commit_1_tx =
-        KeyGenCommitmentTransaction::new(election.id, trustee_1.id, trustee_1.public_key, commit_1);
+    let commit_1_tx = KeyGenCommitmentTransaction::new(
+        election.id,
+        trustee_1.index,
+        trustee_1.public_key,
+        commit_1,
+    );
     let commit_1_tx = Signed::sign(&trustee_1_secret, commit_1_tx).unwrap();
     commit_1_tx.validate(&store).unwrap();
     store.set(commit_1_tx.clone().into());
 
     let commit_2 = trustee_1.keygen_commitment(&trustee_2_secret);
-    let commit_2_tx =
-        KeyGenCommitmentTransaction::new(election.id, trustee_2.id, trustee_2.public_key, commit_2);
+    let commit_2_tx = KeyGenCommitmentTransaction::new(
+        election.id,
+        trustee_2.index,
+        trustee_2.public_key,
+        commit_2,
+    );
     let commit_2_tx = Signed::sign(&trustee_2_secret, commit_2_tx).unwrap();
     commit_2_tx.validate(&store).unwrap();
     store.set(commit_2_tx.clone().into());
 
     let commit_3 = trustee_3.keygen_commitment(&trustee_3_secret);
-    let commit_3_tx =
-        KeyGenCommitmentTransaction::new(election.id, trustee_3.id, trustee_3.public_key, commit_3);
+    let commit_3_tx = KeyGenCommitmentTransaction::new(
+        election.id,
+        trustee_3.index,
+        trustee_3.public_key,
+        commit_3,
+    );
     let commit_3_tx = Signed::sign(&trustee_3_secret, commit_3_tx).unwrap();
     commit_3_tx.validate(&store).unwrap();
     store.set(commit_3_tx.clone().into());
@@ -62,15 +74,15 @@ fn end_to_end_election() {
     // Grab cmommitments out of the commitment transactions
     let commitments = [
         (
-            commit_1_tx.inner().trustee_id,
+            commit_1_tx.inner().trustee_index,
             commit_1_tx.inner().commitment.clone(),
         ),
         (
-            commit_2_tx.inner().trustee_id,
+            commit_2_tx.inner().trustee_index,
             commit_2_tx.inner().commitment.clone(),
         ),
         (
-            commit_3_tx.inner().trustee_id,
+            commit_3_tx.inner().trustee_index,
             commit_3_tx.inner().commitment.clone(),
         ),
     ];
@@ -84,7 +96,7 @@ fn end_to_end_election() {
     );
     let share_1_tx = KeyGenShareTransaction::new(
         election.id,
-        trustee_1.id,
+        trustee_1.index,
         trustee_1.public_key,
         share_1.clone(),
     );
@@ -100,7 +112,7 @@ fn end_to_end_election() {
     );
     let share_2_tx = KeyGenShareTransaction::new(
         election.id,
-        trustee_2.id,
+        trustee_2.index,
         trustee_2.public_key,
         share_2.clone(),
     );
@@ -116,7 +128,7 @@ fn end_to_end_election() {
     );
     let share_3_tx = KeyGenShareTransaction::new(
         election.id,
-        trustee_3.id,
+        trustee_3.index,
         trustee_3.public_key,
         share_3.clone(),
     );
@@ -126,24 +138,20 @@ fn end_to_end_election() {
 
     // Generate keygen_public_key transaction for each trustee
     let all_shares = vec![
-        (trustee_1.id, &share_1),
-        (trustee_2.id, &share_2),
-        (trustee_3.id, &share_3),
+        (trustee_1.index, &share_1),
+        (trustee_2.index, &share_2),
+        (trustee_3.index, &share_3),
     ];
 
-    let pk_1_shares: Vec<(Uuid, EncryptedShare)> = all_shares
+    let pk_1_shares: Vec<(u8, EncryptedShare)> = all_shares
         .iter()
-        .map(|m| (m.0, m.1.get(&trustee_1.id).unwrap().clone()))
+        .map(|m| (m.0, m.1.get(&trustee_1.index).unwrap().clone()))
         .collect();
-    let (pk_1, pk_1_proof) = trustee_1.generate_public_key(
-        &trustee_1_secret,
-        &election.trustees,
-        &commitments,
-        &pk_1_shares,
-    );
+    let (pk_1, pk_1_proof) =
+        trustee_1.generate_public_key(&trustee_1_secret, &commitments, &pk_1_shares);
     let pk_1_tx = KeyGenPublicKeyTransaction::new(
         election.id,
-        trustee_1.id,
+        trustee_1.index,
         trustee_1.public_key,
         pk_1,
         pk_1_proof,
@@ -152,19 +160,15 @@ fn end_to_end_election() {
     pk_1_tx.validate(&store).unwrap();
     store.set(pk_1_tx.clone().into());
 
-    let pk_2_shares: Vec<(Uuid, EncryptedShare)> = all_shares
+    let pk_2_shares: Vec<(u8, EncryptedShare)> = all_shares
         .iter()
-        .map(|m| (m.0, m.1.get(&trustee_2.id).unwrap().clone()))
+        .map(|m| (m.0, m.1.get(&trustee_2.index).unwrap().clone()))
         .collect();
-    let (pk_2, pk_2_proof) = trustee_2.generate_public_key(
-        &trustee_2_secret,
-        &election.trustees,
-        &commitments,
-        &pk_2_shares,
-    );
+    let (pk_2, pk_2_proof) =
+        trustee_2.generate_public_key(&trustee_2_secret, &commitments, &pk_2_shares);
     let pk_2_tx = KeyGenPublicKeyTransaction::new(
         election.id,
-        trustee_2.id,
+        trustee_2.index,
         trustee_2.public_key,
         pk_2,
         pk_2_proof,
@@ -173,19 +177,15 @@ fn end_to_end_election() {
     pk_2_tx.validate(&store).unwrap();
     store.set(pk_2_tx.clone().into());
 
-    let pk_3_shares: Vec<(Uuid, EncryptedShare)> = all_shares
+    let pk_3_shares: Vec<(u8, EncryptedShare)> = all_shares
         .iter()
-        .map(|m| (m.0, m.1.get(&trustee_3.id).unwrap().clone()))
+        .map(|m| (m.0, m.1.get(&trustee_3.index).unwrap().clone()))
         .collect();
-    let (pk_3, pk_3_proof) = trustee_3.generate_public_key(
-        &trustee_3_secret,
-        &election.trustees,
-        &commitments,
-        &pk_3_shares,
-    );
+    let (pk_3, pk_3_proof) =
+        trustee_3.generate_public_key(&trustee_3_secret, &commitments, &pk_3_shares);
     let pk_3_tx = KeyGenPublicKeyTransaction::new(
         election.id,
-        trustee_3.id,
+        trustee_3.index,
         trustee_3.public_key,
         pk_3,
         pk_3_proof,
@@ -246,7 +246,6 @@ fn end_to_end_election() {
     let partial_decrypt_1 = trustee_1.partial_decrypt(
         &mut test_rng,
         &trustee_1_secret,
-        &election.trustees,
         &commitments,
         &pk_1_shares,
         &vote.encrypted_vote,
@@ -255,7 +254,6 @@ fn end_to_end_election() {
         election.id,
         vote.id,
         0,
-        trustee_1.id,
         trustee_1.index,
         trustee_1.public_key,
         partial_decrypt_1,
@@ -267,7 +265,6 @@ fn end_to_end_election() {
     let partial_decrypt_2 = trustee_2.partial_decrypt(
         &mut test_rng,
         &trustee_2_secret,
-        &election.trustees,
         &commitments,
         &pk_2_shares,
         &vote.encrypted_vote,
@@ -276,7 +273,6 @@ fn end_to_end_election() {
         election.id,
         vote.id,
         0,
-        trustee_2.id,
         trustee_2.index,
         trustee_2.public_key,
         partial_decrypt_2,
@@ -306,7 +302,7 @@ fn end_to_end_election() {
         election.id,
         vote.id,
         0,
-        vec![trustee_1.id, trustee_2.id],
+        vec![trustee_1.index, trustee_2.index],
         decrypted,
     );
 

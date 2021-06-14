@@ -34,7 +34,6 @@ pub fn command_election_generate(uri: &str, secret_key: &SecretKey, post: bool) 
     let (_ecies_secret, ecies_key) = Trustee::ecies_keys(&secret_key);
 
     let trustee = Trustee {
-        id: uuid::Uuid::new_v4(),
         index: 1,
         public_key,
         ecies_key,

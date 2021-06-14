@@ -2,7 +2,6 @@ use cryptid::threshold::KeygenCommitment;
 use cryptoballot::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use uuid::Uuid;
 
 pub fn generate_transactions<S: Store>(
     incoming_tx: &SignedTransaction,
@@ -20,7 +19,7 @@ pub fn generate_transactions<S: Store>(
                 let commit = trustee.keygen_commitment(&secret_key);
                 let commit_tx = KeyGenCommitmentTransaction::new(
                     election_tx.id,
-                    trustee.id,
+                    trustee.index,
                     trustee.public_key,
                     commit,
                 );
@@ -48,9 +47,9 @@ pub fn generate_transactions<S: Store>(
                     .collect();
 
                 if commit_txs.len() == election_tx.trustees.len() {
-                    let commitments: Vec<(Uuid, KeygenCommitment)> = commit_txs
+                    let commitments: Vec<(u8, KeygenCommitment)> = commit_txs
                         .into_iter()
-                        .map(|tx| (tx.trustee_id, tx.commitment))
+                        .map(|tx| (tx.trustee_index, tx.commitment))
                         .collect();
 
                     let mut rng: StdRng = SeedableRng::from_entropy();
@@ -63,7 +62,7 @@ pub fn generate_transactions<S: Store>(
 
                     let share_tx = KeyGenShareTransaction::new(
                         election_tx.id,
-                        trustee.id,
+                        trustee.index,
                         trustee.public_key,
                         shares,
                     );
@@ -93,28 +92,29 @@ pub fn generate_transactions<S: Store>(
 
                 if share_txs.len() == election_tx.trustees.len() {
                     // Get all commitments
-                    let commitments: Vec<(Uuid, KeygenCommitment)> = store
+                    let commitments: Vec<(u8, KeygenCommitment)> = store
                         .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
                         .into_iter()
                         .map(|tx| tx.into())
-                        .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_id, tx.commitment))
+                        .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_index, tx.commitment))
                         .collect();
 
-                    let shares: Vec<(Uuid, EncryptedShare)> = share_txs
+                    let shares: Vec<(u8, EncryptedShare)> = share_txs
                         .into_iter()
-                        .map(|tx| (tx.trustee_id, tx.shares.get(&trustee.id).unwrap().clone()))
+                        .map(|tx| {
+                            (
+                                tx.trustee_index,
+                                tx.shares.get(&trustee.index).unwrap().clone(),
+                            )
+                        })
                         .collect();
 
-                    let (public_key, public_key_proof) = trustee.generate_public_key(
-                        &secret_key,
-                        &election_tx.get_full_trustees(),
-                        &commitments,
-                        &shares,
-                    );
+                    let (public_key, public_key_proof) =
+                        trustee.generate_public_key(&secret_key, &commitments, &shares);
 
                     let pk_tx = KeyGenPublicKeyTransaction::new(
                         election_tx.id,
-                        trustee.id,
+                        trustee.index,
                         trustee.public_key,
                         public_key,
                         public_key_proof,
@@ -182,17 +182,22 @@ pub fn generate_transactions<S: Store>(
                     .collect();
 
                 // Get all commitments
-                let commitments: Vec<(Uuid, KeygenCommitment)> = store
+                let commitments: Vec<(u8, KeygenCommitment)> = store
                     .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
                     .into_iter()
                     .map(|tx| tx.into())
-                    .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_id, tx.commitment))
+                    .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_index, tx.commitment))
                     .collect();
 
                 // Get all Shares shared with this trustee
-                let shares: Vec<(Uuid, EncryptedShare)> = share_txs
+                let shares: Vec<(u8, EncryptedShare)> = share_txs
                     .into_iter()
-                    .map(|tx| (tx.trustee_id, tx.shares.get(&trustee.id).unwrap().clone()))
+                    .map(|tx| {
+                        (
+                            tx.trustee_index,
+                            tx.shares.get(&trustee.index).unwrap().clone(),
+                        )
+                    })
                     .collect();
 
                 // Get all vote transactions
@@ -205,7 +210,6 @@ pub fn generate_transactions<S: Store>(
                     let partial_decrypt = trustee.partial_decrypt(
                         &mut rng,
                         &secret_key,
-                        &election_tx.get_full_trustees(),
                         &commitments,
                         &shares,
                         &vote_tx.encrypted_vote,
@@ -214,7 +218,6 @@ pub fn generate_transactions<S: Store>(
                         election_tx.id,
                         vote_tx.id,
                         0,
-                        trustee.id,
                         trustee.index,
                         public_key,
                         partial_decrypt,
@@ -281,11 +284,16 @@ pub fn generate_transactions<S: Store>(
             )
             .unwrap();
 
-            let trustee_ids = partial_txs.iter().map(|tx| tx.trustee_id).collect();
+            let trustee_indexs = partial_txs.iter().map(|tx| tx.trustee_index).collect();
 
             // Create a vote decryption transaction
-            let decrypted_tx =
-                DecryptionTransaction::new(election_tx.id, vote_tx.id, 0, trustee_ids, decrypted);
+            let decrypted_tx = DecryptionTransaction::new(
+                election_tx.id,
+                vote_tx.id,
+                0,
+                trustee_indexs,
+                decrypted,
+            );
 
             let decrypted_tx = Signed::sign(&secret_key, decrypted_tx).unwrap().into();
             return vec![decrypted_tx];

@@ -52,10 +52,10 @@ pub enum ValidationError {
     AuthorityPublicKeyMismatch,
 
     #[error("cryptoballot validation: trustee public key mismatch for trustee {0}")]
-    TrusteePublicKeyMismatch(uuid::Uuid),
+    TrusteePublicKeyMismatch(u8),
 
     #[error("cryptoballot validation: mismatched encryption_key for trustee {0})")]
-    MismatchedEncryptionKey(uuid::Uuid),
+    MismatchedEncryptionKey(u8),
 
     #[error("cryptoballot validation: threshold is invalid for number of trustees")]
     InvalidTrusteeThreshold,
@@ -76,18 +76,18 @@ pub enum ValidationError {
     AuthDoesNotExist,
 
     #[error(
-        "cryptoballot validation: trustee {0} does not exist in election (or possibly mismatched public keys)"
+        "cryptoballot validation: trustee with index {0} does not exist in election (or possibly mismatched public keys)"
     )]
-    TrusteeDoesNotExist(uuid::Uuid),
+    TrusteeDoesNotExist(u8),
 
     #[error("cryptoballot validation: missing keygen_public_key transaction for trustee {0})")]
-    MissingKeyGenPublicKeyTransaction(uuid::Uuid),
+    MissingKeyGenPublicKeyTransaction(u8),
 
     #[error("cryptoballot validation: wrong number of keygen_public_key transactions)")]
     WrongNumberOfPublicKeyTransactions,
 
     #[error("cryptoballot validation: trustee {0} share is missing)")]
-    TrusteeShareMissing(uuid::Uuid),
+    TrusteeShareMissing(u8),
 
     #[error("cryptoballot validation: wrong number of shares")]
     WrongNumberOfShares,

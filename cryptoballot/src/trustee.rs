@@ -20,7 +20,6 @@ use serde::{
 };
 use sha2::Sha256;
 use std::convert::TryFrom;
-use uuid::Uuid;
 
 /// A trustee is responsible for safeguarding a secret share (a portion of the secret vote decryption key),
 /// distributed by the election authority via Shamir Secret Sharing.
@@ -29,7 +28,6 @@ use uuid::Uuid;
 /// the total number of trustees. Any quorum of trustees may decrypt the votes.
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct Trustee {
-    pub id: uuid::Uuid,
     #[serde(with = "EdPublicKeyHex")]
     pub public_key: PublicKey,
     pub ecies_key: ecies_ed25519::PublicKey,
@@ -76,7 +74,6 @@ impl Trustee {
         let (_ecies_secret, ecies_key) = Self::ecies_keys(&secret);
 
         let trustee = Trustee {
-            id: Uuid::new_v4(),
             index: index,
             public_key,
             ecies_key,
@@ -95,27 +92,13 @@ impl Trustee {
         rng: &mut R,
         sk: &SecretKey,
         trustees: &[Trustee],
-        commitments: &[(Uuid, KeygenCommitment)],
-    ) -> IndexMap<Uuid, EncryptedShare> {
+        commitments: &[(u8, KeygenCommitment)],
+    ) -> IndexMap<u8, EncryptedShare> {
         let mut theshold_generator = self.generator(sk);
 
-        for (trustee_id, commitment) in commitments {
-            // First get the index
-            let mut index = 0;
-            for trustee in trustees {
-                if &trustee.id == trustee_id {
-                    index = trustee.index;
-                    break;
-                }
-            }
-
-            // TODO: Result
-            if index == 0 {
-                panic!("Trustee ID not found in trustee list");
-            }
-
+        for (trustee_index, commitment) in commitments {
             theshold_generator
-                .receive_commitment(index as usize, commitment)
+                .receive_commitment(*trustee_index as usize, commitment)
                 .expect("Invalid commitment") // TODO Result
         }
 
@@ -130,7 +113,7 @@ impl Trustee {
                 ecies_ed25519::encrypt(&trustee.ecies_key, share.as_bytes(), rng).unwrap(),
             );
 
-            shares.insert(trustee.id, encrypted);
+            shares.insert(trustee.index, encrypted);
         }
 
         shares
@@ -139,14 +122,11 @@ impl Trustee {
     pub fn generate_public_key(
         &self,
         sk: &SecretKey,
-        trustees: &[Trustee],
-        commitments: &[(Uuid, KeygenCommitment)],
-        shares: &[(Uuid, EncryptedShare)], // From, Share
+        commitments: &[(u8, KeygenCommitment)],
+        shares: &[(u8, EncryptedShare)], // From, Share
     ) -> (ElGamalPublicKey, PubkeyProof) {
-        let decryped_shares = self.decrypt_shares(sk, trustees, shares);
-        let mapped_commitments = self.map_commitments(&trustees, commitments);
-
-        let party = self.generate_party(sk, &mapped_commitments, &decryped_shares);
+        let decryped_shares = self.decrypt_shares(sk, shares);
+        let party = self.generate_party(sk, &commitments, &decryped_shares);
         (party.pubkey(), party.pubkey_proof())
     }
 
@@ -154,67 +134,28 @@ impl Trustee {
         &self,
         rng: &mut R,
         sk: &SecretKey,
-        trustees: &[Trustee],
-        commitments: &[(Uuid, KeygenCommitment)],
-        shares: &[(Uuid, EncryptedShare)],
+        commitments: &[(u8, KeygenCommitment)],
+        shares: &[(u8, EncryptedShare)],
         encrypted_vote: &Ciphertext,
     ) -> DecryptShare {
-        let decryped_shares = self.decrypt_shares(sk, trustees, shares);
-        let mapped_commitments = self.map_commitments(&trustees, commitments);
-        let party = self.generate_party(sk, &mapped_commitments, &decryped_shares);
+        let decryped_shares = self.decrypt_shares(sk, shares);
+        let party = self.generate_party(sk, &commitments, &decryped_shares);
 
         party.decrypt_share(encrypted_vote, rng)
     }
 
-    fn decrypt_shares(
-        &self,
-        sk: &SecretKey,
-        trustees: &[Trustee],
-        shares: &[(Uuid, EncryptedShare)],
-    ) -> Vec<(u8, Scalar)> {
+    fn decrypt_shares(&self, sk: &SecretKey, shares: &[(u8, EncryptedShare)]) -> Vec<(u8, Scalar)> {
         // Grab our ecies private key for decryption
         let (ecies_secret_key, _public_key) = Self::ecies_keys(sk);
 
         let mut decrypted_shared = Vec::<(u8, Scalar)>::with_capacity(shares.len());
-        for (sender_uuid, share) in shares {
-            match trustees.iter().position(|t| t.id == *sender_uuid) {
-                Some(i) => {
-                    // TODO: Remove these unwraps on the next two lines
-                    let decrypted =
-                        ecies_ed25519::decrypt(&ecies_secret_key, share.as_bytes()).unwrap();
-                    decrypted_shared
-                        .push((trustees[i].index, Scalar::try_from(decrypted).unwrap()));
-                }
-                None => {
-                    // TODO: Result
-                    panic!("Invalid sender UUID");
-                }
-            }
+        for (sender_index, share) in shares {
+            // TODO: Remove these unwraps on the next two lines, use real errors
+            let decrypted = ecies_ed25519::decrypt(&ecies_secret_key, share.as_bytes()).unwrap();
+            decrypted_shared.push((*sender_index, Scalar::try_from(decrypted).unwrap()));
         }
 
         decrypted_shared
-    }
-
-    fn map_commitments(
-        &self,
-        trustees: &[Trustee],
-        commitments: &[(Uuid, KeygenCommitment)],
-    ) -> Vec<(u8, KeygenCommitment)> {
-        let mut mapped_commitments = Vec::with_capacity(commitments.len());
-        for trustee in trustees {
-            for (trustee_id, commitment) in commitments {
-                if &trustee.id == trustee_id {
-                    mapped_commitments.push((trustee.index, commitment.clone()));
-                }
-            }
-        }
-
-        // TODO: Results
-        if mapped_commitments.len() != commitments.len() {
-            panic!("Missing commitments for some trustees");
-        }
-
-        mapped_commitments
     }
 
     pub fn ecies_keys(sk: &SecretKey) -> (ecies_ed25519::SecretKey, ecies_ed25519::PublicKey) {
@@ -384,38 +325,38 @@ fn trustee_e2e_test() {
     let commit_3 = trustee_3.keygen_commitment(&skey_3);
 
     let commitments = [
-        (trustee_1.id, commit_1),
-        (trustee_2.id, commit_2),
-        (trustee_3.id, commit_3),
+        (trustee_1.index, commit_1),
+        (trustee_2.index, commit_2),
+        (trustee_3.index, commit_3),
     ];
 
     // Map of: recipient -> (sender, share)
-    let mut shares = IndexMap::<Uuid, Vec<(Uuid, EncryptedShare)>>::new();
+    let mut shares = IndexMap::<u8, Vec<(u8, EncryptedShare)>>::new();
     for (to, share) in trustee_1.generate_shares(&mut rng, &skey_1, &trustees, &commitments) {
         shares
             .entry(to)
             .or_insert(Vec::new())
-            .push((trustee_1.id, share));
+            .push((trustee_1.index, share));
     }
     for (to, share) in trustee_2.generate_shares(&mut rng, &skey_2, &trustees, &commitments) {
         shares
             .entry(to)
             .or_insert(Vec::new())
-            .push((trustee_2.id, share));
+            .push((trustee_2.index, share));
     }
     for (to, share) in trustee_3.generate_shares(&mut rng, &skey_3, &trustees, &commitments) {
         shares
             .entry(to)
             .or_insert(Vec::new())
-            .push((trustee_3.id, share));
+            .push((trustee_3.index, share));
     }
 
     let (trustee_1_pubkey, trustee_1_pk_proof) =
-        trustee_1.generate_public_key(&skey_1, &trustees, &commitments, &shares[&trustee_1.id]);
+        trustee_1.generate_public_key(&skey_1, &commitments, &shares[&trustee_1.index]);
     let (trustee_2_pubkey, trustee_2_pk_proof) =
-        trustee_2.generate_public_key(&skey_2, &trustees, &commitments, &shares[&trustee_2.id]);
+        trustee_2.generate_public_key(&skey_2, &commitments, &shares[&trustee_2.index]);
     let (trustee_3_pubkey, _trustee_3_pk_proof) =
-        trustee_3.generate_public_key(&skey_3, &trustees, &commitments, &shares[&trustee_3.id]);
+        trustee_3.generate_public_key(&skey_3, &commitments, &shares[&trustee_3.index]);
 
     assert_eq!(trustee_1_pubkey, trustee_2_pubkey);
     assert_eq!(trustee_1_pubkey, trustee_3_pubkey);
@@ -427,18 +368,16 @@ fn trustee_e2e_test() {
     let partial_decrypt_1 = trustee_1.partial_decrypt(
         &mut rng,
         &skey_1,
-        &trustees,
         &commitments,
-        &shares[&trustee_1.id],
+        &shares[&trustee_1.index],
         &ciphertext,
     );
 
     let partial_decrypt_2 = trustee_2.partial_decrypt(
         &mut rng,
         &skey_2,
-        &trustees,
         &commitments,
-        &shares[&trustee_2.id],
+        &shares[&trustee_2.index],
         &ciphertext,
     );
 

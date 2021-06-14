@@ -88,9 +88,9 @@ impl ElectionTransaction {
     }
 
     /// Get a trustee with the given ID
-    pub fn get_trustee(&self, trustee_id: Uuid) -> Option<&Trustee> {
+    pub fn get_trustee(&self, trustee_index: u8) -> Option<&Trustee> {
         for trustee in self.trustees.iter() {
-            if trustee_id == trustee.id {
+            if trustee_index == trustee.index {
                 return Some(trustee);
             }
         }
@@ -220,6 +220,7 @@ mod tests {
         let some_uuid = Uuid::new_v4();
         assert!(election.get_ballot(some_uuid).is_none());
         assert!(election.get_authenticator(some_uuid).is_none());
-        assert!(election.get_trustee(some_uuid).is_none());
+        assert!(election.get_trustee(0).is_none());
+        assert!(election.get_trustee(2).is_none());
     }
 }

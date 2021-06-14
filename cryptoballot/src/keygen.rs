@@ -2,15 +2,13 @@ use crate::*;
 use cryptid::threshold::KeygenCommitment;
 use ed25519_dalek::PublicKey;
 use indexmap::IndexMap;
-use sha2::Digest;
-use std::convert::TryInto;
-use uuid::Uuid;
+
 /// Transaction 2: KeyGenCommitmentTransaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyGenCommitmentTransaction {
     pub id: Identifier,
     pub election: Identifier,
-    pub trustee_id: Uuid,
+    pub trustee_index: u8,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
     pub commitment: KeygenCommitment,
@@ -21,10 +19,10 @@ pub struct KeyGenCommitmentTransaction {
 pub struct KeyGenShareTransaction {
     pub id: Identifier,
     pub election: Identifier,
-    pub trustee_id: Uuid,
+    pub trustee_index: u8,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
-    pub shares: IndexMap<Uuid, EncryptedShare>,
+    pub shares: IndexMap<u8, EncryptedShare>,
 }
 
 /// Transaction 4: KeyGenPublicKeyTransaction
@@ -32,7 +30,7 @@ pub struct KeyGenShareTransaction {
 pub struct KeyGenPublicKeyTransaction {
     pub id: Identifier,
     pub election: Identifier,
-    pub trustee_id: Uuid,
+    pub trustee_index: u8,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
     pub public_key: cryptid::elgamal::PublicKey,
@@ -53,26 +51,26 @@ impl KeyGenCommitmentTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
         election_id: Identifier,
-        trustee_id: Uuid,
+        trustee_index: u8,
         trustee_public_key: PublicKey,
         commitment: KeygenCommitment,
     ) -> Self {
         KeyGenCommitmentTransaction {
-            id: Self::build_id(election_id, trustee_id),
+            id: Self::build_id(election_id, trustee_index),
             election: election_id,
-            trustee_id,
+            trustee_index,
             trustee_public_key,
             commitment,
         }
     }
 
-    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(trustee_id.as_bytes());
+    pub fn build_id(election_id: Identifier, trustee_index: u8) -> Identifier {
+        let mut unique_info = [0; 16];
+        unique_info[0] = trustee_index;
         Identifier::new(
             election_id,
             TransactionType::KeyGenCommitment,
-            Some(hasher.finalize().as_slice()[0..16].try_into().unwrap()),
+            Some(unique_info),
         )
     }
 }
@@ -100,13 +98,14 @@ impl Signable for KeyGenCommitmentTransaction {
 
         let mut trustee_exists = false;
         for trustee in &election.trustees {
-            if trustee.id == self.trustee_id && trustee.public_key == self.trustee_public_key {
+            if trustee.index == self.trustee_index && trustee.public_key == self.trustee_public_key
+            {
                 trustee_exists = true;
             }
         }
 
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_index));
         }
 
         // TODO: Validate the commitment?
@@ -119,27 +118,23 @@ impl KeyGenShareTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
         election_id: Identifier,
-        trustee_id: Uuid,
+        trustee_index: u8,
         trustee_public_key: PublicKey,
-        shares: IndexMap<Uuid, EncryptedShare>,
+        shares: IndexMap<u8, EncryptedShare>,
     ) -> Self {
         KeyGenShareTransaction {
-            id: Self::build_id(election_id, trustee_id),
+            id: Self::build_id(election_id, trustee_index),
             election: election_id,
-            trustee_id,
+            trustee_index,
             trustee_public_key,
             shares,
         }
     }
 
-    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(trustee_id.as_bytes());
-        Identifier::new(
-            election_id,
-            TransactionType::KeyGenShare,
-            Some(hasher.finalize().as_slice()[0..16].try_into().unwrap()),
-        )
+    pub fn build_id(election_id: Identifier, trustee_index: u8) -> Identifier {
+        let mut unique_info = [0; 16];
+        unique_info[0] = trustee_index;
+        Identifier::new(election_id, TransactionType::KeyGenShare, Some(unique_info))
     }
 }
 
@@ -169,12 +164,13 @@ impl Signable for KeyGenShareTransaction {
         // Validate that this trustee exists
         let mut trustee_exists = false;
         for trustee in &election.trustees {
-            if trustee.id == self.trustee_id && trustee.public_key == self.trustee_public_key {
+            if trustee.index == self.trustee_index && trustee.public_key == self.trustee_public_key
+            {
                 trustee_exists = true;
             }
         }
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_index));
         }
 
         // Validate that the number of shares match
@@ -184,8 +180,8 @@ impl Signable for KeyGenShareTransaction {
 
         // Validate that all trustees have been given a share
         for trustee in &election.trustees {
-            if !self.shares.contains_key(&trustee.id) {
-                return Err(ValidationError::TrusteeShareMissing(self.trustee_id));
+            if !self.shares.contains_key(&trustee.index) {
+                return Err(ValidationError::TrusteeShareMissing(self.trustee_index));
             }
         }
 
@@ -197,28 +193,28 @@ impl KeyGenPublicKeyTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
         election_id: Identifier,
-        trustee_id: Uuid,
+        trustee_index: u8,
         trustee_public_key: PublicKey,
         public_key: cryptid::elgamal::PublicKey,
         public_key_proof: cryptid::threshold::PubkeyProof,
     ) -> Self {
         KeyGenPublicKeyTransaction {
-            id: Self::build_id(election_id, trustee_id),
+            id: Self::build_id(election_id, trustee_index),
             election: election_id,
-            trustee_id,
+            trustee_index,
             trustee_public_key,
             public_key,
             public_key_proof,
         }
     }
 
-    pub fn build_id(election_id: Identifier, trustee_id: Uuid) -> Identifier {
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(trustee_id.as_bytes());
+    pub fn build_id(election_id: Identifier, trustee_index: u8) -> Identifier {
+        let mut unique_info = [0; 16];
+        unique_info[0] = trustee_index;
         Identifier::new(
             election_id,
             TransactionType::KeyGenPublicKey,
-            Some(hasher.finalize().as_slice()[0..16].try_into().unwrap()),
+            Some(unique_info),
         )
     }
 }
@@ -248,12 +244,13 @@ impl Signable for KeyGenPublicKeyTransaction {
         // Validate that this trustee exists
         let mut trustee_exists = false;
         for trustee in &election.trustees {
-            if trustee.id == self.trustee_id && trustee.public_key == self.trustee_public_key {
+            if trustee.index == self.trustee_index && trustee.public_key == self.trustee_public_key
+            {
                 trustee_exists = true;
             }
         }
         if !trustee_exists {
-            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_id));
+            return Err(ValidationError::TrusteeDoesNotExist(self.trustee_index));
         }
 
         Ok(())
@@ -317,7 +314,7 @@ impl Signable for EncryptionKeyTransaction {
         for trustee in &election.trustees {
             let mut has_tx = false;
             for tx in &pk_txs {
-                if tx.inner().trustee_id == trustee.id
+                if tx.inner().trustee_index == trustee.index
                     && tx.inner().trustee_public_key == trustee.public_key
                 {
                     has_tx = true;
@@ -326,7 +323,7 @@ impl Signable for EncryptionKeyTransaction {
             }
             if !has_tx {
                 return Err(ValidationError::MissingKeyGenPublicKeyTransaction(
-                    trustee.id,
+                    trustee.index,
                 ));
             }
         }
@@ -335,7 +332,7 @@ impl Signable for EncryptionKeyTransaction {
         for tx in &pk_txs {
             if tx.inner().public_key != self.encryption_key {
                 return Err(ValidationError::MismatchedEncryptionKey(
-                    tx.inner().trustee_id,
+                    tx.inner().trustee_index,
                 ));
             }
         }
