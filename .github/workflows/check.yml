@@ -29,7 +29,6 @@ jobs:
       - name: cargo check
         run: |
           cargo check
-          cargo clippy
 
       - name: cargo audit
         run: |
