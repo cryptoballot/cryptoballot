@@ -30,13 +30,9 @@ pub fn command_election_generate(uri: &str, secret_key: &SecretKey, post: bool) 
     election.ballots = vec![uuid::Uuid::nil()];
     election.authenticators_threshold = 0;
 
-    // Generate a trustee
-    let (_ecies_secret, ecies_key) = Trustee::ecies_keys(&secret_key);
-
     let trustee = Trustee {
         index: 1,
         public_key,
-        ecies_key,
         num_trustees: 1,
         threshold: 1,
     };

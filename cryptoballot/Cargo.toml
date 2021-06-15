@@ -12,8 +12,9 @@ homepage = "https://cryptoballot.com"
 [dependencies]
 rand = '0.7.3'
 rand_chacha = '0.2.0'
-ed25519-dalek = { version = "1.0.1", features = ["serde"] }
 curve25519-dalek = "^3.0.0"
+ed25519-dalek = { version = "1.0.1", features = ["serde"] }
+x25519-dalek = { version = "1.1.1", features = ["serde"] }
 serde_cbor = '0.11.1'
 indexmap = { version = "1.6.2", features = ["serde-1"] }
 hex = '0.4.3'
@@ -27,7 +28,6 @@ aes-gcm = "0.9.2"
 # TODO: Replace these with something better (that use is_human_readable())
 hex-serde = "0.1.0"
 hex-buffer-serde = "0.3.0"
-ecies-ed25519 = { version = "0.5.1", features = ["serde"] }
 cryptid = { git = "https://github.com/eleanor-em/cryptid", branch = "0.9-preview" }
 
 [dependencies.rsa]

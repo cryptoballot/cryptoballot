@@ -32,8 +32,8 @@ pub enum Error {
     #[error("cryptoballot: error deserializing transaction: unknown format")]
     DeserializationUnknownFormat,
 
-    #[error("cryptoballot: ecies error: {0}")]
-    EciesError(#[from] ecies_ed25519::Error),
+    #[error("cryptoballot: share decryption error")]
+    ShareDecryptionError,
 
     #[error("cryptoballot: failed to decrypt vote")]
     DecryptionError,
@@ -89,6 +89,9 @@ pub enum ValidationError {
     #[error("cryptoballot validation: trustee {0} share is missing)")]
     TrusteeShareMissing(u8),
 
+    #[error("cryptoballot validation: trustee {0} cannot be found)")]
+    TrusteeMissing(u8),
+
     #[error("cryptoballot validation: wrong number of shares")]
     WrongNumberOfShares,
 
@@ -122,8 +125,8 @@ pub enum ValidationError {
     #[error("cryptoballot validation: signature error: {0}")]
     SignatureError(#[from] ed25519_dalek::SignatureError),
 
-    #[error("cryptoballot validation: ecies decryption error: {0}")]
-    EciesError(#[from] ecies_ed25519::Error),
+    #[error("cryptoballot validation: share decryption error")]
+    ShareDecryptionError,
 
     #[error("cryptoballot: partial decryption proof failed to verify")]
     PartialDecryptionProofFailed,

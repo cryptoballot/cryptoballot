@@ -2,6 +2,7 @@ use crate::*;
 use cryptid::threshold::KeygenCommitment;
 use ed25519_dalek::PublicKey;
 use indexmap::IndexMap;
+use x25519_dalek as x25519;
 
 /// Transaction 2: KeyGenCommitmentTransaction
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -11,6 +12,7 @@ pub struct KeyGenCommitmentTransaction {
     pub trustee_index: u8,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
+    pub x25519_public_key: x25519::PublicKey,
     pub commitment: KeygenCommitment,
 }
 
@@ -53,6 +55,7 @@ impl KeyGenCommitmentTransaction {
         election_id: Identifier,
         trustee_index: u8,
         trustee_public_key: PublicKey,
+        x25519_public_key: x25519::PublicKey,
         commitment: KeygenCommitment,
     ) -> Self {
         KeyGenCommitmentTransaction {
@@ -60,6 +63,7 @@ impl KeyGenCommitmentTransaction {
             election: election_id,
             trustee_index,
             trustee_public_key,
+            x25519_public_key,
             commitment,
         }
     }
