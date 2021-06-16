@@ -131,40 +131,13 @@ impl Signable for PartialDecryptionTransaction {
         }
 
         // Get the ciphertext either from the vote or the mix
-        let ciphertext: Ciphertext = match self.upstream_id.transaction_type {
-            TransactionType::Vote => {
-                if election.tx.mixnet.is_some() {
-                    return Err(ValidationError::InvalidUpstreamID);
-                }
-                if self.upstream_index != 0 {
-                    return Err(ValidationError::InvalidUpstreamIndex);
-                }
-
-                store.get_vote(self.upstream_id)?.tx.encrypted_vote
-            }
-            TransactionType::Mix => {
-                let mix = store.get_mix(self.upstream_id)?.tx;
-
-                // Check mix config
-                if let Some(mix_config) = election.tx.mixnet {
-                    if mix_config.num_shuffles != mix.mix_index {
-                        return Err(ValidationError::WrongMixSelected);
-                    }
-                } else {
-                    return Err(ValidationError::InvalidUpstreamID);
-                }
-
-                if self.upstream_index >= mix.reencryption.len() as u16 {
-                    return Err(ValidationError::InvalidUpstreamIndex);
-                }
-
-                let mut rencryptions = mix.reencryption;
-                rencryptions.swap_remove(self.upstream_index as usize)
-            }
-            _ => {
-                return Err(ValidationError::InvalidUpstreamID);
-            }
-        };
+        // Get the ciphertext either from the vote or the mix
+        let encrypted_vote: Ciphertext = encrypted_vote_from_upstream_tx(
+            store,
+            self.upstream_id,
+            self.upstream_index,
+            &election.mixnet,
+        )?;
 
         // Get the public key transaction for this trustee
         let pkey_tx_id = KeyGenPublicKeyTransaction::build_id(self.election_id, self.trustee_index);
@@ -182,7 +155,7 @@ impl Signable for PartialDecryptionTransaction {
         // Verify the partial decryption proof
         if !self
             .partial_decryption
-            .verify(&public_key.inner().public_key_proof, &ciphertext)
+            .verify(&public_key.inner().public_key_proof, &encrypted_vote)
         {
             return Err(ValidationError::PartialDecryptionProofFailed);
         }
@@ -200,10 +173,17 @@ impl Signable for PartialDecryptionTransaction {
 pub struct DecryptionTransaction {
     pub id: Identifier,
     pub election_id: Identifier,
+
+    /// The Vote or the Mix transaction, depending on if we are using a mixnet
     pub upstream_id: Identifier,
+
+    /// If we are using a mixnet, the index in the reencrypted field, or `0` if upstream is a vote transaction
     pub upstream_index: u16,
+
+    /// The trustees (as defined by index) who's PartialDecryption transactions were used to produce this full decryption
     pub trustees: Vec<u8>,
 
+    /// The decrypted vote
     #[serde(with = "hex_serde")]
     pub decrypted_vote: Vec<u8>,
 }
@@ -264,16 +244,20 @@ impl Signable for DecryptionTransaction {
 
     /// Validate the transaction
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
-        // TODO: Validate ID
+        // Check the ID
+        if Self::build_id(self.election_id, self.upstream_id, self.upstream_index) != self.id {
+            return Err(ValidationError::IdentifierBadComposition);
+        }
 
         let election = store.get_election(self.election_id)?;
 
-        let voting_end_id = Identifier::new(self.election_id, TransactionType::VotingEnd, None);
-        if store.get_transaction(voting_end_id).is_none() {
-            return Err(ValidationError::MisingVotingEndTransaction);
-        }
-
-        let vote = store.get_vote(self.upstream_id)?;
+        // Get the ciphertext either from the vote or the mix
+        let encrypted_vote: Ciphertext = encrypted_vote_from_upstream_tx(
+            store,
+            self.upstream_id,
+            self.upstream_index,
+            &election.mixnet,
+        )?;
 
         // Get all pubkeys mapped by trustee ID
         let pubkeys: Vec<KeyGenPublicKeyTransaction> = store
@@ -312,7 +296,7 @@ impl Signable for DecryptionTransaction {
 
         // Decrypt the vote
         let decrypted = decrypt_vote(
-            &vote.encrypted_vote,
+            &encrypted_vote,
             election.inner().trustees_threshold,
             &election.inner().trustees,
             &pubkeys,
@@ -365,4 +349,51 @@ pub fn decrypt_vote(
     decrypt
         .finish()
         .map_err(|e| ValidationError::VoteDecryptionFailed(e))
+}
+
+/// A convenience function for getting an encrypted-vote from some upstream transaction ID.
+/// The upstream transaction should either be a mixnet or a vote transaction.
+pub fn encrypted_vote_from_upstream_tx<S: Store>(
+    store: &S,
+    upstream_id: Identifier,
+    upstream_index: u16,
+    mix_config: &Option<MixConfig>,
+) -> Result<Ciphertext, ValidationError> {
+    // Get the ciphertext either from the vote or the mix
+    let ciphertext: Ciphertext = match upstream_id.transaction_type {
+        TransactionType::Vote => {
+            if mix_config.is_some() {
+                return Err(ValidationError::InvalidUpstreamID);
+            }
+            if upstream_index != 0 {
+                return Err(ValidationError::InvalidUpstreamIndex);
+            }
+
+            store.get_vote(upstream_id)?.tx.encrypted_vote
+        }
+        TransactionType::Mix => {
+            let mix = store.get_mix(upstream_id)?.tx;
+
+            // Check mix config
+            if let Some(mix_config) = mix_config {
+                if mix_config.num_shuffles != mix.mix_index {
+                    return Err(ValidationError::WrongMixSelected);
+                }
+            } else {
+                return Err(ValidationError::InvalidUpstreamID);
+            }
+
+            if upstream_index >= mix.reencryption.len() as u16 {
+                return Err(ValidationError::InvalidUpstreamIndex);
+            }
+
+            let mut rencryptions = mix.reencryption;
+            rencryptions.swap_remove(upstream_index as usize)
+        }
+        _ => {
+            return Err(ValidationError::InvalidUpstreamID);
+        }
+    };
+
+    Ok(ciphertext)
 }
