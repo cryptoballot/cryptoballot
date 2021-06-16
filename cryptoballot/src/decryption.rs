@@ -65,12 +65,12 @@ impl PartialDecryptionTransaction {
         unique_info[0] = upstream_id.transaction_type.into(); // 1 byte
 
         if upstream_id.transaction_type == TransactionType::Mix {
-            unique_info[1..14].copy_from_slice(&upstream_id.unique_info[..13]); // 12 bytes
-            unique_info[14..15].copy_from_slice(&upstream_index); // 2 bytes
+            unique_info[1..=12].copy_from_slice(&upstream_id.unique_info[..12]); // 12 bytes
+            unique_info[13..=14].copy_from_slice(&upstream_index); // 2 bytes
         }
         if upstream_id.transaction_type == TransactionType::Vote {
             // 14 bytes
-            unique_info[1..15].copy_from_slice(&upstream_id.unique_info[..14]);
+            unique_info[1..=14].copy_from_slice(&upstream_id.unique_info[..14]);
         }
 
         unique_info[15] = trustee_index; // 1 byte

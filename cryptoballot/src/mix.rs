@@ -43,10 +43,10 @@ pub struct MixTransaction {
     pub mix_index: u8,
 
     /// The contest that this mix is for
-    pub contest_index: u64,
+    pub contest_index: u32,
 
     /// If there are more votes in the contest than the mix batch-size, then mixes are batched
-    pub batch: u64,
+    pub batch: u32,
 
     /// A list of all vote ids in this mix
     /// These votes-ids must be in ascending order
@@ -66,8 +66,8 @@ impl MixTransaction {
         prev_mix_id: Option<Identifier>,
         trustee: &Trustee,
         mix_index: u8,
-        contest_index: u64,
-        batch: u64,
+        contest_index: u32,
+        batch: u32,
         vote_ids: Vec<Identifier>,
         reencryption: Vec<Ciphertext>,
         proof: ShuffleProof,
@@ -96,8 +96,8 @@ impl MixTransaction {
     // Has an ID format of <election-id><tx-type><contest-index><batch><mix-index><trustee-index>
     pub fn build_id(
         election_id: Identifier,
-        contest_index: u64,
-        batch: u64,
+        contest_index: u32,
+        batch: u32,
         mix_index: u8,
         trustee_index: u8,
     ) -> Identifier {
@@ -196,7 +196,7 @@ impl Signable for MixTransaction {
             // Make sure all votes are accounted for
             let votes = store.range(
                 Identifier::start(self.election_id, TransactionType::Vote),
-                Identifier::start(self.election_id, TransactionType::Vote),
+                Identifier::end(self.election_id, TransactionType::Vote),
             );
 
             if votes.len() != self.vote_ids.len() {
@@ -248,8 +248,8 @@ pub fn shuffle<R: Rng + CryptoRng>(
     encryption_key: &EncryptionPublicKey,
     trustee_index: u8,
     mix_index: u8,
-    contest_index: u64,
-    batch: u64,
+    contest_index: u32,
+    batch: u32,
 ) -> Result<(Vec<Ciphertext>, ShuffleProof), Error> {
     let seed = generate_pedersen_seed(trustee_index, mix_index, contest_index, batch);
     let (commit_ctx, generators) = PedersenCtx::with_generators(&seed, ciphertexts.len());
@@ -276,8 +276,8 @@ pub fn verify_shuffle(
     proof: &ShuffleProof,
     trustee_index: u8,
     mix_index: u8,
-    contest_index: u64,
-    batch: u64,
+    contest_index: u32,
+    batch: u32,
 ) -> Result<(), ValidationError> {
     let seed = generate_pedersen_seed(trustee_index, mix_index, contest_index, batch);
     let (commit_ctx, generators) = PedersenCtx::with_generators(&seed, input_ciphertexts.len());
@@ -298,8 +298,8 @@ pub fn verify_shuffle(
 fn generate_pedersen_seed(
     trustee_index: u8,
     mix_index: u8,
-    contest_index: u64,
-    batch: u64,
+    contest_index: u32,
+    batch: u32,
 ) -> Vec<u8> {
     let mut seed = vec![trustee_index, mix_index];
     seed.extend_from_slice(&contest_index.to_be_bytes());
