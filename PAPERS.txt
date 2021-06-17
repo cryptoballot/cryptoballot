@@ -1,0 +1,16 @@
+Papers
+------
+
+This document contains interesting papers that were considered and read in the creation of CryptoBallot.  It doesn't necessarily mean that any of the ideas presented in these papers we're actually used. 
+
+1. Making Mix Nets Robust For Electronic Voting By Randomized Partial Checking
+   https://people.csail.mit.edu/rivest/voting/papers/JakobssonJuelsRivest-MakingMixNetsRobustForElectronicVotingByRandomizedPartialChecking.pdf
+   
+2. Universal Re-encryption for Mixnets
+   http://crypto.stanford.edu/~pgolle/papers/univrenc.pdf
+   
+3. Verifiable Vote-by-mail
+   https://www.eleanorve.net/static/thesis.pdf
+   
+4. Verifiable Remote Voting with Paper Assurance. In submission.
+   McMurtry, X. Boyen, C. Culnane, K. Gjøsteen, T. Haines, R. Rivest, P. Ryan, V. Teague.
