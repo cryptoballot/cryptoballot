@@ -14,8 +14,8 @@ It uses distributed key-generation for election encryption keys, blind-signing a
 
 1. **Verifiable** - the entire voting process should be end-to-end verifiable.
 2. **Ergonomic** - Easy to use.
-3. **Fast** - 5,000 votes per second
-4. **Scalable** - Millions of voters.
+3. **Fast** - 5,000 votes per second for a single shard. 
+4. **Scalable** - Billions of voters. Unlimited votes per second with horizontal shard scaling.
 5. **Secure** - Rock solid security guarantees, byzantine fault tolerance. 
 6. **Distributed** - Trust and redundency is distributed amongst an operator-selected set of trustees.
 
