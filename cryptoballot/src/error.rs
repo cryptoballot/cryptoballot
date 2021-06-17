@@ -134,6 +134,9 @@ pub enum ValidationError {
     #[error("cryptoballot: mismatched transaction type and id type")]
     MismatchedTransactionType,
 
+    #[error("cryptoballot: voting has ended")]
+    VotingHasEnded,
+
     #[error("cryptoballot: shuffle verification failed")]
     ShuffleVerificationFailed,
 

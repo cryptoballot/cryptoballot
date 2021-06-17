@@ -109,17 +109,25 @@ impl MixTransaction {
     }
 }
 
-impl Signable for MixTransaction {
+impl CryptoBallotTransaction for MixTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.trustee_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        vec![self.election_id]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election_id
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::Mix
     }
 
     /// Validate the transaction
@@ -216,7 +224,7 @@ impl Signable for MixTransaction {
             .ok_or(ValidationError::EncryptionKeyTransactionDoesNotExist)?
             .into();
 
-        // Verify that the shuffle is correct
+        // Verify that the mix is correct
         verify_mix(
             input_ciphertexts,
             self.mixed_ciphertexts.clone(),

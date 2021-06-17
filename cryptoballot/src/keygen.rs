@@ -79,18 +79,25 @@ impl KeyGenCommitmentTransaction {
     }
 }
 
-impl Signable for KeyGenCommitmentTransaction {
+impl CryptoBallotTransaction for KeyGenCommitmentTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.trustee_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        vec![self.election]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::KeyGenCommitment
     }
 
     /// Validate the transaction
@@ -142,19 +149,25 @@ impl KeyGenShareTransaction {
     }
 }
 
-impl Signable for KeyGenShareTransaction {
+impl CryptoBallotTransaction for KeyGenShareTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.trustee_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        // TODO: This needs to change (or be removed)
-        vec![self.election]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::KeyGenShare
     }
 
     /// Validate the transaction
@@ -223,19 +236,25 @@ impl KeyGenPublicKeyTransaction {
     }
 }
 
-impl Signable for KeyGenPublicKeyTransaction {
+impl CryptoBallotTransaction for KeyGenPublicKeyTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.trustee_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        // TODO: This needs to change (or be removed)
-        vec![self.election]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::KeyGenPublicKey
     }
 
     /// Validate the transaction
@@ -264,32 +283,42 @@ impl Signable for KeyGenPublicKeyTransaction {
 impl EncryptionKeyTransaction {
     /// Create a new DecryptionTransaction with the decrypted vote
     pub fn new(
-        election: Identifier,
+        election_id: Identifier,
         authority_public_key: PublicKey,
         encryption_key: cryptid::elgamal::PublicKey,
     ) -> Self {
         EncryptionKeyTransaction {
-            id: Identifier::new(election, TransactionType::EncryptionKey, None),
-            election: election,
+            id: Self::build_id(election_id),
+            election: election_id,
             authority_public_key,
             encryption_key,
         }
     }
+
+    pub fn build_id(election_id: Identifier) -> Identifier {
+        Identifier::new(election_id, TransactionType::EncryptionKey, None)
+    }
 }
 
-impl Signable for EncryptionKeyTransaction {
+impl CryptoBallotTransaction for EncryptionKeyTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.authority_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        // TODO: This may beed to change
-        vec![self.election]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::EncryptionKey
     }
 
     /// Validate the transaction

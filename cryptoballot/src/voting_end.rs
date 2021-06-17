@@ -21,19 +21,25 @@ impl VotingEndTransaction {
     }
 }
 
-impl Signable for VotingEndTransaction {
+impl CryptoBallotTransaction for VotingEndTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.authority_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        // TODO: This may beed to change
-        vec![self.election]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::VotingEnd
     }
 
     /// Validate the transaction

@@ -146,22 +146,6 @@ impl SignedTransaction {
         }
     }
 
-    /// Get the transaction ID
-    pub fn inputs(&self) -> Vec<Identifier> {
-        match self {
-            SignedTransaction::Election(signed) => signed.inputs(),
-            SignedTransaction::KeyGenCommitment(signed) => signed.inputs(),
-            SignedTransaction::KeyGenShare(signed) => signed.inputs(),
-            SignedTransaction::KeyGenPublicKey(signed) => signed.inputs(),
-            SignedTransaction::EncryptionKey(signed) => signed.inputs(),
-            SignedTransaction::Vote(signed) => signed.inputs(),
-            SignedTransaction::VotingEnd(signed) => signed.inputs(),
-            SignedTransaction::Mix(signed) => signed.inputs(),
-            SignedTransaction::PartialDecryption(signed) => signed.inputs(),
-            SignedTransaction::Decryption(signed) => signed.inputs(),
-        }
-    }
-
     /// Validate the transaction. This does the following:
     /// 1. Checks that the id-type matches the transaction-type
     /// 2. Validates the signature
@@ -215,29 +199,55 @@ impl SignedTransaction {
     }
 }
 
-/// This trait should be considered sealed and should not be implemented outside this crate
-#[doc(hidden)]
-pub trait Signable: Serialize {
+/// All CryptoBallot transactions implement this trait
+pub trait CryptoBallotTransaction: Serialize + sealed::Sealed {
+    /// Get the transaction ID
     fn id(&self) -> Identifier;
+
+    /// Get the transaction public key, if there is one
     fn public(&self) -> Option<PublicKey>;
-    fn inputs(&self) -> Vec<Identifier>;
+
+    /// Get the transaction election ID
+    fn election_id(&self) -> Identifier;
+
+    /// Get the transaction Type
+    fn tx_type() -> TransactionType;
+
+    /// Validate the transcation
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError>;
 
+    /// Serialize the transaction to bytes for signing
     fn as_bytes(&self) -> Vec<u8> {
         serde_cbor::to_vec(&self).expect("cryptoballot: Unexpected error serializing transaction")
     }
 }
 
+/// Seal CryptoBallot Transaction so they can't be implemented outside this crate
+mod sealed {
+    pub trait Sealed {}
+
+    impl Sealed for crate::ElectionTransaction {}
+    impl Sealed for crate::KeyGenCommitmentTransaction {}
+    impl Sealed for crate::KeyGenShareTransaction {}
+    impl Sealed for crate::KeyGenPublicKeyTransaction {}
+    impl Sealed for crate::EncryptionKeyTransaction {}
+    impl Sealed for crate::VoteTransaction {}
+    impl Sealed for crate::VotingEndTransaction {}
+    impl Sealed for crate::MixTransaction {}
+    impl Sealed for crate::PartialDecryptionTransaction {}
+    impl Sealed for crate::DecryptionTransaction {}
+}
+
 /// A generic signed transaction
 #[derive(Serialize, Deserialize, Clone)]
-pub struct Signed<T: Signable + Serialize> {
+pub struct Signed<T: CryptoBallotTransaction + Serialize> {
     pub tx: T,
 
     #[serde(with = "EdSignatureHex")]
     pub sig: Signature,
 }
 
-impl<T: Signable + Serialize> Signed<T> {
+impl<T: CryptoBallotTransaction + Serialize> Signed<T> {
     /// Sign a transaction, producing a Signed<T>
     pub fn sign(secret: &SecretKey, transaction: T) -> Result<Self, Error> {
         let public_key = PublicKey::from(secret);
@@ -288,13 +298,13 @@ impl<T: Signable + Serialize> Signed<T> {
     }
 }
 
-impl<T: Signable + Serialize> AsRef<T> for Signed<T> {
+impl<T: CryptoBallotTransaction + Serialize> AsRef<T> for Signed<T> {
     fn as_ref(&self) -> &T {
         &self.tx
     }
 }
 
-impl<T: Signable + Serialize> Deref for Signed<T> {
+impl<T: CryptoBallotTransaction + Serialize> Deref for Signed<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {

@@ -111,18 +111,25 @@ impl ElectionTransaction {
     }
 }
 
-impl Signable for ElectionTransaction {
+impl CryptoBallotTransaction for ElectionTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.authority_public)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // No inputs requires for election
-        vec![]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.id
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::Election
     }
 
     /// Validate the election transaction
@@ -192,9 +199,6 @@ mod tests {
 
         // Signing with wrong key should fail
         assert!(Signed::sign(&bad_secret, election.clone()).is_err());
-
-        // Check inputs
-        assert!(election.inputs().is_empty());
 
         // Turn it into a generic transaction and check some thing
         let election_generic = Transaction::Election(election.clone());

@@ -83,17 +83,25 @@ impl PartialDecryptionTransaction {
     }
 }
 
-impl Signable for PartialDecryptionTransaction {
+impl CryptoBallotTransaction for PartialDecryptionTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.trustee_public_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        vec![self.election_id, self.upstream_id]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election_id
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::Decryption
     }
 
     /// Validate the transaction
@@ -222,24 +230,26 @@ impl DecryptionTransaction {
     }
 }
 
-impl Signable for DecryptionTransaction {
+impl CryptoBallotTransaction for DecryptionTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
-    // TODO: election authority public key
+    /// TODO: Any trustee
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         None
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        let mut inputs = Vec::<Identifier>::with_capacity(2 + self.trustees.len());
-        inputs.push(self.election_id);
-        inputs.push(self.upstream_id);
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election_id
+    }
 
-        // TODO: Somehow the partial-decrypt transactions?
-
-        inputs
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::Decryption
     }
 
     /// Validate the transaction

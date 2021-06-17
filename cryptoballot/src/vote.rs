@@ -62,19 +62,25 @@ impl VoteTransaction {
     }
 }
 
-impl Signable for VoteTransaction {
+impl CryptoBallotTransaction for VoteTransaction {
+    #[inline(always)]
     fn id(&self) -> Identifier {
         self.id
     }
 
-    // TODO: election authority public key
+    #[inline(always)]
     fn public(&self) -> Option<PublicKey> {
         Some(self.anonymous_key)
     }
 
-    fn inputs(&self) -> Vec<Identifier> {
-        // Only requires election as input
-        vec![self.election]
+    #[inline(always)]
+    fn election_id(&self) -> Identifier {
+        self.election
+    }
+
+    #[inline(always)]
+    fn tx_type() -> TransactionType {
+        TransactionType::Vote
     }
 
     /// Validate the vote transaction
@@ -90,11 +96,15 @@ impl Signable for VoteTransaction {
         }
 
         // Validate that there is a EncryptionKeyTransaction
-        // TODO: Add a "transaction_exists" function to store
         let enc_key_tx = Identifier::new(self.election, TransactionType::EncryptionKey, None);
-        let key_tx = store.get_transaction(enc_key_tx);
-        if key_tx.is_none() {
+        if store.get_transaction(enc_key_tx).is_none() {
             return Err(ValidationError::EncryptionKeyTransactionDoesNotExist);
+        }
+
+        // Validate that there isn't a VotingEnd Transactipn
+        let enc_key_tx = Identifier::new(self.election, TransactionType::VotingEnd, None);
+        if store.get_transaction(enc_key_tx).is_some() {
+            return Err(ValidationError::VotingHasEnded);
         }
 
         // TODO: minimum authentication needed to be defined in election
