@@ -1,12 +1,4 @@
-use crate::EncryptionKeyTransaction;
-use crate::Error;
-use crate::Identifier;
-use crate::Signable;
-use crate::Store;
-use crate::TransactionType;
-use crate::Trustee;
-use crate::ValidationError;
-use crate::VoteTransaction;
+use crate::*;
 use cryptid::commit::PedersenCtx;
 use cryptid::elgamal::Ciphertext;
 use cryptid::elgamal::PublicKey as EncryptionPublicKey;
@@ -17,7 +9,6 @@ use rand::{CryptoRng, Rng};
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MixConfig {
     pub timeout_secs: u64,
-    pub num_shuffles: u8,
     pub batch_size: Option<u16>,
 }
 
@@ -38,8 +29,8 @@ pub struct MixTransaction {
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
 
-    /// The mix-index (starts at 1)
-    /// Generally this is the same as the trustee index, but may be different if one of the trustees
+    /// The mix-index (starts at 0)
+    /// Generally this is the same as the trustee index - 1, but may be different if one of the trustees
     /// failed to produce a mix within the alloted timeout.
     pub mix_index: u8,
 
@@ -54,7 +45,7 @@ pub struct MixTransaction {
     pub vote_ids: Vec<Identifier>,
 
     /// A shuffled and re-encrypted mix of ciphertexts
-    pub reencryption: Vec<Ciphertext>,
+    pub mixed_ciphertexts: Vec<Ciphertext>,
 
     /// Proof of correct shuffle and re-encryption
     pub proof: ShuffleProof,
@@ -70,7 +61,7 @@ impl MixTransaction {
         contest_index: u32,
         batch: u32,
         vote_ids: Vec<Identifier>,
-        reencryption: Vec<Ciphertext>,
+        mixed_ciphertexts: Vec<Ciphertext>,
         proof: ShuffleProof,
     ) -> Self {
         MixTransaction {
@@ -89,7 +80,7 @@ impl MixTransaction {
             contest_index,
             batch,
             vote_ids,
-            reencryption,
+            mixed_ciphertexts,
             proof,
         }
     }
@@ -136,7 +127,7 @@ impl Signable for MixTransaction {
         let election = store.get_election(self.election_id)?.tx;
 
         // If there's no mixnet config, then we can't post mixnet transactions
-        if election.mixnet.is_none() {
+        if election.mix_config.is_none() {
             return Err(ValidationError::NoMixnetConfig);
         }
 
@@ -153,12 +144,12 @@ impl Signable for MixTransaction {
         }
 
         // TODO: Deal with timeouts and mix index orderings
-        if self.mix_index != self.trustee_index {
+        if self.mix_index != self.trustee_index - 1 {
             return Err(ValidationError::OutOfOrderMix);
         }
 
         // Make sure we have all the ciphertexts in the mix
-        if self.reencryption.len() != self.vote_ids.len() {
+        if self.mixed_ciphertexts.len() != self.vote_ids.len() {
             return Err(ValidationError::MixWrongNumberOfVotes);
         }
 
@@ -178,9 +169,9 @@ impl Signable for MixTransaction {
                 return Err(ValidationError::InvalidPrevMixTransaction);
             }
 
-            prev_mix.reencryption
+            prev_mix.mixed_ciphertexts
         } else {
-            if self.mix_index != 1 {
+            if self.mix_index != 0 {
                 return Err(ValidationError::OutOfOrderMix);
             }
 
@@ -228,7 +219,7 @@ impl Signable for MixTransaction {
         // Verify that the shuffle is correct
         verify_shuffle(
             input_ciphertexts,
-            self.reencryption.clone(),
+            self.mixed_ciphertexts.clone(),
             &key_tx.encryption_key,
             &self.proof,
             self.trustee_index,

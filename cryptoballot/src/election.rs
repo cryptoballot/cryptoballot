@@ -25,6 +25,7 @@ pub struct ElectionTransaction {
     pub trustees: Vec<Trustee>,
 
     /// Minimum number of trustees needed to reconstruct the secret key and decrypt votes.
+    /// This is also the number of mixes that will be performed as part of the mixnet
     pub trustees_threshold: usize,
 
     /// Authenticators who can authenticate voters
@@ -35,7 +36,7 @@ pub struct ElectionTransaction {
     pub authenticators_threshold: u8,
 
     /// Mixnet configuration, None implies no mix-net
-    pub mixnet: Option<MixConfig>,
+    pub mix_config: Option<MixConfig>,
 }
 
 impl ElectionTransaction {
@@ -53,7 +54,7 @@ impl ElectionTransaction {
             trustees_threshold: 1,
             authenticators: vec![],
             authenticators_threshold: 1,
-            mixnet: None,
+            mix_config: None,
         }
     }
 

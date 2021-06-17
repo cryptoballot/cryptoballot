@@ -425,9 +425,8 @@ fn end_to_end_election_with_mix() {
     election.authenticators = vec![authenticator.clone()];
     election.trustees = vec![trustee_1.clone(), trustee_2.clone(), trustee_3.clone()];
     election.trustees_threshold = 2;
-    election.mixnet = Some(MixConfig {
+    election.mix_config = Some(MixConfig {
         timeout_secs: 600,
-        num_shuffles: 2,
         batch_size: None, // No Batching
     });
 
@@ -696,7 +695,7 @@ fn end_to_end_election_with_mix() {
         vec![vote.encrypted_vote.clone()],
         &encryption_key_tx.encryption_key,
         trustee_1.index,
-        1,
+        0,
         0,
         0,
     )
@@ -706,7 +705,7 @@ fn end_to_end_election_with_mix() {
         election.id,
         None,
         &trustee_1,
-        1,
+        0,
         0,
         0,
         vec![vote.id],
@@ -720,10 +719,10 @@ fn end_to_end_election_with_mix() {
     // Generate the second mix transaction
     let (shuffle_2, proof) = shuffle(
         &mut test_rng,
-        shuffle_tx_1.tx.reencryption.clone(),
+        shuffle_tx_1.tx.mixed_ciphertexts.clone(),
         &encryption_key_tx.encryption_key,
         trustee_2.index,
-        2,
+        1,
         0,
         0,
     )
@@ -733,7 +732,7 @@ fn end_to_end_election_with_mix() {
         election.id,
         Some(shuffle_tx_1.id()),
         &trustee_2,
-        2,
+        1,
         0,
         0,
         vec![vote.id],
@@ -753,7 +752,7 @@ fn end_to_end_election_with_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_1_shares,
-            &shuffle_tx_2.reencryption[upstream_index as usize],
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
             election.id,
         )
         .unwrap();
@@ -776,7 +775,7 @@ fn end_to_end_election_with_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_2_shares,
-            &shuffle_tx_2.reencryption[upstream_index as usize],
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
             election.id,
         )
         .unwrap();
@@ -800,7 +799,7 @@ fn end_to_end_election_with_mix() {
 
     // Fully decrypt the vote
     let decrypted = decrypt_vote(
-        &shuffle_tx_2.reencryption[upstream_index as usize],
+        &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
         election.trustees_threshold,
         &election.trustees,
         &pubkeys,

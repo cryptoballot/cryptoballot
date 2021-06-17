@@ -15,7 +15,7 @@ pub struct PartialDecryptionTransaction {
     /// The upstream transaction ID, either the vote transaction ID or the mix transaction ID
     pub upstream_id: Identifier,
 
-    /// If this is from a mix, the index of the ciphertext in the `reencryption` field, or `0` if from a vote transaction
+    /// If this is from a mix, the index of the ciphertext in the `mixed_ciphertexts` field, or `0` if from a vote transaction
     pub upstream_index: u16,
 
     pub trustee_index: u8,
@@ -136,7 +136,7 @@ impl Signable for PartialDecryptionTransaction {
             store,
             self.upstream_id,
             self.upstream_index,
-            &election.mixnet,
+            &election.mix_config,
         )?;
 
         // Get the public key transaction for this trustee
@@ -256,7 +256,7 @@ impl Signable for DecryptionTransaction {
             store,
             self.upstream_id,
             self.upstream_index,
-            &election.mixnet,
+            &election.mix_config,
         )?;
 
         // Get all pubkeys mapped by trustee ID
@@ -375,19 +375,15 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
             let mix = store.get_mix(upstream_id)?.tx;
 
             // Check mix config
-            if let Some(mix_config) = mix_config {
-                if mix_config.num_shuffles != mix.mix_index {
-                    return Err(ValidationError::WrongMixSelected);
-                }
-            } else {
+            if mix_config.is_none() {
                 return Err(ValidationError::InvalidUpstreamID);
             }
 
-            if upstream_index >= mix.reencryption.len() as u16 {
+            if upstream_index >= mix.mixed_ciphertexts.len() as u16 {
                 return Err(ValidationError::InvalidUpstreamIndex);
             }
 
-            let mut rencryptions = mix.reencryption;
+            let mut rencryptions = mix.mixed_ciphertexts;
             rencryptions.swap_remove(upstream_index as usize)
         }
         _ => {
