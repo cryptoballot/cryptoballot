@@ -1,4 +1,5 @@
 use cryptoballot::ElectionTransaction;
+use cryptoballot::MixConfig;
 use cryptoballot::Signed;
 use cryptoballot::SignedTransaction;
 use cryptoballot::Trustee;
@@ -37,6 +38,10 @@ pub fn command_election_generate(uri: &str, secret_key: &SecretKey, post: bool) 
         threshold: 1,
     };
     election.trustees = vec![trustee];
+    election.mix_config = Some(MixConfig {
+        timeout_secs: 0,
+        batch_size: None,
+    });
 
     //  Turn it into a signed transaction
     let election_tx = Signed::sign(&secret_key, election).unwrap();

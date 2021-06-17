@@ -12,6 +12,8 @@ pub struct KeyGenCommitmentTransaction {
     pub trustee_index: u8,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
+
+    #[serde(with = "X25519PublicKeyHex")]
     pub x25519_public_key: x25519::PublicKey,
     pub commitment: KeygenCommitment,
 }
@@ -24,6 +26,8 @@ pub struct KeyGenShareTransaction {
     pub trustee_index: u8,
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
+
+    #[serde(with = "indexmap::serde_seq")]
     pub shares: IndexMap<u8, EncryptedShare>,
 }
 

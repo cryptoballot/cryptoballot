@@ -5,6 +5,7 @@ use ed25519_dalek::Signature;
 use rsa::RSAPublicKey;
 use std::borrow::Cow;
 use std::convert::TryFrom;
+use x25519_dalek as x25519;
 
 pub use hex_buffer_serde::Hex;
 // a single-purpose type for use in `#[serde(with)]`
@@ -19,6 +20,28 @@ impl Hex<PublicKey> for EdPublicKeyHex {
 
     fn from_bytes(bytes: &[u8]) -> Result<PublicKey, Error> {
         Ok(PublicKey::from_bytes(bytes)?)
+    }
+}
+
+pub enum X25519PublicKeyHex {}
+
+impl Hex<x25519::PublicKey> for X25519PublicKeyHex {
+    type Error = Error;
+
+    fn create_bytes(public_key: &x25519::PublicKey) -> Cow<[u8]> {
+        let bytes = public_key.to_bytes().to_vec();
+        Cow::from(bytes)
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<x25519::PublicKey, Error> {
+        if bytes.len() != 32 {
+            return Err(Error::InvalidX25519PublicKey);
+        }
+
+        let mut key_bytes: [u8; 32] = [0; 32];
+        key_bytes.copy_from_slice(bytes);
+
+        Ok(x25519::PublicKey::from(key_bytes))
     }
 }
 

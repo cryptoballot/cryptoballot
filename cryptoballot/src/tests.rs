@@ -859,8 +859,9 @@ fn end_to_end_election_with_mix() {
 #[test]
 fn test_all_elections() {
     // TODO: When format is stable uncomment
-    return;
-    #[allow(unreachable_code)]
+    //return;
+    //#[allow(unreachable_code)]
+
     for entry in std::fs::read_dir("../test_elections").unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();

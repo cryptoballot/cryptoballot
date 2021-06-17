@@ -41,6 +41,9 @@ pub enum Error {
     #[error("cryptoballot: shuffle error: {0}")]
     ShuffleError(cryptid::CryptoError),
 
+    #[error("cryptoballot: invalid x25519 public key")]
+    InvalidX25519PublicKey,
+
     #[error("{0}")]
     ValidationError(#[from] ValidationError),
 
