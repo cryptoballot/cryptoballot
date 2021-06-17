@@ -81,10 +81,11 @@ CRYPTOBALLOT_SECRET_KEY=<secret_key> cryptoballot election generate --post
 # Make note of the generated election ID (we will refer to this as <election-id>)
 
 # Create some votes
-cryptoballot vote generate <election-id> "BARAK OBAMA" --post
+cryptoballot vote generate <election-id> "EASTER BUNNY" --post
 cryptoballot vote generate <election-id> "SANTA CLAUSE" --post
-cryptoballot vote generate <election-id> "BARAK OBAMA" --post
-cryptoballot vote generate <election-id> "BARAK OBAMA" --post
+cryptoballot vote generate <election-id> "EASTER BUNNY" --post
+cryptoballot vote generate <election-id> "SANTA CLAUSE" --post
+cryptoballot vote generate <election-id> "SANTA CLAUSE" --post
 
 # As the election-authority, you decide when the voting is over and votes should be mixed and decrypted
 # This can be automated by setting an end-time in the election transaction
