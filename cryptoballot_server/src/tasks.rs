@@ -5,6 +5,38 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use x25519_dalek as x25519;
 
+pub fn generate_transactions<S: Store>(
+    incoming_tx: &SignedTransaction,
+    store: &S,
+) -> Vec<SignedTransaction> {
+    match incoming_tx.transaction_type() {
+        TransactionType::Election => process_election(store, incoming_tx.clone().into()).unwrap(),
+
+        TransactionType::KeyGenCommitment => {
+            process_keygen_commitment(store, incoming_tx.clone().into()).unwrap()
+        }
+        TransactionType::KeyGenShare => {
+            process_keygen_share(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        TransactionType::KeyGenPublicKey => {
+            process_keygen_public_key(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        TransactionType::VotingEnd => {
+            process_voting_end(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        TransactionType::PartialDecryption => {
+            process_partial_decryption(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        _ => {
+            vec![]
+        }
+    }
+}
+
 fn process_election<S: Store>(
     _store: &S,
     election_tx: ElectionTransaction,
@@ -412,36 +444,4 @@ fn trustee_from_election(
         }
     }
     None
-}
-
-pub fn generate_transactions<S: Store>(
-    incoming_tx: &SignedTransaction,
-    store: &S,
-) -> Vec<SignedTransaction> {
-    match incoming_tx.transaction_type() {
-        TransactionType::Election => process_election(store, incoming_tx.clone().into()).unwrap(),
-
-        TransactionType::KeyGenCommitment => {
-            process_keygen_commitment(store, incoming_tx.clone().into()).unwrap()
-        }
-        TransactionType::KeyGenShare => {
-            process_keygen_share(store, incoming_tx.clone().into()).unwrap()
-        }
-
-        TransactionType::KeyGenPublicKey => {
-            process_keygen_public_key(store, incoming_tx.clone().into()).unwrap()
-        }
-
-        TransactionType::VotingEnd => {
-            process_voting_end(store, incoming_tx.clone().into()).unwrap()
-        }
-
-        TransactionType::PartialDecryption => {
-            process_partial_decryption(store, incoming_tx.clone().into()).unwrap()
-        }
-
-        _ => {
-            vec![]
-        }
-    }
 }
