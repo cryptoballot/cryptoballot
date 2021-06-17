@@ -324,7 +324,7 @@ impl CryptoBallotTransaction for DecryptionTransaction {
 /// Decrypt the vote from the given partial decryptions.
 pub fn decrypt_vote(
     encrypted_vote: &Ciphertext,
-    trustees_threshold: usize,
+    trustees_threshold: u8,
     trustees: &[Trustee],
     pubkeys: &[KeyGenPublicKeyTransaction],
     partials: &[PartialDecryptionTransaction],
@@ -342,7 +342,8 @@ pub fn decrypt_vote(
         .collect();
 
     // Decrypt the vote
-    let mut decrypt = cryptid::threshold::Decryption::new(trustees_threshold, encrypted_vote);
+    let mut decrypt =
+        cryptid::threshold::Decryption::new(trustees_threshold as usize, encrypted_vote);
 
     for trustee in trustees {
         if let Some(partial) = partials.get(&trustee.index) {

@@ -41,7 +41,7 @@ pub struct Trustee {
 
     #[serde(default)]
     #[serde(skip_serializing)]
-    pub threshold: usize,
+    pub threshold: u8,
 }
 
 impl Trustee {
@@ -60,13 +60,13 @@ impl Trustee {
         }
 
         trustee.num_trustees = election_tx.trustees.len();
-        trustee.threshold = election_tx.trustees_threshold as usize;
+        trustee.threshold = election_tx.trustees_threshold;
 
         trustee
     }
 
     /// Create a new trustee
-    pub fn new(index: u8, num_trustees: usize, threshold: usize) -> (Self, SecretKey) {
+    pub fn new(index: u8, num_trustees: usize, threshold: u8) -> (Self, SecretKey) {
         if index == 0 {
             panic!("Trustee index cannot be zero");
         }
@@ -221,7 +221,7 @@ impl Trustee {
         ThresholdGenerator::new(
             &mut rng,
             self.index as usize,
-            self.threshold,
+            self.threshold as usize,
             self.num_trustees,
         )
     }

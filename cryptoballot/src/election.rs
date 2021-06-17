@@ -26,7 +26,7 @@ pub struct ElectionTransaction {
 
     /// Minimum number of trustees needed to reconstruct the secret key and decrypt votes.
     /// This is also the number of mixes that will be performed as part of the mixnet
-    pub trustees_threshold: usize,
+    pub trustees_threshold: u8,
 
     /// Authenticators who can authenticate voters
     pub authenticators: Vec<Authenticator>,
@@ -139,7 +139,7 @@ impl CryptoBallotTransaction for ElectionTransaction {
         }
 
         // Make sure trustees settings are sane
-        if self.trustees_threshold > self.trustees.len() {
+        if self.trustees_threshold as usize > self.trustees.len() {
             return Err(ValidationError::InvalidTrusteeThreshold);
         }
 

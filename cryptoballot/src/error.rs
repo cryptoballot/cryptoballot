@@ -40,6 +40,12 @@ pub enum Error {
 
     #[error("cryptoballot: shuffle error: {0}")]
     ShuffleError(cryptid::CryptoError),
+
+    #[error("{0}")]
+    ValidationError(#[from] ValidationError),
+
+    #[error("{0}")]
+    TransactionNotFound(#[from] TransactionNotFound),
 }
 
 /// Transaction Validation errors

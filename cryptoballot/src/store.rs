@@ -3,8 +3,17 @@ use std::collections::BTreeMap;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
-#[error("transaction {0} not found")]
-pub struct TransactionNotFound(pub Identifier);
+#[error("{tx_type} transaction {id} not found")]
+pub struct TransactionNotFound {
+    pub id: Identifier,
+    pub tx_type: TransactionType,
+}
+
+impl TransactionNotFound {
+    fn new(id: Identifier, tx_type: TransactionType) -> Self {
+        Self { id, tx_type }
+    }
+}
 
 /// A transaction store
 pub trait Store {
@@ -35,9 +44,9 @@ pub trait Store {
         match tx {
             Some(tx) => match tx {
                 SignedTransaction::Election(e) => Ok(e),
-                _ => Err(TransactionNotFound(id)),
+                _ => Err(TransactionNotFound::new(id, TransactionType::Election)),
             },
-            None => Err(TransactionNotFound(id)),
+            None => Err(TransactionNotFound::new(id, TransactionType::Election)),
         }
     }
 
@@ -50,9 +59,15 @@ pub trait Store {
         match tx {
             Some(tx) => match tx {
                 SignedTransaction::KeyGenPublicKey(e) => Ok(e),
-                _ => Err(TransactionNotFound(id)),
+                _ => Err(TransactionNotFound::new(
+                    id,
+                    TransactionType::KeyGenPublicKey,
+                )),
             },
-            None => Err(TransactionNotFound(id)),
+            None => Err(TransactionNotFound::new(
+                id,
+                TransactionType::KeyGenPublicKey,
+            )),
         }
     }
 
@@ -62,9 +77,9 @@ pub trait Store {
         match tx {
             Some(tx) => match tx {
                 SignedTransaction::Vote(e) => Ok(e),
-                _ => Err(TransactionNotFound(id)),
+                _ => Err(TransactionNotFound::new(id, TransactionType::Vote)),
             },
-            None => Err(TransactionNotFound(id)),
+            None => Err(TransactionNotFound::new(id, TransactionType::Vote)),
         }
     }
 
@@ -74,9 +89,9 @@ pub trait Store {
         match tx {
             Some(tx) => match tx {
                 SignedTransaction::Mix(e) => Ok(e),
-                _ => Err(TransactionNotFound(id)),
+                _ => Err(TransactionNotFound::new(id, TransactionType::Mix)),
             },
-            None => Err(TransactionNotFound(id)),
+            None => Err(TransactionNotFound::new(id, TransactionType::Mix)),
         }
     }
 
@@ -89,9 +104,15 @@ pub trait Store {
         match tx {
             Some(tx) => match tx {
                 SignedTransaction::PartialDecryption(e) => Ok(e),
-                _ => Err(TransactionNotFound(id)),
+                _ => Err(TransactionNotFound::new(
+                    id,
+                    TransactionType::PartialDecryption,
+                )),
             },
-            None => Err(TransactionNotFound(id)),
+            None => Err(TransactionNotFound::new(
+                id,
+                TransactionType::PartialDecryption,
+            )),
         }
     }
 
@@ -104,9 +125,9 @@ pub trait Store {
         match tx {
             Some(tx) => match tx {
                 SignedTransaction::Decryption(e) => Ok(e),
-                _ => Err(TransactionNotFound(id)),
+                _ => Err(TransactionNotFound::new(id, TransactionType::Decryption)),
             },
-            None => Err(TransactionNotFound(id)),
+            None => Err(TransactionNotFound::new(id, TransactionType::Decryption)),
         }
     }
 }
