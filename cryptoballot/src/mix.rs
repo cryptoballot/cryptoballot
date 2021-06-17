@@ -217,7 +217,7 @@ impl Signable for MixTransaction {
             .into();
 
         // Verify that the shuffle is correct
-        verify_shuffle(
+        verify_mix(
             input_ciphertexts,
             self.mixed_ciphertexts.clone(),
             &key_tx.encryption_key,
@@ -234,7 +234,7 @@ impl Signable for MixTransaction {
 
 /// Do a mixnet shuffle
 /// This is an expensive and time-consuming operation, so should ideally be offloaded to it's own thread
-pub fn shuffle<R: Rng + CryptoRng>(
+pub fn mix<R: Rng + CryptoRng>(
     rng: &mut R,
     ciphertexts: Vec<Ciphertext>,
     encryption_key: &EncryptionPublicKey,
@@ -261,7 +261,7 @@ pub fn shuffle<R: Rng + CryptoRng>(
 }
 
 /// Verify mixnet shuffle
-pub fn verify_shuffle(
+pub fn verify_mix(
     input_ciphertexts: Vec<Ciphertext>,
     output_ciphertexts: Vec<Ciphertext>,
     encryption_key: &EncryptionPublicKey,

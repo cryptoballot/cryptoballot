@@ -690,7 +690,7 @@ fn end_to_end_election_with_mix() {
     store.set(voting_end_tx.clone().into());
 
     // Generate the first mix transaction
-    let (shuffle_1, proof) = shuffle(
+    let (shuffle_1, proof) = mix(
         &mut test_rng,
         vec![vote.encrypted_vote.clone()],
         &encryption_key_tx.encryption_key,
@@ -717,7 +717,7 @@ fn end_to_end_election_with_mix() {
     store.set(shuffle_tx_1.clone().into());
 
     // Generate the second mix transaction
-    let (shuffle_2, proof) = shuffle(
+    let (shuffle_2, proof) = mix(
         &mut test_rng,
         shuffle_tx_1.tx.mixed_ciphertexts.clone(),
         &encryption_key_tx.encryption_key,
