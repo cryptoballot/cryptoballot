@@ -35,8 +35,7 @@ Under active development. Not ready for production use!
 | ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 | ⚠       | REST frontend                           |                                                                |
 |         | Onion mixnet (likely Sphinx)            | Strengthened voter anonymity - Depends on REST frontend        |
-| ⚠       | Re-encryption mixnet                    | Provides coercion resistance. Will use [cryptid](https://github.com/eleanor-em/cryptid/).|
-|         | Optional TiKV Backend                   | High performance (non-blockchain) backend                      |
+| ✓       | Re-encryption mixnet                    | Provides coercion resistance. Will use [cryptid](https://github.com/eleanor-em/cryptid/).|
 |         | TypeScript / JS Client Library          |                                                                |
 |         | Dart Client Library (Android)           |                                                                |
 |         | Swift Client Library (iOS)              |                                                                |
