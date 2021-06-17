@@ -103,7 +103,8 @@ impl Service for CryptoballotService {
                             let tx_json = serde_json::to_string_pretty(&tx).unwrap();
                             println!("{}", tx_json);
 
-                            let dependent_txs = crate::tasks::generate_transactions(&tx, &schema);
+                            let dependent_txs =
+                                crate::tasks::generate_transactions(&tx, &schema).unwrap();
 
                             // TODO: Vote decryptions in batches
                             // let mut stored_dependent_txs = DEPENDENT_TXS.lock().unwrap();
