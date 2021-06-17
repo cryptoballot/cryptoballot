@@ -1,287 +1,346 @@
 use cryptid::threshold::KeygenCommitment;
 use cryptoballot::*;
+use ed25519_dalek::PublicKey;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use x25519_dalek as x25519;
 
-pub fn generate_transactions<S: Store>(
-    incoming_tx: &SignedTransaction,
-    store: &S,
-) -> Vec<SignedTransaction> {
+fn process_election<S: Store>(
+    _store: &S,
+    election_tx: ElectionTransaction,
+) -> Result<Vec<SignedTransaction>, Error> {
     let public_key = crate::public_key();
     let secret_key = crate::secret_key();
 
-    // On an election tx, check if we are a trustee, and if so, generate a commitment transaction
-    if incoming_tx.transaction_type() == TransactionType::Election {
-        let election_tx: ElectionTransaction = incoming_tx.clone().into(); // TODO: asRef
-        for trustee in &election_tx.get_full_trustees() {
-            if trustee.public_key == public_key {
-                // Generate keygen_commitment transactions
-                let commit = trustee.keygen_commitment(&secret_key, election_tx.id);
-                let x25519_public_key = trustee.x25519_public_key(&secret_key, election_tx.id);
-                let commit_tx = KeyGenCommitmentTransaction::new(
-                    election_tx.id,
+    if let Some(trustee) = trustee_from_election(&election_tx, &public_key) {
+        // Generate keygen_commitment transactions
+        let commit = trustee.keygen_commitment(&secret_key, election_tx.id);
+        let x25519_public_key = trustee.x25519_public_key(&secret_key, election_tx.id);
+        let commit_tx = KeyGenCommitmentTransaction::new(
+            election_tx.id,
+            trustee.index,
+            trustee.public_key,
+            x25519_public_key,
+            commit,
+        );
+        let commit_tx = Signed::sign(&secret_key, commit_tx).unwrap();
+        return Ok(vec![commit_tx.into()]);
+    }
+
+    Ok(vec![])
+}
+
+// On a keygen_commitment transaction, see if we have enough commitments to produce a keygen_share transaction
+fn process_keygen_commitment<S: Store>(
+    store: &S,
+    commit_tx: KeyGenCommitmentTransaction,
+) -> Result<Vec<SignedTransaction>, Error> {
+    let public_key = crate::public_key();
+    let secret_key = crate::secret_key();
+
+    // Get the election_tx
+    let election_tx = store.get_election(commit_tx.election).unwrap().tx;
+
+    if let Some(trustee) = trustee_from_election(&election_tx, &public_key) {
+        // Check that we have enough commitment transactions already
+        let commit_txs: Vec<KeyGenCommitmentTransaction> = store
+            .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
+            .into_iter()
+            .map(|tx| tx.into())
+            .collect();
+
+        if commit_txs.len() == election_tx.trustees.len() {
+            let commitments: Vec<(u8, KeygenCommitment)> = commit_txs
+                .iter()
+                .map(|tx| (tx.trustee_index, tx.commitment.clone()))
+                .collect();
+
+            let x25519_public_keys: Vec<(u8, x25519::PublicKey)> = commit_txs
+                .into_iter()
+                .map(|tx| (tx.trustee_index, tx.x25519_public_key))
+                .collect();
+
+            let mut rng: StdRng = SeedableRng::from_entropy();
+            let shares = trustee.generate_shares(
+                &mut rng,
+                &secret_key,
+                &x25519_public_keys,
+                election_tx.id,
+                &commitments,
+            );
+
+            let share_tx = KeyGenShareTransaction::new(
+                election_tx.id,
+                trustee.index,
+                trustee.public_key,
+                shares,
+            );
+            let share_tx = Signed::sign(&secret_key, share_tx).unwrap();
+            return Ok(vec![share_tx.into()]);
+        }
+    }
+
+    Ok(vec![])
+}
+
+// On keygen_share transaction, check if we have ALL keygens, and if so, generate a public_key (if we are a trustee)
+fn process_keygen_share<S: Store>(
+    store: &S,
+    share_tx: KeyGenShareTransaction,
+) -> Result<Vec<SignedTransaction>, Error> {
+    let public_key = crate::public_key();
+    let secret_key = crate::secret_key();
+
+    // Get the election_tx
+    let election_tx = store.get_election(share_tx.election).unwrap().tx;
+
+    if let Some(trustee) = trustee_from_election(&election_tx, &public_key) {
+        // Check that we have enough keygen_tx transactions already
+        let share_txs: Vec<KeyGenShareTransaction> = store
+            .get_multiple(election_tx.id, TransactionType::KeyGenShare)
+            .into_iter()
+            .map(|tx| tx.into())
+            .collect();
+
+        if share_txs.len() != election_tx.trustees.len() {
+            return Ok(vec![]);
+        }
+
+        // Get all commitments
+        let commitments: Vec<(u8, KeygenCommitment)> = store
+            .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
+            .into_iter()
+            .map(|tx| tx.into())
+            .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_index, tx.commitment))
+            .collect();
+
+        // Get all x25519 public keys
+        let x25519_public_keys: Vec<(u8, x25519::PublicKey)> = store
+            .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
+            .into_iter()
+            .map(|tx| tx.into())
+            .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_index, tx.x25519_public_key))
+            .collect();
+
+        let shares: Vec<(u8, EncryptedShare)> = share_txs
+            .into_iter()
+            .map(|tx| {
+                (
+                    tx.trustee_index,
+                    tx.shares.get(&trustee.index).unwrap().clone(),
+                )
+            })
+            .collect();
+
+        let (public_key, public_key_proof) = trustee
+            .generate_public_key(
+                &secret_key,
+                &x25519_public_keys,
+                &commitments,
+                &shares,
+                election_tx.id,
+            )
+            .unwrap();
+
+        let pk_tx = KeyGenPublicKeyTransaction::new(
+            election_tx.id,
+            trustee.index,
+            trustee.public_key,
+            public_key,
+            public_key_proof,
+        );
+        let secret_key = crate::secret_key();
+        let pk_tx = Signed::sign(&secret_key, pk_tx).unwrap();
+        return Ok(vec![pk_tx.into()]);
+    }
+
+    Ok(vec![])
+}
+
+// On keygen_public_key transaction, check if we have ALL trustee public_keys, and if so, generate a encryption_key (if we are election authority)
+fn process_keygen_public_key<S: Store>(
+    store: &S,
+    pk_tx: KeyGenPublicKeyTransaction,
+) -> Result<Vec<SignedTransaction>, Error> {
+    let public_key = crate::public_key();
+    let secret_key = crate::secret_key();
+
+    // Get the election_tx
+    let election_tx = store.get_election(pk_tx.election).unwrap().tx;
+
+    if election_tx.authority_public == public_key {
+        // Get all public key transactions
+        let pk_txs: Vec<KeyGenPublicKeyTransaction> = store
+            .get_multiple(election_tx.id, TransactionType::KeyGenPublicKey)
+            .into_iter()
+            .map(|tx| tx.into())
+            .collect();
+
+        if election_tx.trustees.len() == pk_txs.len() {
+            // Generate an encryption_key transaction
+            let encryption_key_tx = EncryptionKeyTransaction::new(
+                election_tx.id,
+                election_tx.authority_public.clone(),
+                pk_tx.public_key,
+            );
+            let encryption_key_tx = Signed::sign(&secret_key, encryption_key_tx).unwrap();
+            return Ok(vec![encryption_key_tx.into()]);
+        }
+    }
+
+    Ok(vec![])
+}
+
+// On voting_end transaction, produce either a mix or start decrypting votes (if there is no mix config)
+fn process_voting_end<S: Store>(
+    store: &S,
+    voting_end_tx: VotingEndTransaction,
+) -> Result<Vec<SignedTransaction>, Error> {
+    let public_key = crate::public_key();
+    let secret_key = crate::secret_key();
+
+    // Get the election_tx
+    let election_tx = store.get_election(voting_end_tx.election).unwrap().tx;
+
+    if let Some(trustee) = trustee_from_election(&election_tx, &public_key) {
+        // If there's a mix config, produce a mix transaction
+        if let Some(_mix_config) = &election_tx.mix_config {
+            if trustee.index == 1 {
+                // create the mix if we're the first trustee
+                // TODO: Handle timeout of the first trustee and we're the second (and so on)
+                // TODO: Also handle the situation where WE previously timed out, but we're back online again
+                //       In this situation, we go to the "back of the line" to wait our turn again
+
+                // Get the EncryptionKey Transaction
+                let encryption_key_tx = EncryptionKeyTransaction::build_id(election_tx.id);
+                let encryption_key_tx: EncryptionKeyTransaction =
+                    store.get_transaction(encryption_key_tx).unwrap().into();
+
+                // Get all vote transactions
+                let vote_txs: Vec<VoteTransaction> = store
+                    .get_multiple(election_tx.id, TransactionType::Vote)
+                    .into_iter()
+                    .map(|tx| tx.into())
+                    .collect();
+
+                let vote_ids = vote_txs.iter().map(|tx| tx.id).collect();
+                let ciphertexts = vote_txs.into_iter().map(|tx| tx.encrypted_vote).collect();
+
+                // TODO: This could be expensive, so don't do it on the consensus thread
+                let mut rng = rand::thread_rng();
+                let (mixed, proof) = mix(
+                    &mut rng,
+                    ciphertexts,
+                    &encryption_key_tx.encryption_key,
                     trustee.index,
-                    trustee.public_key,
-                    x25519_public_key,
-                    commit,
+                    0,
+                    0,
+                    0,
+                )
+                .unwrap();
+
+                let mix_tx = MixTransaction::new(
+                    election_tx.id,
+                    None,
+                    &trustee,
+                    0,
+                    0,
+                    0,
+                    vote_ids,
+                    mixed,
+                    proof,
                 );
-                let commit_tx = Signed::sign(&secret_key, commit_tx).unwrap();
-                return vec![commit_tx.into()];
+
+                let mix_tx = Signed::sign(&secret_key, mix_tx).unwrap();
+                return Ok(vec![mix_tx.into()]);
             }
-        }
-    }
+        } else {
+            // If there's no mix config, produce partial decryptions for every vote
+            let mut rng = rand::thread_rng();
 
-    // On commitment transaction, check if we have ALL commitments, and if so, generate a share (if we are a trustee)
-    if incoming_tx.transaction_type() == TransactionType::KeyGenCommitment {
-        let commit_tx: KeyGenCommitmentTransaction = incoming_tx.clone().into(); // TODO: asRef
-
-        // Get the election_tx
-        let election_tx: ElectionTransaction =
-            store.get_transaction(commit_tx.election).unwrap().into();
-
-        for trustee in &election_tx.get_full_trustees() {
-            if trustee.public_key == public_key {
-                // Check that we have enough commitment transactions already
-                let commit_txs: Vec<KeyGenCommitmentTransaction> = store
-                    .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
-                    .into_iter()
-                    .map(|tx| tx.into())
-                    .collect();
-
-                if commit_txs.len() == election_tx.trustees.len() {
-                    let commitments: Vec<(u8, KeygenCommitment)> = commit_txs
-                        .iter()
-                        .map(|tx| (tx.trustee_index, tx.commitment.clone()))
-                        .collect();
-
-                    let x25519_public_keys: Vec<(u8, x25519::PublicKey)> = commit_txs
-                        .into_iter()
-                        .map(|tx| (tx.trustee_index, tx.x25519_public_key))
-                        .collect();
-
-                    let mut rng: StdRng = SeedableRng::from_entropy();
-                    let shares = trustee.generate_shares(
-                        &mut rng,
-                        &secret_key,
-                        &x25519_public_keys,
-                        election_tx.id,
-                        &commitments,
-                    );
-
-                    let share_tx = KeyGenShareTransaction::new(
-                        election_tx.id,
-                        trustee.index,
-                        trustee.public_key,
-                        shares,
-                    );
-                    let share_tx = Signed::sign(&secret_key, share_tx).unwrap();
-                    return vec![share_tx.into()];
-                }
-            }
-        }
-    }
-
-    // On keygen transaction, check if we have ALL keygens, and if so, generate a public_key (if we are a trustee)
-    if incoming_tx.transaction_type() == TransactionType::KeyGenShare {
-        let keygen_tx: KeyGenShareTransaction = incoming_tx.clone().into(); // TODO: asRef
-
-        // Get the election_tx
-        let election_tx: ElectionTransaction =
-            store.get_transaction(keygen_tx.election).unwrap().into();
-
-        let trustees = election_tx.get_full_trustees();
-        for trustee in &trustees {
-            if trustee.public_key == public_key {
-                // Check that we have enough keygen_tx transactions already
-                let share_txs: Vec<KeyGenShareTransaction> = store
-                    .get_multiple(election_tx.id, TransactionType::KeyGenShare)
-                    .into_iter()
-                    .map(|tx| tx.into())
-                    .collect();
-
-                if share_txs.len() == election_tx.trustees.len() {
-                    // Get all commitments
-                    let commitments: Vec<(u8, KeygenCommitment)> = store
-                        .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
-                        .into_iter()
-                        .map(|tx| tx.into())
-                        .map(|tx: KeyGenCommitmentTransaction| (tx.trustee_index, tx.commitment))
-                        .collect();
-
-                    // Get all x25519 public keys
-                    let x25519_public_keys: Vec<(u8, x25519::PublicKey)> = store
-                        .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
-                        .into_iter()
-                        .map(|tx| tx.into())
-                        .map(|tx: KeyGenCommitmentTransaction| {
-                            (tx.trustee_index, tx.x25519_public_key)
-                        })
-                        .collect();
-
-                    let shares: Vec<(u8, EncryptedShare)> = share_txs
-                        .into_iter()
-                        .map(|tx| {
-                            (
-                                tx.trustee_index,
-                                tx.shares.get(&trustee.index).unwrap().clone(),
-                            )
-                        })
-                        .collect();
-
-                    let (public_key, public_key_proof) = trustee
-                        .generate_public_key(
-                            &secret_key,
-                            &x25519_public_keys,
-                            &commitments,
-                            &shares,
-                            election_tx.id,
-                        )
-                        .unwrap();
-
-                    let pk_tx = KeyGenPublicKeyTransaction::new(
-                        election_tx.id,
-                        trustee.index,
-                        trustee.public_key,
-                        public_key,
-                        public_key_proof,
-                    );
-                    let secret_key = crate::secret_key();
-                    let pk_tx = Signed::sign(&secret_key, pk_tx).unwrap();
-                    return vec![pk_tx.into()];
-                }
-            }
-        }
-    }
-
-    // On public_key transaction, check if we have ALL public-keys, and if so, generate a encryption_key transaction (if we are the election authority)
-    if incoming_tx.transaction_type() == TransactionType::KeyGenPublicKey {
-        let keygen_public_key: KeyGenPublicKeyTransaction = incoming_tx.clone().into(); // TODO: asRef
-
-        // Get the election_tx
-        let election_tx: ElectionTransaction = store
-            .get_transaction(keygen_public_key.election)
-            .unwrap()
-            .into();
-
-        if election_tx.authority_public == public_key {
-            let pk_tx: KeyGenPublicKeyTransaction = incoming_tx.clone().into(); // TODO: asRef
-
-            // Get all public key transactions
-            let pk_txs: Vec<KeyGenPublicKeyTransaction> = store
-                .get_multiple(election_tx.id, TransactionType::KeyGenPublicKey)
+            let share_txs: Vec<KeyGenShareTransaction> = store
+                .get_multiple(election_tx.id, TransactionType::KeyGenShare)
                 .into_iter()
                 .map(|tx| tx.into())
                 .collect();
 
-            if election_tx.trustees.len() == pk_txs.len() {
-                // Generate an encryption_key transaction
-                let encryption_key_tx = EncryptionKeyTransaction::new(
-                    election_tx.id,
-                    election_tx.authority_public.clone(),
-                    pk_tx.public_key,
-                );
-                let encryption_key_tx = Signed::sign(&secret_key, encryption_key_tx).unwrap();
-                return vec![encryption_key_tx.into()];
-            }
-        }
-    }
+            let commit_txs: Vec<KeyGenCommitmentTransaction> = store
+                .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
+                .into_iter()
+                .map(|tx| tx.into())
+                .collect();
 
-    // On voting_end transaction, do partial-decryption transactions for all votes
-    // TODO: This needs to be batched, likely goes in a different function, also snouldn't happen on the consensus thread
-    if incoming_tx.transaction_type() == TransactionType::VotingEnd {
-        let voting_end_tx: VotingEndTransaction = incoming_tx.clone().into(); // TODO: asRef
+            let commitments: Vec<(u8, KeygenCommitment)> = commit_txs
+                .iter()
+                .map(|tx| (tx.trustee_index, tx.commitment.clone()))
+                .collect();
 
-        // Get the election_tx
-        let election_tx: ElectionTransaction = store
-            .get_transaction(voting_end_tx.election)
-            .unwrap()
-            .into();
+            let x25519_public_keys: Vec<(u8, x25519::PublicKey)> = commit_txs
+                .into_iter()
+                .map(|tx| (tx.trustee_index, tx.x25519_public_key))
+                .collect();
 
-        let mut rng = rand::thread_rng();
+            // Get all Shares shared with this trustee
+            let shares: Vec<(u8, EncryptedShare)> = share_txs
+                .into_iter()
+                .map(|tx| {
+                    (
+                        tx.trustee_index,
+                        tx.shares.get(&trustee.index).unwrap().clone(),
+                    )
+                })
+                .collect();
 
-        let trustees = election_tx.get_full_trustees();
-        for trustee in &trustees {
-            if trustee.public_key == public_key {
-                let share_txs: Vec<KeyGenShareTransaction> = store
-                    .get_multiple(election_tx.id, TransactionType::KeyGenShare)
-                    .into_iter()
-                    .map(|tx| tx.into())
-                    .collect();
+            // Get all vote transactions
+            let vote_txs = store.get_multiple(voting_end_tx.election, TransactionType::Vote);
 
-                let commit_txs: Vec<KeyGenCommitmentTransaction> = store
-                    .get_multiple(election_tx.id, TransactionType::KeyGenCommitment)
-                    .into_iter()
-                    .map(|tx| tx.into())
-                    .collect();
+            let mut parial_txs = Vec::with_capacity(vote_txs.len());
+            for vote_tx in vote_txs {
+                let vote_tx: VoteTransaction = vote_tx.into();
 
-                let commitments: Vec<(u8, KeygenCommitment)> = commit_txs
-                    .iter()
-                    .map(|tx| (tx.trustee_index, tx.commitment.clone()))
-                    .collect();
-
-                let x25519_public_keys: Vec<(u8, x25519::PublicKey)> = commit_txs
-                    .into_iter()
-                    .map(|tx| (tx.trustee_index, tx.x25519_public_key))
-                    .collect();
-
-                // Get all Shares shared with this trustee
-                let shares: Vec<(u8, EncryptedShare)> = share_txs
-                    .into_iter()
-                    .map(|tx| {
-                        (
-                            tx.trustee_index,
-                            tx.shares.get(&trustee.index).unwrap().clone(),
-                        )
-                    })
-                    .collect();
-
-                // Get all vote transactions
-                let vote_txs = store.get_multiple(voting_end_tx.election, TransactionType::Vote);
-
-                let mut parial_txs = Vec::with_capacity(vote_txs.len());
-                for vote_tx in vote_txs {
-                    let vote_tx: VoteTransaction = vote_tx.into();
-
-                    let partial_decrypt = trustee
-                        .partial_decrypt(
-                            &mut rng,
-                            &secret_key,
-                            &x25519_public_keys,
-                            &commitments,
-                            &shares,
-                            &vote_tx.encrypted_vote,
-                            election_tx.id,
-                        )
-                        .unwrap();
-                    let partial_decrypt_tx = PartialDecryptionTransaction::new(
+                let partial_decrypt = trustee
+                    .partial_decrypt(
+                        &mut rng,
+                        &secret_key,
+                        &x25519_public_keys,
+                        &commitments,
+                        &shares,
+                        &vote_tx.encrypted_vote,
                         election_tx.id,
-                        vote_tx.id,
-                        0,
-                        trustee.index,
-                        public_key,
-                        partial_decrypt,
-                    );
+                    )
+                    .unwrap();
+                let partial_decrypt_tx = PartialDecryptionTransaction::new(
+                    election_tx.id,
+                    vote_tx.id,
+                    0,
+                    trustee.index,
+                    public_key,
+                    partial_decrypt,
+                );
 
-                    let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx).unwrap();
-                    parial_txs.push(partial_decrypt_tx.into());
-                }
-                return parial_txs;
+                let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx).unwrap();
+                parial_txs.push(partial_decrypt_tx.into());
             }
+            return Ok(parial_txs);
         }
     }
 
-    // On PartialDecrytion transaction, check if we have enough partials for a full decryption transaction
-    // TODO: This needs to be batched, likely goes in a different function, also snouldn't happen on the consensus thread
-    if incoming_tx.transaction_type() == TransactionType::PartialDecryption {
-        let partial_tx: PartialDecryptionTransaction = incoming_tx.clone().into(); // TODO: asRef
+    Ok(vec![])
+}
 
-        // Get the election_tx
-        let election_tx: ElectionTransaction = store
-            .get_transaction(partial_tx.election_id)
-            .unwrap()
-            .into();
+// On PartialDecrytion transaction, check if we have enough partials for a full decryption transaction
+// TODO: This needs to be batched, likely goes in a different function, also snouldn't happen on the consensus thread
+fn process_partial_decryption<S: Store>(
+    store: &S,
+    partial_tx: PartialDecryptionTransaction,
+) -> Result<Vec<SignedTransaction>, Error> {
+    let public_key = crate::public_key();
+    let secret_key = crate::secret_key();
 
+    // Get the election_tx
+    let election_tx = store.get_election(partial_tx.election_id).unwrap().tx;
+
+    if let Some(_trustee) = trustee_from_election(&election_tx, &public_key) {
         // Get partials
         let mut start = election_tx.id().clone();
         start.transaction_type = TransactionType::PartialDecryption;
@@ -336,10 +395,53 @@ pub fn generate_transactions<S: Store>(
             );
 
             let decrypted_tx = Signed::sign(&secret_key, decrypted_tx).unwrap().into();
-            return vec![decrypted_tx];
+            return Ok(vec![decrypted_tx]);
         }
     }
 
-    // Nothing
-    return vec![];
+    Ok(vec![])
+}
+
+fn trustee_from_election(
+    election_tx: &ElectionTransaction,
+    public_key: &PublicKey,
+) -> Option<Trustee> {
+    for trustee in election_tx.get_full_trustees() {
+        if &trustee.public_key == public_key {
+            return Some(trustee);
+        }
+    }
+    None
+}
+
+pub fn generate_transactions<S: Store>(
+    incoming_tx: &SignedTransaction,
+    store: &S,
+) -> Vec<SignedTransaction> {
+    match incoming_tx.transaction_type() {
+        TransactionType::Election => process_election(store, incoming_tx.clone().into()).unwrap(),
+
+        TransactionType::KeyGenCommitment => {
+            process_keygen_commitment(store, incoming_tx.clone().into()).unwrap()
+        }
+        TransactionType::KeyGenShare => {
+            process_keygen_share(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        TransactionType::KeyGenPublicKey => {
+            process_keygen_public_key(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        TransactionType::VotingEnd => {
+            process_voting_end(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        TransactionType::PartialDecryption => {
+            process_partial_decryption(store, incoming_tx.clone().into()).unwrap()
+        }
+
+        _ => {
+            vec![]
+        }
+    }
 }
