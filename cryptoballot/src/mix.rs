@@ -35,6 +35,7 @@ pub struct MixTransaction {
     pub trustee_index: u8,
 
     /// The trustee public-key
+    #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
 
     /// The mix-index (starts at 1)
