@@ -49,6 +49,9 @@ pub enum Error {
 
     #[error("{0}")]
     TransactionNotFound(#[from] TransactionNotFound),
+
+    #[error("cryptoballot: unexpected transaction type")]
+    UnexpectedTransactionType,
 }
 
 /// Transaction Validation errors

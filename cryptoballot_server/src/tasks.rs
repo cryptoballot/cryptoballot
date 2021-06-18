@@ -280,7 +280,7 @@ fn process_voting_end<S: Store>(
             }
         } else {
             // If there's no mix config, produce partial decryptions for every vote
-            return produce_partials(store, &election_tx, &trustee);
+            return produce_partials(store, &election_tx, &trustee, None);
         }
     }
 
@@ -303,7 +303,7 @@ fn process_mix<S: Store>(
         if let Some(_mix_config) = &election_tx.mix_config {
             // If this is the last mix, start producing partial decryptions
             if election_tx.trustees_threshold == mix_tx.mix_index + 1 {
-                return produce_partials(store, &election_tx, &trustee);
+                return produce_partials(store, &election_tx, &trustee, Some(mix_tx));
             }
 
             // TODO: Handle timeout of an intermediary trustee, and go before it would normally be our turn
@@ -385,11 +385,16 @@ fn process_partial_decryption<S: Store>(
             let partial_txs: Vec<PartialDecryptionTransaction> =
                 partial_txs.into_iter().map(|tx| tx.into()).collect();
 
-            // Get the vote
-            let vote_tx: VoteTransaction = store
-                .get_transaction(partial_tx.upstream_id)
-                .unwrap()
-                .into();
+            // Get upstream ciphertext
+            let ciphertext = match partial_tx.upstream_id.transaction_type {
+                TransactionType::Vote => store.get_vote(partial_tx.upstream_id)?.tx.encrypted_vote,
+                TransactionType::Mix => {
+                    let mut mix = store.get_mix(partial_tx.upstream_id)?.tx;
+                    mix.mixed_ciphertexts
+                        .swap_remove(partial_tx.upstream_index as usize)
+                }
+                _ => return Err(Error::UnexpectedTransactionType),
+            };
 
             // Get public key transactions
             let pubkeys = store.get_multiple(election_tx.id, TransactionType::KeyGenPublicKey);
@@ -399,7 +404,7 @@ fn process_partial_decryption<S: Store>(
             // Fully decrypt the vote
             // TODO: No unwrap, real error
             let decrypted = decrypt_vote(
-                &vote_tx.encrypted_vote,
+                &ciphertext,
                 election_tx.trustees_threshold,
                 &election_tx.get_full_trustees(),
                 &pubkeys,
@@ -411,8 +416,8 @@ fn process_partial_decryption<S: Store>(
             // Create a vote decryption transaction
             let decrypted_tx = DecryptionTransaction::new(
                 election_tx.id,
-                vote_tx.id,
-                0,
+                partial_tx.upstream_id,
+                partial_tx.upstream_index,
                 trustee_indexs,
                 decrypted,
             );
@@ -430,6 +435,7 @@ fn produce_partials<S: Store>(
     store: &S,
     election_tx: &ElectionTransaction,
     trustee: &Trustee,
+    mix_tx: Option<MixTransaction>,
 ) -> Result<Vec<SignedTransaction>, Error> {
     let public_key = crate::public_key();
     let secret_key = crate::secret_key();
@@ -470,33 +476,62 @@ fn produce_partials<S: Store>(
         })
         .collect();
 
-    // Get all vote transactions
-    let vote_txs = store.get_multiple(election_tx.id, TransactionType::Vote);
+    // Produce partial decryptions
+    let mut parial_txs = Vec::new();
 
-    let mut parial_txs = Vec::with_capacity(vote_txs.len());
-    for vote_tx in vote_txs {
-        let vote_tx: VoteTransaction = vote_tx.into();
+    match mix_tx {
+        Some(mix_tx) => {
+            for (upstream_index, ciphertext) in mix_tx.mixed_ciphertexts.iter().enumerate() {
+                let partial_decrypt = trustee.partial_decrypt(
+                    &mut rng,
+                    &secret_key,
+                    &x25519_public_keys,
+                    &commitments,
+                    &shares,
+                    &ciphertext,
+                    election_tx.id,
+                )?;
+                let partial_decrypt_tx = PartialDecryptionTransaction::new(
+                    election_tx.id,
+                    mix_tx.id,
+                    upstream_index as u16,
+                    trustee.index,
+                    public_key,
+                    partial_decrypt,
+                );
 
-        let partial_decrypt = trustee.partial_decrypt(
-            &mut rng,
-            &secret_key,
-            &x25519_public_keys,
-            &commitments,
-            &shares,
-            &vote_tx.encrypted_vote,
-            election_tx.id,
-        )?;
-        let partial_decrypt_tx = PartialDecryptionTransaction::new(
-            election_tx.id,
-            vote_tx.id,
-            0,
-            trustee.index,
-            public_key,
-            partial_decrypt,
-        );
+                let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;
+                parial_txs.push(partial_decrypt_tx.into());
+            }
+        }
+        None => {
+            let vote_txs = store.get_multiple(election_tx.id, TransactionType::Vote);
 
-        let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;
-        parial_txs.push(partial_decrypt_tx.into());
+            for vote_tx in vote_txs {
+                let vote_tx: VoteTransaction = vote_tx.into();
+
+                let partial_decrypt = trustee.partial_decrypt(
+                    &mut rng,
+                    &secret_key,
+                    &x25519_public_keys,
+                    &commitments,
+                    &shares,
+                    &vote_tx.encrypted_vote,
+                    election_tx.id,
+                )?;
+                let partial_decrypt_tx = PartialDecryptionTransaction::new(
+                    election_tx.id,
+                    vote_tx.id,
+                    0,
+                    trustee.index,
+                    public_key,
+                    partial_decrypt,
+                );
+
+                let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;
+                parial_txs.push(partial_decrypt_tx.into());
+            }
+        }
     }
     return Ok(parial_txs);
 }
