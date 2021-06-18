@@ -66,7 +66,7 @@ mkdir ./cryptoballot_db
 # Start the server in development mode (dev-mode will autogenerate and print the private-key). 
 # Make note of the printed CRYPTOBALLOT_SECRET_KEY. We will refer to this as <secret_key>.
 # WARNING: Don't use `run-dev` for production.
-cryptoballot_server run-dev --blockchain-path=./cryptoballot_db
+cryptoballot_server run-dev --blockchain-path=$HOME/.cryptoballot
 
 # Example Output:
 #   > Starting in development mode
