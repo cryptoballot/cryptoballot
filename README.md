@@ -30,7 +30,7 @@ Under active development. Not ready for production use!
 | ✓       | Migrate from Go to Rust                 | 🦀                                                             |
 | ✓       | Distributed key generation / decryption | Uses [cryptid](https://github.com/eleanor-em/cryptid/).        |
 | ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
-|         | Blind-Signing (ed25519 / schnorr)       | Will replace current RSA blind-signing                         |
+|         | Blind-Signing ([schnorr](https://www.math.uni-frankfurt.de/~dmst/teaching/WS2013/Vorlesung/Pointcheval,Stern.pdf))       | Will replace current RSA blind-signing                         |
 | ✓       | Re-encryption mixnet                    | Provides coercion resistant anonymity. Uses [cryptid](https://github.com/eleanor-em/cryptid/).|
 | ✓       | Optional Blockchain backend             | Uses [Exonum](https://exonum.com/) |
 | ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
