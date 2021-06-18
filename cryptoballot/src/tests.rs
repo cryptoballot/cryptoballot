@@ -680,6 +680,40 @@ fn end_to_end_election_with_mix() {
     vote.validate(&store).unwrap();
     store.set(vote.clone().into());
 
+    // Generate an second vote transaction
+
+    // Create a 2nd vote transaction
+    let secret_vote_2 = "Santa";
+
+    // Encrypt the secret vote
+    let encrypted_vote_2 = encrypt_vote(
+        &encryption_key_tx.encryption_key,
+        secret_vote_2.as_bytes(),
+        &mut test_rng,
+    )
+    .unwrap();
+
+    let (mut vote_2, voter_secret_2) =
+        VoteTransaction::new(election.id(), ballot_id, encrypted_vote_2);
+
+    // Create an auth package and blind it
+    let auth_package_2 = AuthPackage::new(election.id(), ballot_id, vote_2.anonymous_key);
+    let (blinded_auth_package_2, unblinder_2) = auth_package_2.blind(&authn_public);
+
+    // Authenticate the voter (for a real election the voter would pass additional auth info)
+    let authentication_2 = authenticator.authenticate(&authn_secret, &blinded_auth_package_2);
+    let authentication_2 = authentication_2.unblind(&authn_public, unblinder_2);
+
+    // Attach the authentication to the vote
+    vote_2.authentication.push(authentication_2);
+
+    // Sign and seal the vote transaction
+    let vote_2 = Signed::sign(&voter_secret_2, vote_2).unwrap();
+
+    // Validate the vote transaction and store it
+    vote_2.validate(&store).unwrap();
+    store.set(vote_2.clone().into());
+
     // Voting is over!
     // ---------------
 
@@ -692,7 +726,7 @@ fn end_to_end_election_with_mix() {
     // Generate the first mix transaction
     let (shuffle_1, proof) = mix(
         &mut test_rng,
-        vec![vote.encrypted_vote.clone()],
+        vec![vote.encrypted_vote.clone(), vote_2.encrypted_vote.clone()],
         &encryption_key_tx.encryption_key,
         trustee_1.index,
         0,
@@ -701,6 +735,9 @@ fn end_to_end_election_with_mix() {
     )
     .unwrap();
 
+    let mut vote_ids = vec![vote.id, vote_2.id];
+    vote_ids.sort();
+
     let shuffle_tx_1 = MixTransaction::new(
         election.id,
         None,
@@ -708,7 +745,7 @@ fn end_to_end_election_with_mix() {
         0,
         0,
         0,
-        vec![vote.id],
+        vote_ids,
         shuffle_1,
         proof,
     );
@@ -735,7 +772,7 @@ fn end_to_end_election_with_mix() {
         1,
         0,
         0,
-        vec![vote.id],
+        shuffle_tx_1.vote_ids.clone(),
         shuffle_2,
         proof,
     );
@@ -745,7 +782,7 @@ fn end_to_end_election_with_mix() {
 
     // Generate a partial-decryption transactions
     let upstream_index = 0;
-    let partial_decrypt_1 = trustee_1
+    let partial_decrypt_1_1 = trustee_1
         .partial_decrypt(
             &mut test_rng,
             &trustee_1_secret,
@@ -756,19 +793,19 @@ fn end_to_end_election_with_mix() {
             election.id,
         )
         .unwrap();
-    let partial_decrypt_1_tx = PartialDecryptionTransaction::new(
+    let partial_decrypt_1_1_tx = PartialDecryptionTransaction::new(
         election.id,
         shuffle_tx_2.id(),
         upstream_index,
         trustee_1.index,
         trustee_1.public_key,
-        partial_decrypt_1,
+        partial_decrypt_1_1,
     );
-    let partial_decrypt_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_1_tx).unwrap();
-    partial_decrypt_1_tx.validate(&store).unwrap();
-    store.set(partial_decrypt_1_tx.clone().into());
+    let partial_decrypt_1_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_1_1_tx).unwrap();
+    partial_decrypt_1_1_tx.validate(&store).unwrap();
+    store.set(partial_decrypt_1_1_tx.clone().into());
 
-    let partial_decrypt_2 = trustee_2
+    let partial_decrypt_1_2 = trustee_2
         .partial_decrypt(
             &mut test_rng,
             &trustee_2_secret,
@@ -779,26 +816,26 @@ fn end_to_end_election_with_mix() {
             election.id,
         )
         .unwrap();
-    let partial_decrypt_2_tx = PartialDecryptionTransaction::new(
+    let partial_decrypt_1_2_tx = PartialDecryptionTransaction::new(
         election.id,
         shuffle_tx_2.id(),
         upstream_index,
         trustee_2.index,
         trustee_2.public_key,
-        partial_decrypt_2,
+        partial_decrypt_1_2,
     );
-    let partial_decrypt_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_2_tx).unwrap();
-    partial_decrypt_2_tx.validate(&store).unwrap();
-    store.set(partial_decrypt_2_tx.clone().into());
+    let partial_decrypt_1_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_1_2_tx).unwrap();
+    partial_decrypt_1_2_tx.validate(&store).unwrap();
+    store.set(partial_decrypt_1_2_tx.clone().into());
 
     let partials = vec![
-        partial_decrypt_1_tx.tx.clone(),
-        partial_decrypt_2_tx.tx.clone(),
+        partial_decrypt_1_1_tx.tx.clone(),
+        partial_decrypt_1_2_tx.tx.clone(),
     ];
     let pubkeys = vec![pk_1_tx.tx.clone(), pk_2_tx.tx.clone(), pk_3_tx.tx.clone()];
 
     // Fully decrypt the vote
-    let decrypted = decrypt_vote(
+    let decrypted_1 = decrypt_vote(
         &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
         election.trustees_threshold,
         &election.trustees,
@@ -808,24 +845,113 @@ fn end_to_end_election_with_mix() {
     .unwrap();
 
     // Create a vote decryption transaction
-    let decrypted_tx = DecryptionTransaction::new(
+    let decrypted_tx_1 = DecryptionTransaction::new(
         election.id,
         shuffle_tx_2.id(),
         upstream_index,
         vec![trustee_1.index, trustee_2.index],
-        decrypted,
+        decrypted_1,
     );
 
     // TODO: Add a decryptor public key to make it meaningful??  It does't really matter..
     // TODO: Do this and require it to be a trustee
-    let decrypted_tx = Signed::sign(&trustee_1_secret, decrypted_tx).unwrap();
-    decrypted_tx.validate(&store).unwrap();
-    store.set(decrypted_tx.clone().into());
+    let decrypted_tx_1 = Signed::sign(&trustee_1_secret, decrypted_tx_1).unwrap();
+    decrypted_tx_1.validate(&store).unwrap();
+    store.set(decrypted_tx_1.clone().into());
 
-    // Decrypted vote should match secret vote
-    assert_eq!(
+    // Generate a second partial-decryption transactions
+    let upstream_index = 1;
+    let partial_decrypt_2_1 = trustee_1
+        .partial_decrypt(
+            &mut test_rng,
+            &trustee_1_secret,
+            &x25519_public_keys,
+            &commitments,
+            &pk_1_shares,
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+            election.id,
+        )
+        .unwrap();
+    let partial_decrypt_2_1_tx = PartialDecryptionTransaction::new(
+        election.id,
+        shuffle_tx_2.id(),
+        upstream_index,
+        trustee_1.index,
+        trustee_1.public_key,
+        partial_decrypt_2_1,
+    );
+    let partial_decrypt_2_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_2_1_tx).unwrap();
+    partial_decrypt_2_1_tx.validate(&store).unwrap();
+    store.set(partial_decrypt_2_1_tx.clone().into());
+
+    let partial_decrypt_2_2 = trustee_2
+        .partial_decrypt(
+            &mut test_rng,
+            &trustee_2_secret,
+            &x25519_public_keys,
+            &commitments,
+            &pk_2_shares,
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+            election.id,
+        )
+        .unwrap();
+    let partial_decrypt_2_2_tx = PartialDecryptionTransaction::new(
+        election.id,
+        shuffle_tx_2.id(),
+        upstream_index,
+        trustee_2.index,
+        trustee_2.public_key,
+        partial_decrypt_2_2,
+    );
+    let partial_decrypt_2_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_2_2_tx).unwrap();
+    partial_decrypt_2_2_tx.validate(&store).unwrap();
+    store.set(partial_decrypt_2_2_tx.clone().into());
+
+    let partials = vec![
+        partial_decrypt_2_1_tx.tx.clone(),
+        partial_decrypt_2_2_tx.tx.clone(),
+    ];
+    let pubkeys = vec![pk_1_tx.tx.clone(), pk_2_tx.tx.clone(), pk_3_tx.tx.clone()];
+
+    // Fully decrypt the vote
+    let decrypted_2 = decrypt_vote(
+        &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+        election.trustees_threshold,
+        &election.trustees,
+        &pubkeys,
+        &partials,
+    )
+    .unwrap();
+
+    // Create a vote decryption transaction
+    let decrypted_tx_2 = DecryptionTransaction::new(
+        election.id,
+        shuffle_tx_2.id(),
+        upstream_index,
+        vec![trustee_1.index, trustee_2.index],
+        decrypted_2,
+    );
+
+    // TODO: Add a decryptor public key to make it meaningful??  It does't really matter..
+    // TODO: Do this and require it to be a trustee
+    let decrypted_tx_2 = Signed::sign(&trustee_1_secret, decrypted_tx_2).unwrap();
+    decrypted_tx_2.validate(&store).unwrap();
+    store.set(decrypted_tx_2.clone().into());
+
+    // Decrypted votes should match secret votes, but unknown order
+    let secret_votes = vec![
         secret_vote.as_bytes().to_vec(),
-        decrypted_tx.inner().decrypted_vote
+        secret_vote_2.as_bytes().to_vec(),
+    ];
+    assert!(
+        vec![
+            decrypted_tx_1.inner().decrypted_vote.clone(),
+            decrypted_tx_2.inner().decrypted_vote.clone()
+        ] == secret_votes
+            || vec![
+                decrypted_tx_2.inner().decrypted_vote.clone(),
+                decrypted_tx_1.inner().decrypted_vote.clone()
+            ] == secret_votes
     );
 
     // Dump out the votes to JSON
@@ -845,12 +971,16 @@ fn end_to_end_election_with_mix() {
             SignedTransaction::from(pk_3_tx),
             SignedTransaction::from(encryption_key_tx),
             SignedTransaction::from(vote),
+            SignedTransaction::from(vote_2),
             SignedTransaction::from(voting_end_tx),
             SignedTransaction::from(shuffle_tx_1),
             SignedTransaction::from(shuffle_tx_2),
-            SignedTransaction::from(partial_decrypt_1_tx),
-            SignedTransaction::from(partial_decrypt_2_tx),
-            SignedTransaction::from(decrypted_tx),
+            SignedTransaction::from(partial_decrypt_1_1_tx),
+            SignedTransaction::from(partial_decrypt_1_2_tx),
+            SignedTransaction::from(partial_decrypt_2_1_tx),
+            SignedTransaction::from(partial_decrypt_2_2_tx),
+            SignedTransaction::from(decrypted_tx_1),
+            SignedTransaction::from(decrypted_tx_2),
         ])
         .unwrap()
     );
