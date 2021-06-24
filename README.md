@@ -1,7 +1,7 @@
 CryptoBallot
 ============
 
-[![docs](https://docs.rs/cryptoballot/badge.svg)](https://docs.rs/cryptoballot)
+[![docs](https://docs.rs/cryptoballot/badge.svg)](https://cryptoballot.com/doc/cryptoballot/index.html)
 [![crates.io](https://meritbadge.herokuapp.com/cryptoballot)](https://crates.io/crates/cryptoballot)
 [![checks](https://github.com/cryptoballot/cryptoballot/workflows/checks/badge.svg)](https://github.com/cryptoballot/cryptoballot/actions)
 
