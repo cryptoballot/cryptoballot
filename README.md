@@ -28,17 +28,17 @@ Under active development. Not ready for production use!
 | Status¹ | Feature                           | Notes                                                          |
 | ------- | --------------------------------------- | -------------------------------------------------------------- |
 | ✓       | Migrate from Go to Rust                 | 🦀                                                             |
-| ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
-|         | Blind-Signing (ed25519 / schnorr)       | Will replace current RSA bling-signing                         |
 | ✓       | Distributed key generation / decryption | Uses [cryptid](https://github.com/eleanor-em/cryptid/).        |
+| ✓       | Blind-Signing (RSA)                     | Uses [RSA-FDH](https://github.com/phayes/rsa-fdh)              |
+|         | Blind-Signing ([schnorr](https://www.math.uni-frankfurt.de/~dmst/teaching/WS2013/Vorlesung/Pointcheval,Stern.pdf))       | Will replace current RSA blind-signing                         |
+| ✓       | Re-encryption mixnet                    | Provides coercion resistant anonymity. Uses [cryptid](https://github.com/eleanor-em/cryptid/).|
 | ✓       | Optional Blockchain backend             | Uses [Exonum](https://exonum.com/) |
 | ⚠       | Support all tally methods               | Uses [Tallystick](https://github.com/phayes/tallystick)        |
 | ⚠       | REST frontend                           |                                                                |
-| ✓       | Re-encryption mixnet                    | Provides coercion resistant anonymity. Uses [cryptid](https://github.com/eleanor-em/cryptid/).|
+| ⚠       | End-User Device Verification            | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 |         | TypeScript / JS Client Library          |                                                                |
 |         | Dart Client Library (Android)           |                                                                |
 |         | Swift Client Library (iOS)              |                                                                |
-| ⚠       | End-User Device Verification            | Uses [Benaoh Challenge](https://github.com/phayes/benaloh-challenge)|
 
 1. ✓ means done, ⚠ means in-progress, blank means not started but support is planned.
 
