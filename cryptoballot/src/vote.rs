@@ -6,7 +6,7 @@ use rand::{CryptoRng, RngCore};
 use std::convert::TryInto;
 use uuid::Uuid;
 
-/// Transaction 2: Vote
+/// Transaction 6: Vote
 ///
 /// A vote transaction is posted by the voter, and contains their encrypted vote for the contests defined by a ballot.
 ///

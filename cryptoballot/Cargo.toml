@@ -11,6 +11,7 @@ homepage = "https://cryptoballot.com"
 
 [dependencies]
 rand = '0.7.3'
+rand_core = "0.5.1"
 rand_chacha = '0.2.0'
 curve25519-dalek = "^3.0.0"
 ed25519-dalek = { version = "1.0.1", features = ["serde"] }

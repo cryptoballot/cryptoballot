@@ -12,6 +12,7 @@ pub struct MixConfig {
     pub batch_size: Option<u16>,
 }
 
+/// Transaction 8: Mix
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MixTransaction {
     pub id: Identifier,

@@ -1,0 +1,3 @@
+doc:
+	cargo doc -p cryptoballot -p cryptid -p ed25519-dalek -p rsa -p uuid -p x25519-dalek -p indexmap -p rand_core:0.5.1
+	cp -r target/doc/cryptoballot target/doc/cryptid target/doc/ed25519_dalek target/doc/rsa target/doc/uuid target/doc/x25519_dalek target/doc/indexmap target/doc/rand_core target/doc/*.css target/doc/*.png target/doc/*.js target/doc/*.svg target/doc/*.woff target/doc/*.woff2 ../cryptoballot.github.io/doc

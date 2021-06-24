@@ -4,7 +4,7 @@ use ed25519_dalek::PublicKey;
 use indexmap::IndexMap;
 use x25519_dalek as x25519;
 
-/// Transaction 2: KeyGenCommitmentTransaction
+/// Transaction 2: KeyGenCommitment
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyGenCommitmentTransaction {
     pub id: Identifier,
@@ -18,7 +18,7 @@ pub struct KeyGenCommitmentTransaction {
     pub commitment: KeygenCommitment,
 }
 
-/// Transaction 3: KeyGenShareTransaction
+/// Transaction 3: KeyGenShare
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyGenShareTransaction {
     pub id: Identifier,
@@ -31,7 +31,7 @@ pub struct KeyGenShareTransaction {
     pub shares: IndexMap<u8, EncryptedShare>,
 }
 
-/// Transaction 4: KeyGenPublicKeyTransaction
+/// Transaction 4: KeyGenPublicKey
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct KeyGenPublicKeyTransaction {
     pub id: Identifier,
@@ -43,7 +43,7 @@ pub struct KeyGenPublicKeyTransaction {
     pub public_key_proof: cryptid::threshold::PubkeyProof,
 }
 
-/// Transaction 4: PublicKeyConfirmationTransaction
+/// Transaction 5: EncryptionKey
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EncryptionKeyTransaction {
     pub id: Identifier,

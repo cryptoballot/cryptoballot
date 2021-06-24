@@ -24,8 +24,7 @@ use x25519_dalek as x25519;
 
 const ENCRYPT_NONCE_SIZE: usize = 12;
 
-/// A trustee is responsible for safeguarding a secret share (a portion of the secret vote decryption key),
-/// distributed by the election authority via Shamir Secret Sharing.
+/// A group of trustees collectively create the encryption-key, decrypt votes, and run the mixnet.
 ///
 /// Most elections will have a handful of trustees (between 3 and 30), with a quorum being set to about 2/3
 /// the total number of trustees. Any quorum of trustees may decrypt the votes.

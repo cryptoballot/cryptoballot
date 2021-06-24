@@ -5,7 +5,7 @@ use cryptid::threshold::Threshold;
 use ed25519_dalek::PublicKey;
 use std::collections::HashMap;
 
-/// Transaction 8: Partial Decryption
+/// Transaction 9: Partial Decryption
 ///
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PartialDecryptionTransaction {
@@ -172,7 +172,7 @@ impl CryptoBallotTransaction for PartialDecryptionTransaction {
     }
 }
 
-/// Transaction 9: Decryption
+/// Transaction 10: Decryption
 ///
 /// After a quorum of Trustees have posted a PartialDecryption transactions, any node may produce
 /// a DecryptionTransaction. One DecryptionTransaction is produced for each Vote transaction,

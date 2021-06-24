@@ -6,13 +6,20 @@
 //!
 //! ## Glossary:
 //!  - **Transaction 1: Election Transaction** - Defines an election, created by an election authority.
-//!  - **Transaction 2: Vote Transaction** - Posted by a voter to cast a vote in an election.
-//!  - **Transaction 3: Secret Share Transaction** - Posted by a trustee to allow votes to be decrypted and viewed.
-//!  - **Transaction 4: Decryption Transaction** - Decrypt a vote, allowing it to be tallied.
-//!  - **Election Authority** - Creates an Election Transaction and distributes the encryption secret to trustees via Shamir Secret Sharing.
-//!  - **Trustee** - Holds a vote-decryption secret share, posts Secret Share Transactions.
-//!  - **Authenticator** - Certifies that a voter can vote an election and ballot using blind-signing.
-//!  - **Ballot** - A set of contests for an election, usually restricted to a geographic area.
+//!  - **Transaction 2: KeyGenCommitment Transaction** - Trustee commitment to participate in this election.
+//!  - **Transaction 3: KeyGenShare Transaction** - Trustee Key Generation Share - needed to generate Election Encryption Key.
+//!  - **Transaction 4: KeyGenPublicKey Transaction** - Trustee's computation of the Election Encryption Key.
+//!  - **Transaction 5: EncryptionKey Transaction** - The Encryption Key that will be used by voters to encrypt their vote.
+//!  - **Transaction 6: Vote Transaction** - Voter's encrypted vote.
+//!  - **Transaction 7: VotingEnd Transaction** - Denotes the end of voting.
+//!  - **Transaction 8: Mix Transaction** - Shuffled and mixed vote for a single contest, created by a trustee.
+//!  - **Transaction 9: PartialDecryption Transaction** - A partially decrypted vote from a trustee.
+//!  - **Transaction 10: Decryption Transaction** - A fully decrypted vote .
+//!  - **Election Authority** - Creates an Election Transaction.
+//!  - **Trustee** - A group of trustees collectively create the encryption-key, decrypt votes, and run the mixnet. Generally ⅔ of trustees are required to be honest for the CryptoBallot protocol to function.
+//!  - **Authenticator** - Certifies that a voter can vote an election and ballot.
+//!  - **Contest** - A single question that voters are voting on.
+//!  - **Ballot** - A set of contests, usually restricted to a geographic area. A single contest can exist across multiple ballots.
 
 #![feature(is_sorted)]
 
@@ -20,7 +27,12 @@
 extern crate serde;
 
 pub extern crate cryptid;
+pub extern crate ed25519_dalek;
+pub extern crate indexmap;
+pub extern crate rand_core;
+pub extern crate rsa;
 pub extern crate uuid;
+pub extern crate x25519_dalek;
 
 mod authn;
 mod decryption;
