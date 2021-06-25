@@ -911,8 +911,8 @@ fn end_to_end_election_with_mix() {
     let decrypted_tx_1 = DecryptionTransaction::new(
         election.id,
         shuffle_tx_2.id(),
-        upstream_index,
         0,
+        upstream_index,
         vec![trustee_1.index, trustee_2.index],
         decrypted_1,
     );
@@ -993,8 +993,8 @@ fn end_to_end_election_with_mix() {
     let decrypted_tx_2 = DecryptionTransaction::new(
         election.id,
         shuffle_tx_2.id(),
-        upstream_index,
         0,
+        upstream_index,
         vec![trustee_1.index, trustee_2.index],
         decrypted_2,
     );

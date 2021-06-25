@@ -66,24 +66,8 @@ impl PartialDecryptionTransaction {
         trustee_index: u8,
         contest_index: u32,
     ) -> Identifier {
-        let upstream_index = upstream_index.to_be_bytes();
-        let mut unique_info = [0; 16];
-
-        unique_info[0] = upstream_id.transaction_type.into(); // 1 byte
-
-        if upstream_id.transaction_type == TransactionType::Mix {
-            unique_info[1..=12].copy_from_slice(&upstream_id.unique_info[..12]); // 12 bytes
-            unique_info[13..=14].copy_from_slice(&upstream_index); // 2 bytes
-        }
-        if upstream_id.transaction_type == TransactionType::Vote {
-            let contest_index = contest_index.to_be_bytes();
-            unique_info[1..=4].copy_from_slice(&contest_index[..]);
-
-            // 10 bytes
-            unique_info[5..=14].copy_from_slice(&upstream_id.unique_info[..10]);
-        }
-
-        unique_info[15] = trustee_index; // 1 byte
+        let unique_info =
+            build_unique_info(upstream_id, contest_index, upstream_index, trustee_index);
 
         Identifier::new(
             election_id,
@@ -200,6 +184,7 @@ pub struct DecryptionTransaction {
     /// If we are using a mixnet, the index in the reencrypted field, or `0` if upstream is a vote transaction
     pub upstream_index: u16,
 
+    /// The contest this decrypted vote is for
     pub contest_index: u32,
 
     /// The trustees (as defined by index) who's PartialDecryption transactions were used to produce this full decryption
@@ -215,19 +200,20 @@ impl DecryptionTransaction {
     pub fn new(
         election_id: Identifier,
         upstream_id: Identifier,
-        upstream_index: u16,
         contest_index: u32,
+        upstream_index: u16,
         trustees: Vec<u8>,
         decrypted_vote: Vec<u8>,
     ) -> DecryptionTransaction {
         debug_assert!(election_id.election_id == upstream_id.election_id);
+        // TODO: Debug asserts: upstream_id composition matches contest_index and upstream_index
 
         DecryptionTransaction {
-            id: Self::build_id(election_id, upstream_id, upstream_index, contest_index),
+            id: Self::build_id(election_id, upstream_id, contest_index, upstream_index),
             election_id,
             upstream_id,
-            upstream_index,
             contest_index,
+            upstream_index,
             trustees,
             decrypted_vote,
         }
@@ -236,14 +222,11 @@ impl DecryptionTransaction {
     pub fn build_id(
         election_id: Identifier,
         upstream_id: Identifier,
+        contest_index: u32,
         upstream_index: u16,
-        _contest_index: u32,
     ) -> Identifier {
-        // TODO: Review code to make sure this is correct against both the mix ID and the vote ID
-        // TODO: Use the contest index
-        let upstream_index = upstream_index.to_be_bytes();
-        let mut unique_info = upstream_id.unique_info;
-        unique_info[14..16].copy_from_slice(&upstream_index);
+        // The identifier is just the same as the partial-decryptions, except doesn't have trustees
+        let unique_info = build_unique_info(upstream_id, contest_index, upstream_index, 0);
         Identifier::new(election_id, TransactionType::Decryption, Some(unique_info))
     }
 }
@@ -276,8 +259,8 @@ impl CryptoBallotTransaction for DecryptionTransaction {
         if Self::build_id(
             self.election_id,
             self.upstream_id,
-            self.upstream_index,
             self.contest_index,
+            self.upstream_index,
         ) != self.id
         {
             return Err(ValidationError::IdentifierBadComposition);
@@ -441,4 +424,40 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
     };
 
     Ok(ciphertext)
+}
+
+// Both partial-decryption and decryption transaction build their unique info the same way
+fn build_unique_info(
+    upstream_id: Identifier,
+    contest_index: u32,
+    upstream_index: u16,
+    trustee_index: u8,
+) -> [u8; 16] {
+    let upstream_index = upstream_index.to_be_bytes();
+    let mut unique_info = [0; 16];
+
+    unique_info[0] = upstream_id.transaction_type.into(); // 1 byte
+
+    if upstream_id.transaction_type == TransactionType::Mix {
+        unique_info[1..=12].copy_from_slice(&upstream_id.unique_info[..12]); // 12 bytes
+        unique_info[13..=14].copy_from_slice(&upstream_index); // 2 bytes
+        unique_info[15] = trustee_index; // 1 byte
+
+        // Result:        [                  Lifted From the Mix ID                          ]
+        // <upstream-type>[<contest-index><batch-index><mix-index><trustee-index><null-bytes>]<upstream-index><trustee-index>
+        //     1 byte          4 bytes      4 bytes     1 byte      1 byte         2 bytes       2 bytes        1 byte
+    }
+    if upstream_id.transaction_type == TransactionType::Vote {
+        let contest_index = contest_index.to_be_bytes();
+        unique_info[1..=4].copy_from_slice(&contest_index[..]); // 4 bytes
+
+        unique_info[5..=14].copy_from_slice(&upstream_id.unique_info[..10]); // 10 bytes
+        unique_info[15] = trustee_index; // 1 byte
+
+        // Result:
+        // <upstream-type><contest-index><voter-public-key><trustee-index>
+        //     1 byte         4 bytes        10 bytes          1 byte
+    }
+
+    unique_info
 }
