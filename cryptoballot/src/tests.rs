@@ -777,13 +777,20 @@ fn end_to_end_election_with_mix() {
     voting_end_tx.validate(&store).unwrap();
     store.set(voting_end_tx.clone().into());
 
+    let mut votes = vec![vote.clone(), vote_2.clone()];
+    votes.sort_by(|v1, v2| v1.id().cmp(&v2.id()));
+
+    let vote_ciphertexts = votes
+        .iter()
+        .map(|v| v.tx.encrypted_votes[0].ciphertext.clone())
+        .collect();
+
+    let vote_ids = votes.iter().map(|v| v.id()).collect();
+
     // Generate the first mix transaction
     let (shuffle_1, proof) = mix(
         &mut test_rng,
-        vec![
-            vote.encrypted_votes[0].ciphertext.clone(),
-            vote_2.encrypted_votes[0].ciphertext.clone(),
-        ],
+        vote_ciphertexts,
         &encryption_key_tx.encryption_key,
         trustee_1.index,
         0,
@@ -791,9 +798,6 @@ fn end_to_end_election_with_mix() {
         0,
     )
     .unwrap();
-
-    let mut vote_ids = vec![vote.id, vote_2.id];
-    vote_ids.sort();
 
     let shuffle_tx_1 = MixTransaction::new(
         election.id,
