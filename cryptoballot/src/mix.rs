@@ -213,7 +213,12 @@ impl CryptoBallotTransaction for MixTransaction {
             let mut ciphertexts = Vec::with_capacity(self.vote_ids.len());
             for vote in votes {
                 let vote: VoteTransaction = vote.into();
-                ciphertexts.push(vote.encrypted_vote);
+
+                for encrypted_vote in vote.encrypted_votes {
+                    if encrypted_vote.contest_index == self.contest_index {
+                        ciphertexts.push(encrypted_vote.ciphertext);
+                    }
+                }
             }
 
             ciphertexts

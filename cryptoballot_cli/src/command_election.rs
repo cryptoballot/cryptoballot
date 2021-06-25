@@ -1,3 +1,7 @@
+use cryptoballot::indexmap::IndexMap;
+use cryptoballot::Ballot;
+use cryptoballot::Contest;
+use cryptoballot::ContestType;
 use cryptoballot::ElectionTransaction;
 use cryptoballot::MixConfig;
 use cryptoballot::Signed;
@@ -28,7 +32,24 @@ pub fn command_election_generate(uri: &str, secret_key: &SecretKey, post: bool) 
 
     // Create an election transaction with a single ballot
     let mut election = ElectionTransaction::new(public_key.clone());
-    election.ballots = vec![uuid::Uuid::nil()];
+
+    let ballot = Ballot {
+        id: "BALLOT1".to_string(),
+        contests: vec![0],
+        properties: IndexMap::new(),
+    };
+
+    let contest = Contest {
+        index: 0,
+        contest_type: ContestType::Plurality,
+        write_in: true,
+        num_winners: 1,
+        candidates: vec![],
+        properties: IndexMap::new(),
+    };
+
+    election.ballots = vec![ballot];
+    election.contests = vec![contest];
     election.authenticators_threshold = 0;
 
     let trustee = Trustee {

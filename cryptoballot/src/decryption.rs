@@ -18,6 +18,9 @@ pub struct PartialDecryptionTransaction {
     /// If this is from a mix, the index of the ciphertext in the `mixed_ciphertexts` field, or `0` if from a vote transaction
     pub upstream_index: u16,
 
+    /// The contest index this decryption is for
+    pub contest_index: u32,
+
     pub trustee_index: u8,
 
     #[serde(with = "EdPublicKeyHex")]
@@ -33,6 +36,7 @@ impl PartialDecryptionTransaction {
         upstream_id: Identifier,
         upstream_index: u16,
         trustee_index: u8,
+        contest_index: u32,
         trustee_public_key: PublicKey,
         partial_decryption: DecryptShare,
     ) -> Self {
@@ -42,11 +46,13 @@ impl PartialDecryptionTransaction {
                 upstream_id,
                 upstream_index,
                 trustee_index,
+                contest_index,
             ),
             election_id,
             upstream_id,
             upstream_index,
             trustee_index,
+            contest_index,
             trustee_public_key,
             partial_decryption,
         }
@@ -58,6 +64,7 @@ impl PartialDecryptionTransaction {
         upstream_id: Identifier,
         upstream_index: u16,
         trustee_index: u8,
+        contest_index: u32,
     ) -> Identifier {
         let upstream_index = upstream_index.to_be_bytes();
         let mut unique_info = [0; 16];
@@ -69,8 +76,11 @@ impl PartialDecryptionTransaction {
             unique_info[13..=14].copy_from_slice(&upstream_index); // 2 bytes
         }
         if upstream_id.transaction_type == TransactionType::Vote {
-            // 14 bytes
-            unique_info[1..=14].copy_from_slice(&upstream_id.unique_info[..14]);
+            let contest_index = contest_index.to_be_bytes();
+            unique_info[1..=4].copy_from_slice(&contest_index[..]);
+
+            // 10 bytes
+            unique_info[5..=14].copy_from_slice(&upstream_id.unique_info[..10]);
         }
 
         unique_info[15] = trustee_index; // 1 byte
@@ -126,6 +136,7 @@ impl CryptoBallotTransaction for PartialDecryptionTransaction {
             self.upstream_id,
             self.upstream_index,
             trustee.index,
+            self.contest_index,
         ) != self.id
         {
             return Err(ValidationError::IdentifierBadComposition);
@@ -144,6 +155,7 @@ impl CryptoBallotTransaction for PartialDecryptionTransaction {
             store,
             self.upstream_id,
             self.upstream_index,
+            self.contest_index,
             &election.mix_config,
         )?;
 
@@ -188,6 +200,8 @@ pub struct DecryptionTransaction {
     /// If we are using a mixnet, the index in the reencrypted field, or `0` if upstream is a vote transaction
     pub upstream_index: u16,
 
+    pub contest_index: u32,
+
     /// The trustees (as defined by index) who's PartialDecryption transactions were used to produce this full decryption
     pub trustees: Vec<u8>,
 
@@ -202,16 +216,18 @@ impl DecryptionTransaction {
         election_id: Identifier,
         upstream_id: Identifier,
         upstream_index: u16,
+        contest_index: u32,
         trustees: Vec<u8>,
         decrypted_vote: Vec<u8>,
     ) -> DecryptionTransaction {
         debug_assert!(election_id.election_id == upstream_id.election_id);
 
         DecryptionTransaction {
-            id: Self::build_id(election_id, upstream_id, upstream_index),
+            id: Self::build_id(election_id, upstream_id, upstream_index, contest_index),
             election_id,
             upstream_id,
             upstream_index,
+            contest_index,
             trustees,
             decrypted_vote,
         }
@@ -221,8 +237,10 @@ impl DecryptionTransaction {
         election_id: Identifier,
         upstream_id: Identifier,
         upstream_index: u16,
+        _contest_index: u32,
     ) -> Identifier {
         // TODO: Review code to make sure this is correct against both the mix ID and the vote ID
+        // TODO: Use the contest index
         let upstream_index = upstream_index.to_be_bytes();
         let mut unique_info = upstream_id.unique_info;
         unique_info[14..16].copy_from_slice(&upstream_index);
@@ -255,7 +273,13 @@ impl CryptoBallotTransaction for DecryptionTransaction {
     /// Validate the transaction
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
         // Check the ID
-        if Self::build_id(self.election_id, self.upstream_id, self.upstream_index) != self.id {
+        if Self::build_id(
+            self.election_id,
+            self.upstream_id,
+            self.upstream_index,
+            self.contest_index,
+        ) != self.id
+        {
             return Err(ValidationError::IdentifierBadComposition);
         }
 
@@ -266,6 +290,7 @@ impl CryptoBallotTransaction for DecryptionTransaction {
             store,
             self.upstream_id,
             self.upstream_index,
+            self.contest_index,
             &election.mix_config,
         )?;
 
@@ -289,6 +314,7 @@ impl CryptoBallotTransaction for DecryptionTransaction {
                 self.upstream_id,
                 self.upstream_index,
                 trustee.index,
+                self.contest_index,
             );
             let partial = store.get_partial_decryption(partial_id)?;
 
@@ -368,6 +394,7 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
     store: &S,
     upstream_id: Identifier,
     upstream_index: u16,
+    contest_index: u32,
     mix_config: &Option<MixConfig>,
 ) -> Result<Ciphertext, ValidationError> {
     // Get the ciphertext either from the vote or the mix
@@ -380,10 +407,21 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
                 return Err(ValidationError::InvalidUpstreamIndex);
             }
 
-            store.get_vote(upstream_id)?.tx.encrypted_vote
+            let vote = store.get_vote(upstream_id)?.tx;
+
+            for encrypted_vote in vote.encrypted_votes {
+                if encrypted_vote.contest_index == contest_index {
+                    return Ok(encrypted_vote.ciphertext);
+                }
+            }
+            return Err(ValidationError::InvalidUpstreamContestIndex);
         }
         TransactionType::Mix => {
             let mix = store.get_mix(upstream_id)?.tx;
+
+            if mix.contest_index != contest_index {
+                return Err(ValidationError::InvalidUpstreamContestIndex);
+            }
 
             // Check mix config
             if mix_config.is_none() {

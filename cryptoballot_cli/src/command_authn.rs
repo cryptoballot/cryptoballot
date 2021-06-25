@@ -27,7 +27,7 @@ pub fn command_authn_generate(matches: &clap::ArgMatches) {
 
     // For now just use the nil ballot id
     // TODO: Change this when we have ballot and contest system in place
-    let ballot_ids = vec![uuid::Uuid::nil()];
+    let ballot_ids = vec!["TEST".to_string()];
     let (authn, secrets) = Authenticator::new(keysize, &ballot_ids).unwrap();
 
     let mut file = File::create(&secret_location).unwrap_or_else(|e| {

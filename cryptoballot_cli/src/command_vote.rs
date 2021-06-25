@@ -1,3 +1,4 @@
+use cryptoballot::EncryptedVote;
 use cryptoballot::EncryptionKeyTransaction;
 use cryptoballot::Signed;
 use cryptoballot::SignedTransaction;
@@ -64,8 +65,11 @@ pub fn command_vote_generate(
     let vote = VoteTransaction {
         id: VoteTransaction::build_id(election_id, &public_key),
         election: election_id,
-        ballot_id: uuid::Uuid::nil(),
-        encrypted_vote,
+        ballot_id: "BALLOT1".to_string(),
+        encrypted_votes: vec![EncryptedVote {
+            contest_index: 0,
+            ciphertext: encrypted_vote,
+        }],
         anonymous_key: public_key,
         authentication: vec![],
     };

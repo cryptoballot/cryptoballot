@@ -1,10 +1,9 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
+use indexmap::IndexMap;
 use rsa::{RSAPrivateKey, RSAPublicKey};
 use rsa_fdh::blind;
 use sha2::Sha256;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 /// RSA Public Key for blind signing
@@ -37,8 +36,7 @@ impl AsRef<RSAPublicKey> for AuthPublicKey {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Authenticator {
     pub id: uuid::Uuid,
-
-    pub public_keys: BTreeMap<Uuid, AuthPublicKey>,
+    pub public_keys: IndexMap<String, AuthPublicKey>,
 }
 
 impl Authenticator {
@@ -50,8 +48,8 @@ impl Authenticator {
     /// Doing so can result in secret key disclosure.
     pub fn new(
         keysize: usize,
-        ballot_ids: &[Uuid],
-    ) -> Result<(Self, HashMap<Uuid, RSAPrivateKey>), Error> {
+        ballot_ids: &[String],
+    ) -> Result<(Self, IndexMap<String, RSAPrivateKey>), Error> {
         // If we are in release mode, make sure we are at least 2048 bits
         #[cfg(not(debug_assertions))]
         assert!(
@@ -61,15 +59,15 @@ impl Authenticator {
 
         // Create the keys
         let mut rng = rand::rngs::OsRng {};
-        let mut public_keys = BTreeMap::<Uuid, AuthPublicKey>::new();
-        let mut secret_keys = HashMap::<Uuid, RSAPrivateKey>::with_capacity(ballot_ids.len());
+        let mut public_keys = IndexMap::<String, AuthPublicKey>::new();
+        let mut secret_keys = IndexMap::<String, RSAPrivateKey>::with_capacity(ballot_ids.len());
 
         for ballot_id in ballot_ids {
             let secret = RSAPrivateKey::new(&mut rng, keysize)?;
             let public: RSAPublicKey = secret.clone().into();
 
-            public_keys.insert(*ballot_id, AuthPublicKey(public));
-            secret_keys.insert(*ballot_id, secret);
+            public_keys.insert(ballot_id.clone(), AuthPublicKey(public));
+            secret_keys.insert(ballot_id.clone(), secret);
         }
 
         let authenticator = Authenticator {
@@ -103,18 +101,18 @@ impl Authenticator {
     pub fn verify(
         &self,
         election_id: Identifier,
-        ballot_id: Uuid,
+        ballot_id: &str,
         anonymous_key: &PublicKey,
         signature: &[u8],
     ) -> Result<(), ValidationError> {
         let package = AuthPackage {
             election_id,
-            ballot_id,
+            ballot_id: ballot_id.to_string(),
             anonymous_key: anonymous_key.clone(),
         };
         let public_key = self
             .public_keys
-            .get(&ballot_id)
+            .get(ballot_id)
             .ok_or(ValidationError::BallotDoesNotExist)?;
 
         let digest = package.digest(&public_key.0);
@@ -133,13 +131,13 @@ impl Authenticator {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthPackage {
     election_id: Identifier,
-    ballot_id: Uuid,
+    ballot_id: String,
     anonymous_key: PublicKey,
 }
 
 impl AuthPackage {
     /// Create a new authentication package
-    pub fn new(election_id: Identifier, ballot_id: Uuid, anonymous_key: PublicKey) -> Self {
+    pub fn new(election_id: Identifier, ballot_id: String, anonymous_key: PublicKey) -> Self {
         AuthPackage {
             election_id,
             ballot_id,
@@ -202,27 +200,27 @@ mod tests {
 
     use crate::*;
     use rand::Rng;
-    use uuid::Uuid;
 
     #[test]
     fn test_blind_signing() {
         let mut rng = rand::thread_rng();
         let election_id = ElectionTransaction::build_id(rng.gen());
-        let ballot_id = Uuid::new_v4();
+        let ballot_id = "TEST";
         let (_voter_secret, voter_public) = generate_keypair();
 
         // Create authenticator - using insecure 256 bit key for testing purposes
-        let (authenticator, auth_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
+        let (authenticator, auth_secrets) =
+            Authenticator::new(256, &vec![ballot_id.to_string()]).unwrap();
 
         // Create the auth package
-        let auth_package = AuthPackage::new(election_id, ballot_id, voter_public);
+        let auth_package = AuthPackage::new(election_id, ballot_id.to_string(), voter_public);
 
         // Blind the auth package
-        let public_key = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
+        let public_key = authenticator.public_keys.get(ballot_id).unwrap().as_ref();
         let (blinded, unblinder) = auth_package.blind(&public_key);
 
         // Get it signed by the authenticator and unblind it
-        let auth_secret = auth_secrets.get(&ballot_id).unwrap();
+        let auth_secret = auth_secrets.get(ballot_id).unwrap();
         let auth = authenticator.authenticate(&auth_secret, &blinded);
         let auth = auth.unblind(public_key, unblinder);
 

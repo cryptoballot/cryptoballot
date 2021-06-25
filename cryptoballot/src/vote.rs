@@ -4,7 +4,6 @@ use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 use rand::{CryptoRng, RngCore};
 use std::convert::TryInto;
-use uuid::Uuid;
 
 /// Transaction 6: Vote
 ///
@@ -18,9 +17,9 @@ use uuid::Uuid;
 pub struct VoteTransaction {
     pub id: Identifier,
     pub election: Identifier,
-    pub ballot_id: Uuid,
+    pub ballot_id: String,
 
-    pub encrypted_vote: Ciphertext,
+    pub encrypted_votes: Vec<EncryptedVote>,
 
     /// The public key used to anonymized the voter.
     /// The voter should not reveal that they own this key - doing so will leak their real identity.
@@ -31,12 +30,18 @@ pub struct VoteTransaction {
     pub authentication: Vec<Authentication>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EncryptedVote {
+    pub contest_index: u32,
+    pub ciphertext: Ciphertext,
+}
+
 impl VoteTransaction {
     /// Create a new vote transaction.
     pub fn new(
         election_id: Identifier,
-        ballot_id: Uuid,
-        encrypted_vote: Ciphertext,
+        ballot_id: String,
+        encrypted_votes: Vec<EncryptedVote>,
     ) -> (Self, SecretKey) {
         let (secret_key, public_key) = generate_keypair();
 
@@ -44,7 +49,7 @@ impl VoteTransaction {
             id: Self::build_id(election_id, &public_key),
             election: election_id,
             ballot_id: ballot_id,
-            encrypted_vote,
+            encrypted_votes,
             anonymous_key: public_key,
             authentication: vec![],
         };
@@ -87,11 +92,14 @@ impl CryptoBallotTransaction for VoteTransaction {
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
         let election = store.get_election(self.election)?;
 
+        // TODO: Anonymous key may not share the first 80 bits (10 bytes) with any other vote transaction
+        //       Probability is EXCEEDINGLY rare (About 1 in a billion billion), but should be checked
+
         // TODO: check self.id.election_id vs self.election_id
         if self.election != election.id {
             return Err(ValidationError::ElectionMismatch);
         }
-        if election.get_ballot(self.ballot_id).is_none() {
+        if election.get_ballot(&self.ballot_id).is_none() {
             return Err(ValidationError::BallotDoesNotExist);
         }
 
@@ -116,7 +124,7 @@ impl CryptoBallotTransaction for VoteTransaction {
             authenticator
                 .verify(
                     election.id,
-                    self.ballot_id,
+                    &self.ballot_id,
                     &self.anonymous_key,
                     &authn.signature,
                 )

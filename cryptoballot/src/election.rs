@@ -1,5 +1,6 @@
 use crate::*;
 use ed25519_dalek::PublicKey;
+use indexmap::IndexMap;
 use rand::Rng;
 use uuid::Uuid;
 
@@ -17,10 +18,6 @@ pub struct ElectionTransaction {
     #[serde(with = "EdPublicKeyHex")]
     pub authority_public: PublicKey,
 
-    /// List of ballots that can be cast in this election
-    // TODO: Define ballot struct
-    pub ballots: Vec<uuid::Uuid>,
-
     /// List of trustees that have been given a secret key share
     pub trustees: Vec<Trustee>,
 
@@ -37,6 +34,18 @@ pub struct ElectionTransaction {
 
     /// Mixnet configuration, None implies no mix-net
     pub mix_config: Option<MixConfig>,
+
+    /// List of ballots that can be cast in this election
+    pub ballots: Vec<Ballot>,
+
+    /// List of contests in this election
+    pub contests: Vec<Contest>,
+
+    /// Application specific properties.
+    ///
+    /// Hashmaps are not allowed because their unstable ordering leads to non-determinism.
+    #[serde(default)]
+    pub properties: IndexMap<String, serde_json::Value>,
 }
 
 impl ElectionTransaction {
@@ -49,12 +58,14 @@ impl ElectionTransaction {
         ElectionTransaction {
             id: Self::build_id(csprng.gen()),
             authority_public: authority_public,
-            ballots: vec![],
             trustees: vec![],
             trustees_threshold: 1,
             authenticators: vec![],
             authenticators_threshold: 1,
             mix_config: None,
+            ballots: vec![],
+            contests: vec![],
+            properties: IndexMap::new(),
         }
     }
 
@@ -65,17 +76,6 @@ impl ElectionTransaction {
             transaction_type: TransactionType::Election,
             unique_info: [0; 16],
         }
-    }
-
-    // TODO: return a ballot struct when we have it defined
-    /// Get a ballot with the given ID
-    pub fn get_ballot(&self, ballot_id: Uuid) -> Option<()> {
-        for ballot in self.ballots.iter() {
-            if ballot_id == *ballot {
-                return Some(());
-            }
-        }
-        None
     }
 
     /// Get an authenticator with the given ID
@@ -93,6 +93,15 @@ impl ElectionTransaction {
         for trustee in self.trustees.iter() {
             if trustee_index == trustee.index {
                 return Some(trustee);
+            }
+        }
+        None
+    }
+
+    pub fn get_ballot(&self, ballot_id: &str) -> Option<&Ballot> {
+        for ballot in &self.ballots {
+            if ballot.id == ballot_id {
+                return Some(ballot);
             }
         }
         None
@@ -152,8 +161,15 @@ impl CryptoBallotTransaction for ElectionTransaction {
         // TODO: check parsing of public key
         // TODO: check that we have at least 1 trustee
         // TODO: Hard Maximum of 255 trustees (index needs to fit in a non-zero u8)
-        // TODO: Sanity check ballot-ids in authenticators and ballots listed in election
+        // TODO: Sanity check ballot-ids in authenticators
         // TODO: MixConfig validation: non-zero on all three params
+        // TODO: Check that properties do not contain hashmaps (due to unstable ordering) (including in ballots, contests, and candidates)
+        // TODO: Check that ballots and contests are consistent and well formed
+        //       All contests must exist in at least one ballot
+        //       All ballot contests must exist
+        //       All contest and ballots have a unique ID
+        //       All contests have a unique index
+        //       All candidates have a unique index within their contest
 
         Ok(())
     }
@@ -175,19 +191,34 @@ mod tests {
         let (authority_secret, authority_public) = generate_keypair();
 
         // Create a ballot (TODO: make this a proper struct)
-        let ballot_id = Uuid::new_v4();
+        let ballot = Ballot {
+            id: "TEST".to_string(),
+            contests: vec![0],
+            properties: IndexMap::new(),
+        };
+
+        let contest = Contest {
+            index: 0,
+            contest_type: ContestType::Plurality,
+            num_winners: 1,
+            write_in: true,
+            candidates: vec![],
+            properties: IndexMap::new(),
+        };
 
         // Create an authenticator
-        let (authenticator, authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
-        let _authn_secret = authn_secrets.get(&ballot_id).unwrap();
-        let _authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
+        let (authenticator, authn_secrets) =
+            Authenticator::new(256, &vec!["TEST".to_string()]).unwrap();
+        let _authn_secret = authn_secrets.get(&ballot.id).unwrap();
+        let _authn_public = authenticator.public_keys.get(&ballot.id).unwrap().as_ref();
 
         // Create 1 trustee
         let (trustee, _trustee_secret) = Trustee::new(1, 1, 1);
 
         // Create an election transaction with a single ballot
         let mut election = ElectionTransaction::new(authority_public);
-        election.ballots = vec![ballot_id];
+        election.ballots = vec![ballot];
+        election.contests = vec![contest];
 
         // Validation should fail without authenticators
         assert!(election.validate_tx(&store).is_err());
@@ -223,7 +254,6 @@ mod tests {
 
         // Getting non-existent things shouldn't work
         let some_uuid = Uuid::new_v4();
-        assert!(election.get_ballot(some_uuid).is_none());
         assert!(election.get_authenticator(some_uuid).is_none());
         assert!(election.get_trustee(0).is_none());
         assert!(election.get_trustee(2).is_none());

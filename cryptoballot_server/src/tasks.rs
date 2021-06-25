@@ -249,7 +249,12 @@ fn process_voting_end<S: Store>(
                     .collect();
 
                 let vote_ids = vote_txs.iter().map(|tx| tx.id).collect();
-                let ciphertexts = vote_txs.into_iter().map(|tx| tx.encrypted_vote).collect();
+
+                // TODO: Process ALL contests, not just contest 0
+                let ciphertexts = vote_txs
+                    .into_iter()
+                    .map(|tx| tx.encrypted_votes[0].ciphertext.clone())
+                    .collect();
 
                 // TODO: This could be expensive, so don't do it on the consensus thread
                 let mut rng = rand::thread_rng();
@@ -259,7 +264,7 @@ fn process_voting_end<S: Store>(
                     &encryption_key_tx.encryption_key,
                     trustee.index,
                     0,
-                    0,
+                    0, // TODO: For realsies
                     0,
                 )?;
 
@@ -268,7 +273,7 @@ fn process_voting_end<S: Store>(
                     None,
                     &trustee,
                     0,
-                    0,
+                    0, // TODO: For realsies
                     0,
                     vote_ids,
                     mixed,
@@ -387,7 +392,20 @@ fn process_partial_decryption<S: Store>(
 
             // Get upstream ciphertext
             let ciphertext = match partial_tx.upstream_id.transaction_type {
-                TransactionType::Vote => store.get_vote(partial_tx.upstream_id)?.tx.encrypted_vote,
+                TransactionType::Vote => {
+                    let vote = store.get_vote(partial_tx.upstream_id)?.tx;
+                    let mut ciphertext = None;
+                    for encrypted_vote in vote.encrypted_votes {
+                        if encrypted_vote.contest_index == partial_tx.contest_index {
+                            ciphertext = Some(encrypted_vote.ciphertext);
+                            break;
+                        }
+                    }
+                    match ciphertext {
+                        Some(ct) => ct,
+                        None => return Err(Error::CannotFindContet(partial_tx.contest_index)),
+                    }
+                }
                 TransactionType::Mix => {
                     let mut mix = store.get_mix(partial_tx.upstream_id)?.tx;
                     mix.mixed_ciphertexts
@@ -418,6 +436,7 @@ fn process_partial_decryption<S: Store>(
                 election_tx.id,
                 partial_tx.upstream_id,
                 partial_tx.upstream_index,
+                0, // TODO: Use a real contest index
                 trustee_indexs,
                 decrypted,
             );
@@ -496,6 +515,7 @@ fn produce_partials<S: Store>(
                     mix_tx.id,
                     upstream_index as u16,
                     trustee.index,
+                    0, // TODO: Use a real contest index
                     public_key,
                     partial_decrypt,
                 );
@@ -516,7 +536,7 @@ fn produce_partials<S: Store>(
                     &x25519_public_keys,
                     &commitments,
                     &shares,
-                    &vote_tx.encrypted_vote,
+                    &vote_tx.encrypted_votes[0].ciphertext, // TODO: Do it for real
                     election_tx.id,
                 )?;
                 let partial_decrypt_tx = PartialDecryptionTransaction::new(
@@ -524,6 +544,7 @@ fn produce_partials<S: Store>(
                     vote_tx.id,
                     0,
                     trustee.index,
+                    0, // TODO: Use a real contest index
                     public_key,
                     partial_decrypt,
                 );

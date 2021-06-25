@@ -35,6 +35,7 @@ pub extern crate uuid;
 pub extern crate x25519_dalek;
 
 mod authn;
+mod ballot;
 mod decryption;
 mod election;
 mod error;
@@ -49,6 +50,7 @@ mod vote;
 mod voting_end;
 
 pub use authn::*;
+pub use ballot::*;
 pub use decryption::*;
 pub use election::*;
 pub use error::*;

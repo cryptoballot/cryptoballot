@@ -1,6 +1,5 @@
 use super::*;
 use rand::SeedableRng;
-use uuid::Uuid;
 
 #[test]
 fn end_to_end_election_no_mix() {
@@ -10,13 +9,29 @@ fn end_to_end_election_no_mix() {
     // Create election authority public and private key
     let (authority_secret, authority_public) = generate_keypair();
 
-    // Create a ballot (TODO: make this a proper struct)
-    let ballot_id = Uuid::new_v4();
+    // Create a ballot
+    let ballot_id = "TEST";
+
+    let ballot = Ballot {
+        id: ballot_id.to_string(),
+        contests: vec![0],
+        properties: indexmap::IndexMap::new(),
+    };
+
+    let contest = Contest {
+        index: 0,
+        contest_type: ContestType::Plurality,
+        write_in: true,
+        num_winners: 1,
+        candidates: vec![],
+        properties: indexmap::IndexMap::new(),
+    };
 
     // Create an authenticator
-    let (authenticator, authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
-    let authn_secret = authn_secrets.get(&ballot_id).unwrap();
-    let authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
+    let (authenticator, authn_secrets) =
+        Authenticator::new(256, &vec![ballot_id.to_string()]).unwrap();
+    let authn_secret = authn_secrets.get(ballot_id).unwrap();
+    let authn_public = authenticator.public_keys.get(ballot_id).unwrap().as_ref();
 
     // Create 3 trustees
     let (trustee_1, trustee_1_secret) = Trustee::new(1, 3, 2);
@@ -25,7 +40,8 @@ fn end_to_end_election_no_mix() {
 
     // Create an election transaction with a single ballot
     let mut election = ElectionTransaction::new(authority_public);
-    election.ballots = vec![ballot_id];
+    election.ballots = vec![ballot];
+    election.contests = vec![contest];
     election.authenticators = vec![authenticator.clone()];
     election.trustees = vec![trustee_1.clone(), trustee_2.clone(), trustee_3.clone()];
     election.trustees_threshold = 2;
@@ -252,18 +268,24 @@ fn end_to_end_election_no_mix() {
     let secret_vote = "Barak Obama";
 
     // Encrypt the secret vote
-    let encrypted_vote = encrypt_vote(
+    let vote_ciphertext = encrypt_vote(
         &encryption_key_tx.encryption_key,
         secret_vote.as_bytes(),
         &mut test_rng,
     )
     .unwrap();
 
+    let encrypted_vote = EncryptedVote {
+        contest_index: 0,
+        ciphertext: vote_ciphertext,
+    };
+
     // Generate an empty vote transaction
-    let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id, encrypted_vote);
+    let (mut vote, voter_secret) =
+        VoteTransaction::new(election.id(), ballot_id.to_string(), vec![encrypted_vote]);
 
     // Create an auth package and blind it
-    let auth_package = AuthPackage::new(election.id(), ballot_id, vote.anonymous_key);
+    let auth_package = AuthPackage::new(election.id(), ballot_id.to_string(), vote.anonymous_key);
     let (blinded_auth_package, unblinder) = auth_package.blind(&authn_public);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)
@@ -297,7 +319,7 @@ fn end_to_end_election_no_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_1_shares,
-            &vote.encrypted_vote,
+            &vote.encrypted_votes[0].ciphertext,
             election.id,
         )
         .unwrap();
@@ -306,6 +328,7 @@ fn end_to_end_election_no_mix() {
         vote.id,
         0,
         trustee_1.index,
+        0,
         trustee_1.public_key,
         partial_decrypt_1,
     );
@@ -320,7 +343,7 @@ fn end_to_end_election_no_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_2_shares,
-            &vote.encrypted_vote,
+            &vote.encrypted_votes[0].ciphertext,
             election.id,
         )
         .unwrap();
@@ -329,6 +352,7 @@ fn end_to_end_election_no_mix() {
         vote.id,
         0,
         trustee_2.index,
+        0,
         trustee_2.public_key,
         partial_decrypt_2,
     );
@@ -344,7 +368,7 @@ fn end_to_end_election_no_mix() {
 
     // Fully decrypt the vote
     let decrypted = decrypt_vote(
-        &vote.encrypted_vote,
+        &vote.encrypted_votes[0].ciphertext,
         election.trustees_threshold,
         &election.trustees,
         &pubkeys,
@@ -356,6 +380,7 @@ fn end_to_end_election_no_mix() {
     let decrypted_tx = DecryptionTransaction::new(
         election.id,
         vote.id,
+        0,
         0,
         vec![trustee_1.index, trustee_2.index],
         decrypted,
@@ -406,13 +431,29 @@ fn end_to_end_election_with_mix() {
     // Create election authority public and private key
     let (authority_secret, authority_public) = generate_keypair();
 
-    // Create a ballot (TODO: make this a proper struct)
-    let ballot_id = Uuid::new_v4();
+    // Create a ballot
+    let ballot_id = "TEST";
+
+    let ballot = Ballot {
+        id: ballot_id.to_string(),
+        contests: vec![0],
+        properties: indexmap::IndexMap::new(),
+    };
+
+    let contest = Contest {
+        index: 0,
+        contest_type: ContestType::Plurality,
+        write_in: true,
+        num_winners: 1,
+        candidates: vec![],
+        properties: indexmap::IndexMap::new(),
+    };
 
     // Create an authenticator
-    let (authenticator, authn_secrets) = Authenticator::new(256, &vec![ballot_id]).unwrap();
-    let authn_secret = authn_secrets.get(&ballot_id).unwrap();
-    let authn_public = authenticator.public_keys.get(&ballot_id).unwrap().as_ref();
+    let (authenticator, authn_secrets) =
+        Authenticator::new(256, &vec![ballot_id.to_string()]).unwrap();
+    let authn_secret = authn_secrets.get(ballot_id).unwrap();
+    let authn_public = authenticator.public_keys.get(ballot_id).unwrap().as_ref();
 
     // Create 3 trustees
     let (trustee_1, trustee_1_secret) = Trustee::new(1, 3, 2);
@@ -421,7 +462,8 @@ fn end_to_end_election_with_mix() {
 
     // Create an election transaction with a single ballot
     let mut election = ElectionTransaction::new(authority_public);
-    election.ballots = vec![ballot_id];
+    election.ballots = vec![ballot];
+    election.contests = vec![contest];
     election.authenticators = vec![authenticator.clone()];
     election.trustees = vec![trustee_1.clone(), trustee_2.clone(), trustee_3.clone()];
     election.trustees_threshold = 2;
@@ -652,18 +694,24 @@ fn end_to_end_election_with_mix() {
     let secret_vote = "Barak Obama";
 
     // Encrypt the secret vote
-    let encrypted_vote = encrypt_vote(
+    let ciphertext = encrypt_vote(
         &encryption_key_tx.encryption_key,
         secret_vote.as_bytes(),
         &mut test_rng,
     )
     .unwrap();
 
+    let encrypted_vote = EncryptedVote {
+        contest_index: 0,
+        ciphertext,
+    };
+
     // Generate an empty vote transaction
-    let (mut vote, voter_secret) = VoteTransaction::new(election.id(), ballot_id, encrypted_vote);
+    let (mut vote, voter_secret) =
+        VoteTransaction::new(election.id(), ballot_id.to_string(), vec![encrypted_vote]);
 
     // Create an auth package and blind it
-    let auth_package = AuthPackage::new(election.id(), ballot_id, vote.anonymous_key);
+    let auth_package = AuthPackage::new(election.id(), ballot_id.to_string(), vote.anonymous_key);
     let (blinded_auth_package, unblinder) = auth_package.blind(&authn_public);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)
@@ -686,18 +734,24 @@ fn end_to_end_election_with_mix() {
     let secret_vote_2 = "Santa";
 
     // Encrypt the secret vote
-    let encrypted_vote_2 = encrypt_vote(
+    let ciphertext_2 = encrypt_vote(
         &encryption_key_tx.encryption_key,
         secret_vote_2.as_bytes(),
         &mut test_rng,
     )
     .unwrap();
 
+    let encrypted_vote_2 = EncryptedVote {
+        contest_index: 0,
+        ciphertext: ciphertext_2,
+    };
+
     let (mut vote_2, voter_secret_2) =
-        VoteTransaction::new(election.id(), ballot_id, encrypted_vote_2);
+        VoteTransaction::new(election.id(), ballot_id.to_string(), vec![encrypted_vote_2]);
 
     // Create an auth package and blind it
-    let auth_package_2 = AuthPackage::new(election.id(), ballot_id, vote_2.anonymous_key);
+    let auth_package_2 =
+        AuthPackage::new(election.id(), ballot_id.to_string(), vote_2.anonymous_key);
     let (blinded_auth_package_2, unblinder_2) = auth_package_2.blind(&authn_public);
 
     // Authenticate the voter (for a real election the voter would pass additional auth info)
@@ -726,7 +780,10 @@ fn end_to_end_election_with_mix() {
     // Generate the first mix transaction
     let (shuffle_1, proof) = mix(
         &mut test_rng,
-        vec![vote.encrypted_vote.clone(), vote_2.encrypted_vote.clone()],
+        vec![
+            vote.encrypted_votes[0].ciphertext.clone(),
+            vote_2.encrypted_votes[0].ciphertext.clone(),
+        ],
         &encryption_key_tx.encryption_key,
         trustee_1.index,
         0,
@@ -798,6 +855,7 @@ fn end_to_end_election_with_mix() {
         shuffle_tx_2.id(),
         upstream_index,
         trustee_1.index,
+        0,
         trustee_1.public_key,
         partial_decrypt_1_1,
     );
@@ -821,6 +879,7 @@ fn end_to_end_election_with_mix() {
         shuffle_tx_2.id(),
         upstream_index,
         trustee_2.index,
+        0,
         trustee_2.public_key,
         partial_decrypt_1_2,
     );
@@ -849,6 +908,7 @@ fn end_to_end_election_with_mix() {
         election.id,
         shuffle_tx_2.id(),
         upstream_index,
+        0,
         vec![trustee_1.index, trustee_2.index],
         decrypted_1,
     );
@@ -877,6 +937,7 @@ fn end_to_end_election_with_mix() {
         shuffle_tx_2.id(),
         upstream_index,
         trustee_1.index,
+        0,
         trustee_1.public_key,
         partial_decrypt_2_1,
     );
@@ -900,6 +961,7 @@ fn end_to_end_election_with_mix() {
         shuffle_tx_2.id(),
         upstream_index,
         trustee_2.index,
+        0,
         trustee_2.public_key,
         partial_decrypt_2_2,
     );
@@ -928,6 +990,7 @@ fn end_to_end_election_with_mix() {
         election.id,
         shuffle_tx_2.id(),
         upstream_index,
+        0,
         vec![trustee_1.index, trustee_2.index],
         decrypted_2,
     );

@@ -52,6 +52,9 @@ pub enum Error {
 
     #[error("cryptoballot: unexpected transaction type")]
     UnexpectedTransactionType,
+
+    #[error("cryptoballot: cannot find contest {0}")]
+    CannotFindContet(u32),
 }
 
 /// Transaction Validation errors
@@ -178,6 +181,9 @@ pub enum ValidationError {
 
     #[error("cryptoballot: invalid upstream index")]
     InvalidUpstreamIndex,
+
+    #[error("cryptoballot: invalid upstream contest index")]
+    InvalidUpstreamContestIndex,
 
     #[error("cryptoballot: wrong mix selected for decryption")]
     WrongMixSelected,
