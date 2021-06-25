@@ -187,4 +187,7 @@ pub enum ValidationError {
 
     #[error("cryptoballot: wrong mix selected for decryption")]
     WrongMixSelected,
+
+    #[error("cryptoballot: voted in wrong contest")]
+    VotedInWrongContest,
 }

@@ -93,14 +93,12 @@ impl CryptoBallotTransaction for VoteTransaction {
         let election = store.get_election(self.election)?;
 
         // TODO: Anonymous key may not share the first 80 bits (10 bytes) with any other vote transaction
-        //       Probability is EXCEEDINGLY rare (About 1 in a billion billion), but should be checked
+        //       Probability is EXCEEDINGLY rare (About 1 in a billion billion) for a random happening
+        //       But it could also happen maliciously on purpose, so we need to check
 
         // TODO: check self.id.election_id vs self.election_id
         if self.election != election.id {
             return Err(ValidationError::ElectionMismatch);
-        }
-        if election.get_ballot(&self.ballot_id).is_none() {
-            return Err(ValidationError::BallotDoesNotExist);
         }
 
         // Validate that there is a EncryptionKeyTransaction
@@ -129,6 +127,18 @@ impl CryptoBallotTransaction for VoteTransaction {
                     &authn.signature,
                 )
                 .map_err(|_| ValidationError::AuthFailed)?;
+        }
+
+        let ballot = match election.get_ballot(&self.ballot_id) {
+            Some(ballot) => ballot,
+            None => return Err(ValidationError::BallotDoesNotExist),
+        };
+
+        // Verify that the voter has only voted in contests for which they are authorized
+        for encrypted_vote in &self.encrypted_votes {
+            if !ballot.contests.contains(&encrypted_vote.contest_index) {
+                return Err(ValidationError::VotedInWrongContest);
+            }
         }
 
         Ok(())
