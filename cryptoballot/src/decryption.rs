@@ -44,9 +44,9 @@ impl PartialDecryptionTransaction {
             id: PartialDecryptionTransaction::build_id(
                 election_id,
                 upstream_id,
+                contest_index,
                 upstream_index,
                 trustee_index,
-                contest_index,
             ),
             election_id,
             upstream_id,
@@ -62,9 +62,9 @@ impl PartialDecryptionTransaction {
     pub fn build_id(
         election_id: Identifier,
         upstream_id: Identifier,
+        contest_index: u32,
         upstream_index: u16,
         trustee_index: u8,
-        contest_index: u32,
     ) -> Identifier {
         let unique_info =
             build_unique_info(upstream_id, contest_index, upstream_index, trustee_index);
@@ -118,9 +118,9 @@ impl CryptoBallotTransaction for PartialDecryptionTransaction {
         if Self::build_id(
             self.election_id,
             self.upstream_id,
+            self.contest_index,
             self.upstream_index,
             trustee.index,
-            self.contest_index,
         ) != self.id
         {
             return Err(ValidationError::IdentifierBadComposition);
@@ -288,6 +288,7 @@ impl CryptoBallotTransaction for DecryptionTransaction {
         // Get all partial decryptions mapped by trustee ID
         let mut partials = Vec::with_capacity(self.trustees.len());
         for trustee_index in self.trustees.iter() {
+            // TODO: This could be more efficient with a range
             let trustee = election
                 .inner()
                 .get_trustee(*trustee_index)
@@ -295,9 +296,9 @@ impl CryptoBallotTransaction for DecryptionTransaction {
             let partial_id = PartialDecryptionTransaction::build_id(
                 self.election_id,
                 self.upstream_id,
+                self.contest_index,
                 self.upstream_index,
                 trustee.index,
-                self.contest_index,
             );
             let partial = store.get_partial_decryption(partial_id)?;
 

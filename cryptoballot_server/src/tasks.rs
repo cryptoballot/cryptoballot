@@ -435,8 +435,8 @@ fn process_partial_decryption<S: Store>(
             let decrypted_tx = DecryptionTransaction::new(
                 election_tx.id,
                 partial_tx.upstream_id,
-                partial_tx.upstream_index,
                 0, // TODO: Use a real contest index
+                partial_tx.upstream_index,
                 trustee_indexs,
                 decrypted,
             );
