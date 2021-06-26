@@ -161,12 +161,3 @@ pub fn encrypt_vote<R: CryptoRng + RngCore>(
 ) -> Result<cryptid::elgamal::Ciphertext, Error> {
     Ok(encryption_key.encrypt(rng, vote))
 }
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn test_vote() {
-        // See tests.rs
-    }
-}

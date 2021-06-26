@@ -1,8 +1,10 @@
+use cryptid::elgamal::Ciphertext;
 use cryptid::threshold::KeygenCommitment;
 use cryptoballot::*;
 use ed25519_dalek::PublicKey;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use std::collections::HashMap;
 use x25519_dalek as x25519;
 
 pub fn generate_transactions<S: Store>(
@@ -248,40 +250,57 @@ fn process_voting_end<S: Store>(
                     .map(|tx| tx.into())
                     .collect();
 
-                let vote_ids = vote_txs.iter().map(|tx| tx.id).collect();
+                // Produce contest -> votes map
+                let contest_votes: HashMap<u32, Vec<(Identifier, Ciphertext)>> = {
+                    let mut contest_votes = HashMap::with_capacity(election_tx.contests.len());
+                    for vote_tx in vote_txs {
+                        for encrypted_vote in vote_tx.encrypted_votes {
+                            contest_votes
+                                .entry(encrypted_vote.contest_index)
+                                .or_insert(vec![])
+                                .push((vote_tx.id, encrypted_vote.ciphertext));
+                        }
+                    }
+                    contest_votes
+                };
 
-                // TODO: Process ALL contests, not just contest 0
-                let ciphertexts = vote_txs
-                    .into_iter()
-                    .map(|tx| tx.encrypted_votes[0].ciphertext.clone())
-                    .collect();
-
-                // TODO: This could be expensive, so don't do it on the consensus thread
+                let mut mix_txs = Vec::with_capacity(contest_votes.len());
                 let mut rng = rand::thread_rng();
-                let (mixed, proof) = mix(
-                    &mut rng,
-                    ciphertexts,
-                    &encryption_key_tx.encryption_key,
-                    trustee.index,
-                    0,
-                    0, // TODO: For realsies
-                    0,
-                )?;
+                for (contest, votes) in contest_votes {
+                    let vote_ids = votes.iter().map(|(id, _)| *id).collect();
+                    let ciphertexts = votes
+                        .into_iter()
+                        .map(|(_, ciphertext)| ciphertext)
+                        .collect();
 
-                let mix_tx = MixTransaction::new(
-                    election_tx.id,
-                    None,
-                    &trustee,
-                    0,
-                    0, // TODO: For realsies
-                    0,
-                    vote_ids,
-                    mixed,
-                    proof,
-                );
+                    // TODO: This could be expensive, so don't do it on the consensus thread
+                    let (mixed, proof) = mix(
+                        &mut rng,
+                        ciphertexts,
+                        &encryption_key_tx.encryption_key,
+                        trustee.index,
+                        0,
+                        contest,
+                        0,
+                    )?;
 
-                let mix_tx = Signed::sign(&secret_key, mix_tx)?;
-                return Ok(vec![mix_tx.into()]);
+                    let mix_tx = MixTransaction::new(
+                        election_tx.id,
+                        None,
+                        &trustee,
+                        0,
+                        contest,
+                        0,
+                        vote_ids,
+                        mixed,
+                        proof,
+                    );
+
+                    let mix_tx = Signed::sign(&secret_key, mix_tx)?;
+                    mix_txs.push(mix_tx.into());
+                }
+
+                return Ok(mix_txs);
             }
         } else {
             // If there's no mix config, produce partial decryptions for every vote
@@ -332,7 +351,7 @@ fn process_mix<S: Store>(
                     &encryption_key_tx.encryption_key,
                     trustee.index,
                     mix_tx.mix_index + 1,
-                    0,
+                    mix_tx.contest_index,
                     0,
                 )?;
 
@@ -341,7 +360,7 @@ fn process_mix<S: Store>(
                     None,
                     &trustee,
                     mix_tx.mix_index + 1,
-                    0,
+                    mix_tx.contest_index,
                     0,
                     vote_ids,
                     mixed,
