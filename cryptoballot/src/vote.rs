@@ -90,15 +90,23 @@ impl CryptoBallotTransaction for VoteTransaction {
 
     /// Validate the vote transaction
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        // Check the ID
+        if Self::build_id(self.election, &self.anonymous_key) != self.id {
+            return Err(ValidationError::IdentifierBadComposition);
+        }
+
         let election = store.get_election(self.election)?;
 
-        // TODO: Anonymous key may not share the first 80 bits (10 bytes) with any other vote transaction
-        //       Probability is EXCEEDINGLY rare (About 1 in a billion billion) for a random happening
+        // Anonymous key may not share the first 80 bits (10 bytes) with any other vote transaction
+        //       Probability is EXCEEDINGLY rare (About 1 in a septillion) for a random happening
         //       But it could also happen maliciously on purpose, so we need to check
-
-        // TODO: check self.id.election_id vs self.election_id
-        if self.election != election.id {
-            return Err(ValidationError::ElectionMismatch);
+        let unique_info_mask = &self.anonymous_key.as_bytes()[0..10];
+        let start_collision =
+            Identifier::start(self.election, TransactionType::Vote, Some(unique_info_mask));
+        let end_collision =
+            Identifier::start(self.election, TransactionType::Vote, Some(unique_info_mask));
+        if store.range(start_collision, end_collision).len() > 0 {
+            return Err(ValidationError::VoteAnonymousKeyCollision);
         }
 
         // Validate that there is a EncryptionKeyTransaction

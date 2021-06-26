@@ -343,20 +343,36 @@ impl Identifier {
     }
 
     // Create a new identifier that starts at the start of a transaction type
-    pub fn start(election_id: Identifier, transaction_type: TransactionType) -> Self {
+    pub fn start(
+        election_id: Identifier,
+        transaction_type: TransactionType,
+        unique_info_mask: Option<&[u8]>,
+    ) -> Self {
+        let mut unique_info = [0; 16];
+        let unique_info_mask = unique_info_mask.unwrap_or(&[]);
+        unique_info[0..unique_info_mask.len()].copy_from_slice(unique_info_mask);
+
         Self {
             election_id: election_id.election_id,
             transaction_type: transaction_type,
-            unique_info: [0; 16],
+            unique_info,
         }
     }
 
     // Create a new identifier that marks the end of a transaction type
-    pub fn end(election_id: Identifier, transaction_type: TransactionType) -> Self {
+    pub fn end(
+        election_id: Identifier,
+        transaction_type: TransactionType,
+        unique_info_mask: Option<&[u8]>,
+    ) -> Self {
+        let mut unique_info = [255; 16];
+        let unique_info_mask = unique_info_mask.unwrap_or(&[]);
+        unique_info[0..unique_info_mask.len()].copy_from_slice(unique_info_mask);
+
         Self {
             election_id: election_id.election_id,
             transaction_type: transaction_type,
-            unique_info: [255; 16],
+            unique_info,
         }
     }
 

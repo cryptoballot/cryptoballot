@@ -190,4 +190,7 @@ pub enum ValidationError {
 
     #[error("cryptoballot: voted in wrong contest")]
     VotedInWrongContest,
+
+    #[error("cryptoballot: vote anonymous_key collides with existing vote")]
+    VoteAnonymousKeyCollision,
 }

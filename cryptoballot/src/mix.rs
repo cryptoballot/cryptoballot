@@ -5,6 +5,7 @@ use cryptid::elgamal::PublicKey as EncryptionPublicKey;
 use cryptid::shuffle::{Shuffle, ShuffleProof};
 use ed25519_dalek::PublicKey;
 use rand::{CryptoRng, Rng};
+use std::collections::HashSet;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MixConfig {
@@ -133,6 +134,19 @@ impl CryptoBallotTransaction for MixTransaction {
 
     /// Validate the transaction
     fn validate_tx<S: Store>(&self, store: &S) -> Result<(), ValidationError> {
+        // Check the ID
+        if Self::build_id(
+            self.election_id,
+            self.contest_index,
+            self.batch,
+            self.mix_index,
+            self.trustee_index,
+        ) != self.id
+        {
+            return Err(ValidationError::IdentifierBadComposition);
+        }
+
+        // Load the election transaction
         let election = store.get_election(self.election_id)?.tx;
 
         // If there's no mixnet config, then we can't post mixnet transactions
@@ -184,8 +198,12 @@ impl CryptoBallotTransaction for MixTransaction {
                 return Err(ValidationError::OutOfOrderMix);
             }
 
-            // Check that vote-ids are in ascending order
+            // Check that vote-ids are in ascending order with no duplicates
+            // TODO: Do this in a single function, I think we can use "is_sorted_by" to disallow equalities
             if !&self.vote_ids.is_sorted() {
+                return Err(ValidationError::MixVoteIdsNotSorted);
+            }
+            if !has_unique_elements(self.vote_ids.iter()) {
                 return Err(ValidationError::MixVoteIdsNotSorted);
             }
 
@@ -196,8 +214,8 @@ impl CryptoBallotTransaction for MixTransaction {
 
             // Make sure all votes are accounted for
             let votes = store.range(
-                Identifier::start(self.election_id, TransactionType::Vote),
-                Identifier::end(self.election_id, TransactionType::Vote),
+                Identifier::start(self.election_id, TransactionType::Vote, None),
+                Identifier::end(self.election_id, TransactionType::Vote, None),
             );
 
             if votes.len() != self.vote_ids.len() {
@@ -312,4 +330,13 @@ fn generate_pedersen_seed(
     seed.extend_from_slice(&batch.to_be_bytes());
 
     seed
+}
+
+fn has_unique_elements<T>(iter: T) -> bool
+where
+    T: IntoIterator,
+    T::Item: Eq + std::hash::Hash,
+{
+    let mut uniq = HashSet::new();
+    iter.into_iter().all(move |x| uniq.insert(x))
 }

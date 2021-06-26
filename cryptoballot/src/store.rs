@@ -27,8 +27,8 @@ pub trait Store {
         election_id: Identifier,
         tx_type: TransactionType,
     ) -> Vec<SignedTransaction> {
-        let start = Identifier::start(election_id, tx_type);
-        let end = Identifier::end(election_id, tx_type);
+        let start = Identifier::start(election_id, tx_type, None);
+        let end = Identifier::end(election_id, tx_type, None);
 
         self.range(start, end)
     }
