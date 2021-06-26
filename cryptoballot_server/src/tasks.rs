@@ -304,7 +304,9 @@ fn process_voting_end<S: Store>(
             }
         } else {
             // If there's no mix config, produce partial decryptions for every vote
-            return produce_partials(store, &election_tx, &trustee, None);
+            for contest in &election_tx.contests {
+                return produce_partials(store, &election_tx, &trustee, contest.index, None);
+            }
         }
     }
 
@@ -327,7 +329,13 @@ fn process_mix<S: Store>(
         if let Some(_mix_config) = &election_tx.mix_config {
             // If this is the last mix, start producing partial decryptions
             if election_tx.trustees_threshold == mix_tx.mix_index + 1 {
-                return produce_partials(store, &election_tx, &trustee, Some(mix_tx));
+                return produce_partials(
+                    store,
+                    &election_tx,
+                    &trustee,
+                    mix_tx.contest_index,
+                    Some(mix_tx),
+                );
             }
 
             // TODO: Handle timeout of an intermediary trustee, and go before it would normally be our turn
@@ -473,6 +481,7 @@ fn produce_partials<S: Store>(
     store: &S,
     election_tx: &ElectionTransaction,
     trustee: &Trustee,
+    contest_index: u32,
     mix_tx: Option<MixTransaction>,
 ) -> Result<Vec<SignedTransaction>, Error> {
     let public_key = crate::public_key();
@@ -534,7 +543,7 @@ fn produce_partials<S: Store>(
                     mix_tx.id,
                     upstream_index as u16,
                     trustee.index,
-                    0, // TODO: Use a real contest index
+                    contest_index,
                     public_key,
                     partial_decrypt,
                 );
@@ -549,27 +558,29 @@ fn produce_partials<S: Store>(
             for vote_tx in vote_txs {
                 let vote_tx: VoteTransaction = vote_tx.into();
 
-                let partial_decrypt = trustee.partial_decrypt(
-                    &mut rng,
-                    &secret_key,
-                    &x25519_public_keys,
-                    &commitments,
-                    &shares,
-                    &vote_tx.encrypted_votes[0].ciphertext, // TODO: Do it for real
-                    election_tx.id,
-                )?;
-                let partial_decrypt_tx = PartialDecryptionTransaction::new(
-                    election_tx.id,
-                    vote_tx.id,
-                    0,
-                    trustee.index,
-                    0, // TODO: Use a real contest index
-                    public_key,
-                    partial_decrypt,
-                );
+                for encrypted_vote in vote_tx.encrypted_votes {
+                    let partial_decrypt = trustee.partial_decrypt(
+                        &mut rng,
+                        &secret_key,
+                        &x25519_public_keys,
+                        &commitments,
+                        &shares,
+                        &encrypted_vote.ciphertext,
+                        election_tx.id,
+                    )?;
+                    let partial_decrypt_tx = PartialDecryptionTransaction::new(
+                        election_tx.id,
+                        vote_tx.id,
+                        0,
+                        trustee.index,
+                        encrypted_vote.contest_index,
+                        public_key,
+                        partial_decrypt,
+                    );
 
-                let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;
-                parial_txs.push(partial_decrypt_tx.into());
+                    let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;
+                    parial_txs.push(partial_decrypt_tx.into());
+                }
             }
         }
     }
