@@ -435,29 +435,28 @@ fn build_unique_info(
     trustee_index: u8,
 ) -> [u8; 16] {
     let upstream_index = upstream_index.to_be_bytes();
-    let mut unique_info = [0; 16];
+    let contest_index = contest_index.to_be_bytes();
 
-    unique_info[0] = upstream_id.transaction_type.into(); // 1 byte
+    let mut unique_info = [0; 16];
+    unique_info[0..4].copy_from_slice(&contest_index[..]); // 4 bytes
+    unique_info[4] = upstream_id.transaction_type.into(); // 1 byte
 
     if upstream_id.transaction_type == TransactionType::Mix {
-        unique_info[1..=12].copy_from_slice(&upstream_id.unique_info[..12]); // 12 bytes
-        unique_info[13..=14].copy_from_slice(&upstream_index); // 2 bytes
+        unique_info[5..13].copy_from_slice(&upstream_id.unique_info[4..12]); // 8 bytes
+        unique_info[13..15].copy_from_slice(&upstream_index); // 2 bytes
         unique_info[15] = trustee_index; // 1 byte
 
-        // Result:        [                  Lifted From the Mix ID                          ]
-        // <upstream-type>[<contest-index><batch-index><mix-index><trustee-index><null-bytes>]<upstream-index><trustee-index>
-        //     1 byte          4 bytes      4 bytes     1 byte      1 byte         2 bytes       2 bytes        1 byte
+        // Result:                       [          Lifted From the Mix ID                   ]
+        // <contest-index><upstream-type>[<batch-index><mix-index><trustee-index><null-bytes>]<upstream-index><trustee-index>
+        //     4 byte          1 bytes      4 bytes     1 byte      1 byte         2 bytes       2 bytes        1 byte
     }
     if upstream_id.transaction_type == TransactionType::Vote {
-        let contest_index = contest_index.to_be_bytes();
-        unique_info[1..=4].copy_from_slice(&contest_index[..]); // 4 bytes
-
         unique_info[5..=14].copy_from_slice(&upstream_id.unique_info[..10]); // 10 bytes
         unique_info[15] = trustee_index; // 1 byte
 
         // Result:
-        // <upstream-type><contest-index><voter-public-key><trustee-index>
-        //     1 byte         4 bytes        10 bytes          1 byte
+        // <contest-index><upstream-type><voter-public-key><trustee-index>
+        //      4 bytes       1 byte         10 bytes          1 byte
     }
 
     unique_info
