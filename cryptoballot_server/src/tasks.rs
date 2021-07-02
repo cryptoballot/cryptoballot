@@ -313,7 +313,7 @@ fn process_voting_end<S: Store>(
     Ok(vec![])
 }
 
-// On mix transaction, produce the next stage in the mix
+// On mix transaction, produce the next stage in the mix, or if the mix is done, produce partials
 fn process_mix<S: Store>(
     store: &S,
     mix_tx: MixTransaction,
@@ -398,6 +398,7 @@ fn process_partial_decryption<S: Store>(
 
     if let Some(_trustee) = trustee_from_election(&election_tx, &public_key) {
         // Get partials
+        // TODO: Use Identifier::start and Identifier::end with a mask
         let mut start = election_tx.id().clone();
         start.transaction_type = TransactionType::PartialDecryption;
         let mut unique_info = partial_tx.id.unique_info;
@@ -409,7 +410,6 @@ fn process_partial_decryption<S: Store>(
 
         // TODO: Need some way of partitioning the work between trustee nodes,
         //       while at the same time allowing them to pick up eachother's slack
-        //       Alternatively, only the election authority does full decryptions automatically
         //       Alternatively, just do it all with no coordination and let consensus sort it out
         let partial_txs = store.range(start, end);
 
