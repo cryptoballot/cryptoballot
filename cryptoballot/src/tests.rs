@@ -265,19 +265,23 @@ fn end_to_end_election_no_mix() {
     store.set(encryption_key_tx.clone().into());
 
     // Create a vote transaction
-    let secret_vote = "Barak Obama";
+    let selection = Selection {
+        write_in: false,
+        rank: 0,
+        selection: "Barak Obama".to_string(),
+    };
 
     // Encrypt the secret vote
-    let vote_ciphertext = encrypt_vote(
+    let selections = encrypt_vote(
         &encryption_key_tx.encryption_key,
-        secret_vote.as_bytes(),
+        vec![selection.clone()],
         &mut test_rng,
     )
     .unwrap();
 
     let encrypted_vote = EncryptedVote {
         contest_index: 0,
-        ciphertext: vote_ciphertext,
+        selections,
     };
 
     // Generate an empty vote transaction
@@ -319,7 +323,7 @@ fn end_to_end_election_no_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_1_shares,
-            &vote.encrypted_votes[0].ciphertext,
+            &vote.encrypted_votes[0].selections[0],
             election.id,
         )
         .unwrap();
@@ -330,7 +334,7 @@ fn end_to_end_election_no_mix() {
         trustee_1.index,
         0,
         trustee_1.public_key,
-        partial_decrypt_1,
+        vec![partial_decrypt_1],
     );
     let partial_decrypt_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_1_tx).unwrap();
     partial_decrypt_1_tx.validate(&store).unwrap();
@@ -343,7 +347,7 @@ fn end_to_end_election_no_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_2_shares,
-            &vote.encrypted_votes[0].ciphertext,
+            &vote.encrypted_votes[0].selections[0],
             election.id,
         )
         .unwrap();
@@ -354,7 +358,7 @@ fn end_to_end_election_no_mix() {
         trustee_2.index,
         0,
         trustee_2.public_key,
-        partial_decrypt_2,
+        vec![partial_decrypt_2],
     );
     let partial_decrypt_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_2_tx).unwrap();
     partial_decrypt_2_tx.validate(&store).unwrap();
@@ -368,7 +372,7 @@ fn end_to_end_election_no_mix() {
 
     // Fully decrypt the vote
     let decrypted = decrypt_vote(
-        &vote.encrypted_votes[0].ciphertext,
+        &vote.encrypted_votes[0].selections,
         election.trustees_threshold,
         &election.trustees,
         &pubkeys,
@@ -392,10 +396,7 @@ fn end_to_end_election_no_mix() {
     store.set(decrypted_tx.clone().into());
 
     // Decrypted vote should match secret vote
-    assert_eq!(
-        secret_vote.as_bytes().to_vec(),
-        decrypted_tx.inner().decrypted_vote
-    );
+    assert_eq!(selection, decrypted_tx.inner().decrypted_vote[0]);
 
     // Dump out the votes to JSON
     // To print out the transactions, do `cargo test -- --nocapture`
@@ -691,19 +692,23 @@ fn end_to_end_election_with_mix() {
     store.set(encryption_key_tx.clone().into());
 
     // Create a vote transaction
-    let secret_vote = "Barak Obama";
+    let selection = Selection {
+        write_in: false,
+        rank: 0,
+        selection: "Barak Obama".to_string(),
+    };
 
     // Encrypt the secret vote
-    let ciphertext = encrypt_vote(
+    let selections = encrypt_vote(
         &encryption_key_tx.encryption_key,
-        secret_vote.as_bytes(),
+        vec![selection.clone()],
         &mut test_rng,
     )
     .unwrap();
 
     let encrypted_vote = EncryptedVote {
         contest_index: 0,
-        ciphertext,
+        selections,
     };
 
     // Generate an empty vote transaction
@@ -731,19 +736,23 @@ fn end_to_end_election_with_mix() {
     // Generate an second vote transaction
 
     // Create a 2nd vote transaction
-    let secret_vote_2 = "Santa";
+    let selection_2 = Selection {
+        write_in: false,
+        rank: 0,
+        selection: "Santa".to_string(),
+    };
 
     // Encrypt the secret vote
-    let ciphertext_2 = encrypt_vote(
+    let selections_2_encrypted = encrypt_vote(
         &encryption_key_tx.encryption_key,
-        secret_vote_2.as_bytes(),
+        vec![selection_2.clone()],
         &mut test_rng,
     )
     .unwrap();
 
     let encrypted_vote_2 = EncryptedVote {
         contest_index: 0,
-        ciphertext: ciphertext_2,
+        selections: selections_2_encrypted,
     };
 
     let (mut vote_2, voter_secret_2) =
@@ -782,7 +791,7 @@ fn end_to_end_election_with_mix() {
 
     let vote_ciphertexts = votes
         .iter()
-        .map(|v| v.tx.encrypted_votes[0].ciphertext.clone())
+        .map(|v| v.tx.encrypted_votes[0].selections.clone())
         .collect();
 
     let vote_ids = votes.iter().map(|v| v.id()).collect();
@@ -850,7 +859,7 @@ fn end_to_end_election_with_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_1_shares,
-            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize][0],
             election.id,
         )
         .unwrap();
@@ -861,7 +870,7 @@ fn end_to_end_election_with_mix() {
         trustee_1.index,
         0,
         trustee_1.public_key,
-        partial_decrypt_1_1,
+        vec![partial_decrypt_1_1],
     );
     let partial_decrypt_1_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_1_1_tx).unwrap();
     partial_decrypt_1_1_tx.validate(&store).unwrap();
@@ -874,7 +883,7 @@ fn end_to_end_election_with_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_2_shares,
-            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize][0],
             election.id,
         )
         .unwrap();
@@ -885,7 +894,7 @@ fn end_to_end_election_with_mix() {
         trustee_2.index,
         0,
         trustee_2.public_key,
-        partial_decrypt_1_2,
+        vec![partial_decrypt_1_2],
     );
     let partial_decrypt_1_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_1_2_tx).unwrap();
     partial_decrypt_1_2_tx.validate(&store).unwrap();
@@ -932,7 +941,7 @@ fn end_to_end_election_with_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_1_shares,
-            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize][0],
             election.id,
         )
         .unwrap();
@@ -943,7 +952,7 @@ fn end_to_end_election_with_mix() {
         trustee_1.index,
         0,
         trustee_1.public_key,
-        partial_decrypt_2_1,
+        vec![partial_decrypt_2_1],
     );
     let partial_decrypt_2_1_tx = Signed::sign(&trustee_1_secret, partial_decrypt_2_1_tx).unwrap();
     partial_decrypt_2_1_tx.validate(&store).unwrap();
@@ -956,7 +965,7 @@ fn end_to_end_election_with_mix() {
             &x25519_public_keys,
             &commitments,
             &pk_2_shares,
-            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize],
+            &shuffle_tx_2.mixed_ciphertexts[upstream_index as usize][0],
             election.id,
         )
         .unwrap();
@@ -967,7 +976,7 @@ fn end_to_end_election_with_mix() {
         trustee_2.index,
         0,
         trustee_2.public_key,
-        partial_decrypt_2_2,
+        vec![partial_decrypt_2_2],
     );
     let partial_decrypt_2_2_tx = Signed::sign(&trustee_2_secret, partial_decrypt_2_2_tx).unwrap();
     partial_decrypt_2_2_tx.validate(&store).unwrap();
@@ -1006,18 +1015,15 @@ fn end_to_end_election_with_mix() {
     store.set(decrypted_tx_2.clone().into());
 
     // Decrypted votes should match secret votes, but unknown order
-    let secret_votes = vec![
-        secret_vote.as_bytes().to_vec(),
-        secret_vote_2.as_bytes().to_vec(),
-    ];
+    let secret_votes = vec![selection, selection_2];
     assert!(
         vec![
-            decrypted_tx_1.inner().decrypted_vote.clone(),
-            decrypted_tx_2.inner().decrypted_vote.clone()
+            decrypted_tx_1.inner().decrypted_vote[0].clone(),
+            decrypted_tx_2.inner().decrypted_vote[0].clone()
         ] == secret_votes
             || vec![
-                decrypted_tx_2.inner().decrypted_vote.clone(),
-                decrypted_tx_1.inner().decrypted_vote.clone()
+                decrypted_tx_2.inner().decrypted_vote[0].clone(),
+                decrypted_tx_1.inner().decrypted_vote[0].clone()
             ] == secret_votes
     );
 

@@ -3,6 +3,7 @@ use cryptid::elgamal::Ciphertext;
 use cryptid::threshold::DecryptShare;
 use cryptid::threshold::Threshold;
 use ed25519_dalek::PublicKey;
+use prost::Message;
 use std::collections::HashMap;
 
 /// Transaction 9: Partial Decryption
@@ -26,7 +27,7 @@ pub struct PartialDecryptionTransaction {
     #[serde(with = "EdPublicKeyHex")]
     pub trustee_public_key: PublicKey,
 
-    pub partial_decryption: DecryptShare,
+    pub partial_decryption: Vec<DecryptShare>,
 }
 
 impl PartialDecryptionTransaction {
@@ -38,7 +39,7 @@ impl PartialDecryptionTransaction {
         trustee_index: u8,
         contest_index: u32,
         trustee_public_key: PublicKey,
-        partial_decryption: DecryptShare,
+        partial_decryption: Vec<DecryptShare>,
     ) -> Self {
         PartialDecryptionTransaction {
             id: PartialDecryptionTransaction::build_id(
@@ -134,8 +135,7 @@ impl CryptoBallotTransaction for PartialDecryptionTransaction {
         }
 
         // Get the ciphertext either from the vote or the mix
-        // Get the ciphertext either from the vote or the mix
-        let encrypted_vote: Ciphertext = encrypted_vote_from_upstream_tx(
+        let encrypted_vote: Vec<Ciphertext> = encrypted_vote_from_upstream_tx(
             store,
             self.upstream_id,
             self.upstream_index,
@@ -156,12 +156,16 @@ impl CryptoBallotTransaction for PartialDecryptionTransaction {
             ));
         }
 
-        // Verify the partial decryption proof
-        if !self
-            .partial_decryption
-            .verify(&public_key.inner().public_key_proof, &encrypted_vote)
-        {
+        if encrypted_vote.len() != self.partial_decryption.len() {
+            // TODO: Use a dedicated errror
             return Err(ValidationError::PartialDecryptionProofFailed);
+        }
+
+        // Verify the partial decryption proof
+        for (i, partial) in self.partial_decryption.iter().enumerate() {
+            if !partial.verify(&public_key.inner().public_key_proof, &encrypted_vote[i]) {
+                return Err(ValidationError::PartialDecryptionProofFailed);
+            }
         }
 
         Ok(())
@@ -191,8 +195,7 @@ pub struct DecryptionTransaction {
     pub trustees: Vec<u8>,
 
     /// The decrypted vote
-    #[serde(with = "hex_serde")]
-    pub decrypted_vote: Vec<u8>,
+    pub decrypted_vote: Vec<Selection>,
 }
 
 impl DecryptionTransaction {
@@ -203,7 +206,7 @@ impl DecryptionTransaction {
         contest_index: u32,
         upstream_index: u16,
         trustees: Vec<u8>,
-        decrypted_vote: Vec<u8>,
+        decrypted_vote: Vec<Selection>,
     ) -> DecryptionTransaction {
         debug_assert!(election_id.election_id == upstream_id.election_id);
         // TODO: Debug asserts: upstream_id composition matches contest_index and upstream_index
@@ -269,7 +272,7 @@ impl CryptoBallotTransaction for DecryptionTransaction {
         let election = store.get_election(self.election_id)?;
 
         // Get the ciphertext either from the vote or the mix
-        let encrypted_vote: Ciphertext = encrypted_vote_from_upstream_tx(
+        let encrypted_vote: Vec<Ciphertext> = encrypted_vote_from_upstream_tx(
             store,
             self.upstream_id,
             self.upstream_index,
@@ -315,7 +318,7 @@ impl CryptoBallotTransaction for DecryptionTransaction {
         }
 
         // Decrypt the vote
-        let decrypted = decrypt_vote(
+        let decrypted_vote = decrypt_vote(
             &encrypted_vote,
             election.inner().trustees_threshold,
             &election.inner().trustees,
@@ -323,9 +326,11 @@ impl CryptoBallotTransaction for DecryptionTransaction {
             &partials,
         )?;
 
-        if decrypted != self.decrypted_vote {
+        if decrypted_vote != self.decrypted_vote {
             return Err(ValidationError::VoteDecryptionMismatch);
         }
+
+        // TODO: Check that the selections match the ballot-style settings
 
         Ok(())
     }
@@ -333,12 +338,12 @@ impl CryptoBallotTransaction for DecryptionTransaction {
 
 /// Decrypt the vote from the given partial decryptions.
 pub fn decrypt_vote(
-    encrypted_vote: &Ciphertext,
+    ciphertexts: &[Ciphertext],
     trustees_threshold: u8,
     trustees: &[Trustee],
     pubkeys: &[KeyGenPublicKeyTransaction],
     partials: &[PartialDecryptionTransaction],
-) -> Result<Vec<u8>, ValidationError> {
+) -> Result<Vec<Selection>, ValidationError> {
     // Map pubkeys by trustee index
     let pubkeys: HashMap<u8, &KeyGenPublicKeyTransaction> = pubkeys
         .into_iter()
@@ -352,24 +357,32 @@ pub fn decrypt_vote(
         .collect();
 
     // Decrypt the vote
-    let mut decrypt =
-        cryptid::threshold::Decryption::new(trustees_threshold as usize, encrypted_vote);
+    let mut results = Vec::with_capacity(ciphertexts.len());
+    for (i, ciphertext) in ciphertexts.iter().enumerate() {
+        let mut decrypt =
+            cryptid::threshold::Decryption::new(trustees_threshold as usize, ciphertext);
 
-    for trustee in trustees {
-        if let Some(partial) = partials.get(&trustee.index) {
-            if let Some(pubkey) = pubkeys.get(&trustee.index) {
-                decrypt.add_share(
-                    trustee.index as usize,
-                    &pubkey.public_key_proof,
-                    &partial.partial_decryption,
-                );
-            }
-        };
+        for trustee in trustees {
+            if let Some(partial) = partials.get(&trustee.index) {
+                if let Some(pubkey) = pubkeys.get(&trustee.index) {
+                    decrypt.add_share(
+                        trustee.index as usize,
+                        &pubkey.public_key_proof,
+                        &partial.partial_decryption[i],
+                    );
+                }
+            };
+        }
+
+        let raw_selection = decrypt
+            .finish()
+            .map_err(|e| ValidationError::VoteDecryptionFailed(e))?;
+
+        let selection = Selection::decode(raw_selection.as_slice())?;
+        results.push(selection);
     }
 
-    decrypt
-        .finish()
-        .map_err(|e| ValidationError::VoteDecryptionFailed(e))
+    Ok(results)
 }
 
 /// A convenience function for getting an encrypted-vote from some upstream transaction ID.
@@ -380,9 +393,9 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
     upstream_index: u16,
     contest_index: u32,
     mix_config: &Option<MixConfig>,
-) -> Result<Ciphertext, ValidationError> {
+) -> Result<Vec<Ciphertext>, ValidationError> {
     // Get the ciphertext either from the vote or the mix
-    let ciphertext: Ciphertext = match upstream_id.transaction_type {
+    let selections: Vec<Ciphertext> = match upstream_id.transaction_type {
         TransactionType::Vote => {
             if mix_config.is_some() {
                 return Err(ValidationError::InvalidUpstreamID);
@@ -395,7 +408,7 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
 
             for encrypted_vote in vote.encrypted_votes {
                 if encrypted_vote.contest_index == contest_index {
-                    return Ok(encrypted_vote.ciphertext);
+                    return Ok(encrypted_vote.selections);
                 }
             }
             return Err(ValidationError::InvalidUpstreamContestIndex);
@@ -424,7 +437,7 @@ pub fn encrypted_vote_from_upstream_tx<S: Store>(
         }
     };
 
-    Ok(ciphertext)
+    Ok(selections)
 }
 
 // Both partial-decryption and decryption transaction build their unique info the same way

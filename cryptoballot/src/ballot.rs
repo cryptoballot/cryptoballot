@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use prost::Message;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Ballot {
@@ -33,7 +34,6 @@ pub struct Contest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Candidate {
     pub id: String,
-    pub index: u16,
 
     /// Application specific properties.
     ///
@@ -60,4 +60,18 @@ pub enum ContestType {
     SchulzeWinning, // Use this for Schulz if unsure
     SchulzeRatio,
     SchulzeMargin,
+}
+
+#[derive(Serialize, Deserialize, Clone, Message, PartialEq, Eq)]
+pub struct Selection {
+    #[prost(bool)]
+    #[serde(default)]
+    pub write_in: bool,
+
+    #[prost(uint32)]
+    #[serde(default)]
+    pub rank: u32,
+
+    #[prost(string)]
+    pub selection: String,
 }

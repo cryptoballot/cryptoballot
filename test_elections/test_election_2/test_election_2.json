@@ -1,0 +1,348 @@
+[
+    {
+        "type": "election",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "authority_public": "581ca6777842ce335e9faab404b220010628aca4f27bf5af3db066d30cb77a73",
+            "trustees": [
+                {
+                    "public_key": "2ffd28d5e911d0c5c74a61550466e9e6fcfa393bf67669c01ca39eeb3b367abd",
+                    "index": 1
+                },
+                {
+                    "public_key": "6b4eee4f8520826911093630450002eb8d767ec67dcbdf36ef0a9a346aeef3c4",
+                    "index": 2
+                },
+                {
+                    "public_key": "d6388ebcac99ae7858c7a7d74d468de805d0cc0f27cffb7b06d25d2b211ee01c",
+                    "index": 3
+                }
+            ],
+            "trustees_threshold": 2,
+            "authenticators": [
+                {
+                    "id": "de0d0122-0dc8-4667-8b75-3a412a470933",
+                    "public_keys": {
+                        "TEST": "a2616e881a737ef1ad1aacb2ff051ab7be66091a564b33b91a2de97f071aecc7c2a41a7101c5031ac382d9846165811a00010001"
+                    }
+                }
+            ],
+            "authenticators_threshold": 1,
+            "mix_config": null,
+            "ballots": [
+                {
+                    "id": "TEST",
+                    "contests": [
+                        0
+                    ]
+                }
+            ],
+            "contests": [
+                {
+                    "index": 0,
+                    "contest_type": "plurality",
+                    "num_winners": 1,
+                    "write_in": true,
+                    "candidates": []
+                }
+            ],
+            "properties": {}
+        },
+        "sig": "80b1ea0060f6d91f25b41f251546b931cd879141fee2395e03b7038bcdb1df7217dd37cad04d19d1fa7f6d5ebdf8db013f1879e9181e2c1adb2e1bc9ac9cb00c"
+    },
+    {
+        "type": "key_gen_commitment",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230201000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 1,
+            "trustee_public_key": "2ffd28d5e911d0c5c74a61550466e9e6fcfa393bf67669c01ca39eeb3b367abd",
+            "x25519_public_key": "0d26763fc12ab2752d27fd37dc0af532a84d0bf59c542ee2bafa80155761a520",
+            "commitment": {
+                "elems": [
+                    "vINzK0dFYoSrt8CA5hEca/NuYooxliVY7lr+V2lY+WQ=",
+                    "IHiF+SCHSzuECYKAMiEgPLpLmXe7Rs5cGhg9u41oTRM="
+                ]
+            }
+        },
+        "sig": "19b17ef8853ce2c6d7b641b969411381d331d9c76a05d3465a3d11d2c90775f3b02301129533ff45d11ea14a646b6ab9a708e3f15c693b9d3a33b749312ae803"
+    },
+    {
+        "type": "key_gen_commitment",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230202000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 2,
+            "trustee_public_key": "6b4eee4f8520826911093630450002eb8d767ec67dcbdf36ef0a9a346aeef3c4",
+            "x25519_public_key": "6317bb5e60ac08bee9e8dc6f1f23028d3b41c65c46510dc0a22288e3babdde04",
+            "commitment": {
+                "elems": [
+                    "PBXvKxRj94c3QhGRqbKzZjkZGiml6PHAc28NHa7PRXs=",
+                    "Hrg68lLX/JAJgbbmTgEes4z/qGpNgeZMVYgnzmQwX3A="
+                ]
+            }
+        },
+        "sig": "19f6e127f1a9af08d8a82560138e72d6d4c663bce888e9f6e944b669252b4725bcd42b76e05ad7cd740624365e3459b9c3350c137d37b14ff6a56f10664b9002"
+    },
+    {
+        "type": "key_gen_commitment",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230203000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 3,
+            "trustee_public_key": "d6388ebcac99ae7858c7a7d74d468de805d0cc0f27cffb7b06d25d2b211ee01c",
+            "x25519_public_key": "673c81fa08e00fe18234371b05a21c484d186ea90ff767320846c1d26de33629",
+            "commitment": {
+                "elems": [
+                    "EM6v34AeqJJwVl091oH6zU229P+aMr75oy/JKnX/1R8=",
+                    "PtIcy64k1qbhDwi82CekkwHVomCEILKqrJGAJARfBh0="
+                ]
+            }
+        },
+        "sig": "d424e429b7ac30a1336fec9c548a0125f4f48036375fc0e15ffb77b37569153b4cf5685739d5c10b03ed3d46e46029e1b5976907cba56355c6089867d4147b0e"
+    },
+    {
+        "type": "key_gen_share",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230301000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 1,
+            "trustee_public_key": "2ffd28d5e911d0c5c74a61550466e9e6fcfa393bf67669c01ca39eeb3b367abd",
+            "shares": [
+                [
+                    1,
+                    "76a04053bda0a88bda5177b8d41959bc5534536b25c502ea75ffc7d8652baeb866d04b80f63845b657bf0d43f8b7049bcdb6bc54f8cd36ab597d7cea"
+                ],
+                [
+                    2,
+                    "6a15c3b29f559873cb4812323ccb87156dd764f9340eba1e8baa7851ca4a29f0a613c088b7b6ef252be9a72197d36800fd3ab957f8d78de43171c8c6"
+                ],
+                [
+                    3,
+                    "299cd5743151ac4b2d63ae19aef78b5e80139ca35b14ea0d75929b3a8f65920365e403aeca1c324c0e89e046e5021dc6f5c58a87682c96c3b482dc19"
+                ]
+            ]
+        },
+        "sig": "b30463b34dda4e6c18189dfd0f843713b9a0a1040f7ce09565b17ff4f6dfa47cc903bd654a64b05a1bcaf6cac7c6196f9acf91509ef9fade93243bddc5922c07"
+    },
+    {
+        "type": "key_gen_share",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230302000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 2,
+            "trustee_public_key": "6b4eee4f8520826911093630450002eb8d767ec67dcbdf36ef0a9a346aeef3c4",
+            "shares": [
+                [
+                    1,
+                    "8e7bb0a9011f28e473c95f40a7ad9985cd3e9e8e7dce48801558fc013240d51b15ab08537acc57dec6d972310f39872075113bbb031069ff59df050b"
+                ],
+                [
+                    2,
+                    "13d7d53ec5fbc3b42df8ed105cbd7547361d69115128ea4b1630bdd506345137832c69ef8ef2e809774ba0465218d07ec15e7bf81231e5d2b5c9e99a"
+                ],
+                [
+                    3,
+                    "1f6de831e52bfb76e51cca8b64e4fc80de822351cca2126679016019fbc6dd33231ae61ecedf4ec714bb3011a63f9d3bbdefba330c0adc9282318f91"
+                ]
+            ]
+        },
+        "sig": "9bd37102f52dab1236fad3c9cf79694d624bc5044f85fcae24e434371791345e95b084353bf8925428856f89de299923b4e42dc2735dae38a53fbc645482170c"
+    },
+    {
+        "type": "key_gen_share",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230303000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 3,
+            "trustee_public_key": "d6388ebcac99ae7858c7a7d74d468de805d0cc0f27cffb7b06d25d2b211ee01c",
+            "shares": [
+                [
+                    1,
+                    "4e9016838657edfae09cb9a78c1a3fb99cd07b8ee18c6420078265261fe1696d3db9ecfda0250380b53e4fe59b667ff923674e1f460585489f83ba12"
+                ],
+                [
+                    2,
+                    "1eb219025c4c87a67c4aaa86c2063fa79b8f80ae574c40bf61f40297cc17eb141e1c435fd91dd8cc929d9ce0e77baebfc57e463ca0ff0357167f45b4"
+                ],
+                [
+                    3,
+                    "f20ac0aa792bc121ee42e2c3b4bb8225b48dd33db3b3704db7e89720e4b4350b53bae0a6785565bad606ef7cc6524634d9fdf1cec3e8753d849e789f"
+                ]
+            ]
+        },
+        "sig": "91c0bf10a6eebe7b8112b3ba86a1c42e5928c1a8b6f202c8e66d91d19b6788dfc448e150950598041e3072865f76fa464c43d18ace16ed8c0b04184a8a16460a"
+    },
+    {
+        "type": "key_gen_public_key",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230401000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 1,
+            "trustee_public_key": "2ffd28d5e911d0c5c74a61550466e9e6fcfa393bf67669c01ca39eeb3b367abd",
+            "public_key": {
+                "y": "9gm7zhNRumv+VPzZD9g0ydWn7Ki+4JzfqzIhqJ5Nd3M="
+            },
+            "public_key_proof": "vPJaWU0YxbESAQZzyoIWWphYALEfuzusagGPMELleCg="
+        },
+        "sig": "dbfe0dd1bff4b324937fa6b6a2b758ef42c795fe72a8b3b84f363500b806819e907b5c34e6e2ecdda8b2c3e2bdade64ca85d65ac1013213ecb20e9de8660e108"
+    },
+    {
+        "type": "key_gen_public_key",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230402000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 2,
+            "trustee_public_key": "6b4eee4f8520826911093630450002eb8d767ec67dcbdf36ef0a9a346aeef3c4",
+            "public_key": {
+                "y": "9gm7zhNRumv+VPzZD9g0ydWn7Ki+4JzfqzIhqJ5Nd3M="
+            },
+            "public_key_proof": "jl28ACF2df0BkAi/o0tB0NKyiD9GxmWOEoSjtlqzuho="
+        },
+        "sig": "e2e226086c8eeafb32e5ae2aa882d241f4253f386adcdfe5a102ba99d7a7cce1a5352805ed87b26c5b4a2c58d3c8e0019c71c15bce293f6bc47094510d64800b"
+    },
+    {
+        "type": "key_gen_public_key",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230403000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "trustee_index": 3,
+            "trustee_public_key": "d6388ebcac99ae7858c7a7d74d468de805d0cc0f27cffb7b06d25d2b211ee01c",
+            "public_key": {
+                "y": "9gm7zhNRumv+VPzZD9g0ydWn7Ki+4JzfqzIhqJ5Nd3M="
+            },
+            "public_key_proof": "KP9pwBz1fXadqTqQSeXogwCz4PHrkm46Hz2xReYYjjk="
+        },
+        "sig": "e54a2e89a6cb15d3307b15939026964442ad9982409c6802876564e3d43674c37527ea49e44b79dfaa49becaf0d91e96492eb8eb525eeea5f285d8fc13f0840d"
+    },
+    {
+        "type": "encryption_key",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230500000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "authority_public_key": "581ca6777842ce335e9faab404b220010628aca4f27bf5af3db066d30cb77a73",
+            "encryption_key": {
+                "y": "9gm7zhNRumv+VPzZD9g0ydWn7Ki+4JzfqzIhqJ5Nd3M="
+            }
+        },
+        "sig": "2591ee35f9a94fd6b919fe0318607300c3b74ab09380c9f165c2d87fd8e8b859924e6a9d686c114fa41daf21f1b6c8fed0482dd3f31dae7c39455bf855d13a00"
+    },
+    {
+        "type": "vote",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb92306a92bf8c1818a98c6de4f9aeb24da678b",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "ballot_id": "TEST",
+            "encrypted_votes": [
+                {
+                    "contest_index": 0,
+                    "selections": [
+                        {
+                            "c1": "SIHbhn7RC4PWvNfKWjzrUNEBOE1JF2c7uF61kZU96Tg=",
+                            "c2": "9qDYSBVGjmh5eBy8lk7c7b/ioM6uNWnuclQFwLsXhxo="
+                        }
+                    ]
+                }
+            ],
+            "anonymous_key": "a92bf8c1818a98c6de4f9aeb24da678b79f9d6d9b95cd37bc75735efc276c3c2",
+            "authentication": [
+                {
+                    "authenticator": "de0d0122-0dc8-4667-8b75-3a412a470933",
+                    "signature": "517e4f99a62cff21e5f290c03d88109f528bf664f2bb0964f908b82c31c57429"
+                }
+            ]
+        },
+        "sig": "e4a72f74e4e6c8b3f5ca0ea44bf06f9934dbc043bc62a73fcab6c98509cd34ce23fd8861c0f5ad78c816458ba1de204a2dc01c2ae3d44be700d53afcdd28b401"
+    },
+    {
+        "type": "voting_end",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230700000000000000000000000000000000",
+            "election": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "authority_public_key": "581ca6777842ce335e9faab404b220010628aca4f27bf5af3db066d30cb77a73"
+        },
+        "sig": "91d533f11a541dbde5d164468e09d0c3340b2f1f33bf86e265b8517d606aad22232e5a6bff8d4a6e6300804d4b8453070e482c10be8a11812b48e2f9f686fe0d"
+    },
+    {
+        "type": "partial_decryption",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb923090000000006a92bf8c1818a98c6de4f01",
+            "election_id": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "upstream_id": "eb6816d0066b67a67d53265c4bb92306a92bf8c1818a98c6de4f9aeb24da678b",
+            "upstream_index": 0,
+            "contest_index": 0,
+            "trustee_index": 1,
+            "trustee_public_key": "2ffd28d5e911d0c5c74a61550466e9e6fcfa393bf67669c01ca39eeb3b367abd",
+            "partial_decryption": [
+                {
+                    "share": "nNGWUma2pkgXUkPvSJeXQCzWvKEOeeu04GgXGP6PmX8=",
+                    "proof": {
+                        "g": "4vKuCmq8TnGohKlhxQBRX1jjC2qlgt2NtqZZReCNLXY=",
+                        "ct": {
+                            "c1": "SIHbhn7RC4PWvNfKWjzrUNEBOE1JF2c7uF61kZU96Tg=",
+                            "c2": "9qDYSBVGjmh5eBy8lk7c7b/ioM6uNWnuclQFwLsXhxo="
+                        },
+                        "public_key": "vPJaWU0YxbESAQZzyoIWWphYALEfuzusagGPMELleCg=",
+                        "dec_factor": "nNGWUma2pkgXUkPvSJeXQCzWvKEOeeu04GgXGP6PmX8=",
+                        "blinded_g": "9K5oPld1/krTHCqvwNU3/DzaXdKt5IC9t5vL1d4SiFQ=",
+                        "blinded_c1": "3mslTDM9PSOIVWGnckahwK+CE3evNfiwdgpFvbgMv10=",
+                        "r": "YsauO3YuJdAdpLpfCPpuFvPkhFPSD85LagUPZOLdDQg="
+                    }
+                }
+            ]
+        },
+        "sig": "dce23dd618c4a5100ddb613169b541176ef8de4fea71206dca41d76335820134601aa0ee5b6d1f4ee21ac838df13edf0de2d5982acdc7253a16ce680e82b1306"
+    },
+    {
+        "type": "partial_decryption",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb923090000000006a92bf8c1818a98c6de4f02",
+            "election_id": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "upstream_id": "eb6816d0066b67a67d53265c4bb92306a92bf8c1818a98c6de4f9aeb24da678b",
+            "upstream_index": 0,
+            "contest_index": 0,
+            "trustee_index": 2,
+            "trustee_public_key": "6b4eee4f8520826911093630450002eb8d767ec67dcbdf36ef0a9a346aeef3c4",
+            "partial_decryption": [
+                {
+                    "share": "ih1z5GqSaP5xVeHhchxa0zvJ75Xw8hbnUffznEzKUU8=",
+                    "proof": {
+                        "g": "4vKuCmq8TnGohKlhxQBRX1jjC2qlgt2NtqZZReCNLXY=",
+                        "ct": {
+                            "c1": "SIHbhn7RC4PWvNfKWjzrUNEBOE1JF2c7uF61kZU96Tg=",
+                            "c2": "9qDYSBVGjmh5eBy8lk7c7b/ioM6uNWnuclQFwLsXhxo="
+                        },
+                        "public_key": "jl28ACF2df0BkAi/o0tB0NKyiD9GxmWOEoSjtlqzuho=",
+                        "dec_factor": "ih1z5GqSaP5xVeHhchxa0zvJ75Xw8hbnUffznEzKUU8=",
+                        "blinded_g": "Fl8x82zoKlBNk0LnyPpNt4QThCJHMgM0rKRn06k9WxE=",
+                        "blinded_c1": "zE65vYtVwzYGs23LHjmaaX3jKYq/ojlDh4NRYOt/Tww=",
+                        "r": "J8qhtPZVRZ5wm7Dixd+MmtlW2MsHHPMsuDS17fiXzQk="
+                    }
+                }
+            ]
+        },
+        "sig": "26077aec291662ae77a2fd5221192edc76942ae0442c313463087bce6e13f2e65bc422c7ab58cd19b09eb22b227ca9207a37bbee67acb46b904c4f69bca1690f"
+    },
+    {
+        "type": "decryption",
+        "tx": {
+            "id": "eb6816d0066b67a67d53265c4bb9230a0000000006a92bf8c1818a98c6de4f00",
+            "election_id": "eb6816d0066b67a67d53265c4bb9230100000000000000000000000000000000",
+            "upstream_id": "eb6816d0066b67a67d53265c4bb92306a92bf8c1818a98c6de4f9aeb24da678b",
+            "upstream_index": 0,
+            "contest_index": 0,
+            "trustees": [
+                1,
+                2
+            ],
+            "decrypted_vote": [
+                {
+                    "write_in": false,
+                    "rank": 0,
+                    "selection": "Barak Obama"
+                }
+            ]
+        },
+        "sig": "e7d83da79905c6c9b5ed8078b28d865be586523591ebf6e6f22148256d6f892c53c72379519cce767a094538346d7d85fc314c10cd6e803483dd840a5f5f7e0a"
+    }
+]

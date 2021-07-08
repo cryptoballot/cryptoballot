@@ -46,9 +46,11 @@ pub fn command_e2e(matches: &clap::ArgMatches, uri: &str) {
             let vote: DecryptionTransaction = vote.into();
             let vote = vote.decrypted_vote;
 
-            // For now, assume it's a string
-            let vote = str::from_utf8(&vote).unwrap();
-            println!("  {}", vote);
+            for selection in vote {
+                // TODO: Print if it's a write-in
+                println!("  {}:{}", selection.rank, selection.selection);
+                println!("");
+            }
         }
     }
 
@@ -62,10 +64,7 @@ pub fn command_e2e(matches: &clap::ArgMatches, uri: &str) {
         for vote in votes {
             let vote: DecryptionTransaction = vote.into();
             let vote = vote.decrypted_vote;
-
-            // For now, assume it's a string
-            let vote = str::from_utf8(&vote).unwrap().to_string();
-            tally.add(vote);
+            tally.add(vote[0].selection.clone());
         }
 
         for (candidate, num_votes) in tally.totals().iter() {
@@ -85,8 +84,7 @@ pub fn command_e2e(matches: &clap::ArgMatches, uri: &str) {
             let vote = vote.decrypted_vote;
 
             // For now, assume it's a string
-            let vote = str::from_utf8(&vote).unwrap().to_string();
-            tally.add(vote);
+            tally.add(vote[0].selection.clone());
         }
 
         let winners = tally.winners().into_unranked();

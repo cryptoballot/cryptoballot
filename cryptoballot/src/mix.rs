@@ -46,8 +46,8 @@ pub struct MixTransaction {
     /// These votes-ids must be in ascending order
     pub vote_ids: Vec<Identifier>,
 
-    /// A shuffled and re-encrypted mix of ciphertexts
-    pub mixed_ciphertexts: Vec<Ciphertext>,
+    /// A shuffled and re-encrypted mix of ciphertext selections
+    pub mixed_ciphertexts: Vec<Vec<Ciphertext>>,
 
     /// Proof of correct shuffle and re-encryption
     pub proof: ShuffleProof,
@@ -63,7 +63,7 @@ impl MixTransaction {
         contest_index: u32,
         batch: u32,
         vote_ids: Vec<Identifier>,
-        mixed_ciphertexts: Vec<Ciphertext>,
+        mixed_ciphertexts: Vec<Vec<Ciphertext>>,
         proof: ShuffleProof,
     ) -> Self {
         MixTransaction {
@@ -234,7 +234,7 @@ impl CryptoBallotTransaction for MixTransaction {
 
                 for encrypted_vote in vote.encrypted_votes {
                     if encrypted_vote.contest_index == self.contest_index {
-                        ciphertexts.push(encrypted_vote.ciphertext);
+                        ciphertexts.push(encrypted_vote.selections);
                     }
                 }
             }
@@ -268,34 +268,31 @@ impl CryptoBallotTransaction for MixTransaction {
 /// This is an expensive and time-consuming operation, so should ideally be offloaded to it's own thread
 pub fn mix<R: Rng + CryptoRng>(
     rng: &mut R,
-    ciphertexts: Vec<Ciphertext>,
+    ciphertexts: Vec<Vec<Ciphertext>>,
     encryption_key: &EncryptionPublicKey,
     trustee_index: u8,
     mix_index: u8,
     contest_index: u32,
     batch: u32,
-) -> Result<(Vec<Ciphertext>, ShuffleProof), Error> {
+) -> Result<(Vec<Vec<Ciphertext>>, ShuffleProof), Error> {
     let seed = generate_pedersen_seed(trustee_index, mix_index, contest_index, batch);
     let (commit_ctx, generators) = PedersenCtx::with_generators(&seed, ciphertexts.len());
 
     let shuffle =
-        Shuffle::new(rng, vec![ciphertexts], encryption_key).map_err(|e| Error::ShuffleError(e))?;
+        Shuffle::new(rng, ciphertexts, encryption_key).map_err(|e| Error::ShuffleError(e))?;
 
     let proof = shuffle
         .gen_proof(rng, &commit_ctx, &generators, encryption_key)
         .map_err(|e| Error::ShuffleError(e))?;
 
-    let output = shuffle
-        .into_outputs()
-        .pop()
-        .expect("Missing expected re-encrypted ciphertexts");
+    let output = shuffle.into_outputs();
     Ok((output, proof))
 }
 
 /// Verify mixnet shuffle
 pub fn verify_mix(
-    input_ciphertexts: Vec<Ciphertext>,
-    output_ciphertexts: Vec<Ciphertext>,
+    input_ciphertexts: Vec<Vec<Ciphertext>>,
+    output_ciphertexts: Vec<Vec<Ciphertext>>,
     encryption_key: &EncryptionPublicKey,
     proof: &ShuffleProof,
     trustee_index: u8,
@@ -309,8 +306,8 @@ pub fn verify_mix(
     if !proof.verify(
         &commit_ctx,
         &generators,
-        &vec![input_ciphertexts],
-        &vec![output_ciphertexts],
+        &input_ciphertexts,
+        &output_ciphertexts,
         encryption_key,
     ) {
         return Err(ValidationError::ShuffleVerificationFailed);

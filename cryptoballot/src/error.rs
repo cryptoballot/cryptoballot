@@ -55,6 +55,9 @@ pub enum Error {
 
     #[error("cryptoballot: cannot find contest {0}")]
     CannotFindContet(u32),
+
+    #[error("cryptoballot: could not encode vote selection: {0}")]
+    VoteEncodingError(#[from] prost::EncodeError),
 }
 
 /// Transaction Validation errors
@@ -193,4 +196,7 @@ pub enum ValidationError {
 
     #[error("cryptoballot: vote anonymous_key collides with existing vote")]
     VoteAnonymousKeyCollision,
+
+    #[error("cryptoballot: could not decode vote selection: {0}")]
+    VoteDecodingError(#[from] prost::DecodeError),
 }

@@ -1,9 +1,4 @@
-use cryptoballot::EncryptedVote;
-use cryptoballot::EncryptionKeyTransaction;
-use cryptoballot::Signed;
-use cryptoballot::SignedTransaction;
-use cryptoballot::TransactionType;
-use cryptoballot::VoteTransaction;
+use cryptoballot::*;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
 
@@ -35,6 +30,12 @@ pub fn command_vote_generate(
     let election_id = crate::expand(matches.value_of("ELECTION-ID").unwrap());
     let secret_vote = crate::expand(matches.value_of("VOTE").unwrap());
 
+    let selection = Selection {
+        write_in: true,
+        rank: 0,
+        selection: secret_vote,
+    };
+
     // Get the encryption-key
     let enc_id = cryptoballot::Identifier::new_from_str_id(
         &election_id,
@@ -53,12 +54,9 @@ pub fn command_vote_generate(
 
     // Encrypt the secret vote
     // TODO: Real error not expect
-    let encrypted_vote = cryptoballot::encrypt_vote(
-        &encryption_key_tx.encryption_key,
-        secret_vote.as_bytes(),
-        &mut rng,
-    )
-    .expect("Error encrypting vote");
+    let encrypted_selections =
+        cryptoballot::encrypt_vote(&encryption_key_tx.encryption_key, vec![selection], &mut rng)
+            .expect("Error encrypting vote");
 
     // Generate an empty vote transaction
     let election_id = encryption_key_tx.election;
@@ -68,7 +66,7 @@ pub fn command_vote_generate(
         ballot_id: "BALLOT1".to_string(),
         encrypted_votes: vec![EncryptedVote {
             contest_index: 0,
-            ciphertext: encrypted_vote,
+            selections: encrypted_selections,
         }],
         anonymous_key: public_key,
         authentication: vec![],

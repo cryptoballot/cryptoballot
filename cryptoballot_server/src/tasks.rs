@@ -251,14 +251,14 @@ fn process_voting_end<S: Store>(
                     .collect();
 
                 // Produce contest -> votes map
-                let contest_votes: HashMap<u32, Vec<(Identifier, Ciphertext)>> = {
+                let contest_votes: HashMap<u32, Vec<(Identifier, Vec<Ciphertext>)>> = {
                     let mut contest_votes = HashMap::with_capacity(election_tx.contests.len());
                     for vote_tx in vote_txs {
                         for encrypted_vote in vote_tx.encrypted_votes {
                             contest_votes
                                 .entry(encrypted_vote.contest_index)
                                 .or_insert(vec![])
-                                .push((vote_tx.id, encrypted_vote.ciphertext));
+                                .push((vote_tx.id, encrypted_vote.selections));
                         }
                     }
                     contest_votes
@@ -417,18 +417,18 @@ fn process_partial_decryption<S: Store>(
             let partial_txs: Vec<PartialDecryptionTransaction> =
                 partial_txs.into_iter().map(|tx| tx.into()).collect();
 
-            // Get upstream ciphertext
-            let ciphertext = match partial_tx.upstream_id.transaction_type {
+            // Get upstream encrypted selections
+            let ciphertexts = match partial_tx.upstream_id.transaction_type {
                 TransactionType::Vote => {
                     let vote = store.get_vote(partial_tx.upstream_id)?.tx;
-                    let mut ciphertext = None;
+                    let mut ciphertexts = None;
                     for encrypted_vote in vote.encrypted_votes {
                         if encrypted_vote.contest_index == partial_tx.contest_index {
-                            ciphertext = Some(encrypted_vote.ciphertext);
+                            ciphertexts = Some(encrypted_vote.selections);
                             break;
                         }
                     }
-                    match ciphertext {
+                    match ciphertexts {
                         Some(ct) => ct,
                         None => return Err(Error::CannotFindContet(partial_tx.contest_index)),
                     }
@@ -447,9 +447,8 @@ fn process_partial_decryption<S: Store>(
                 pubkeys.into_iter().map(|tx| tx.into()).collect();
 
             // Fully decrypt the vote
-            // TODO: No unwrap, real error
             let decrypted = decrypt_vote(
-                &ciphertext,
+                &ciphertexts,
                 election_tx.trustees_threshold,
                 &election_tx.get_full_trustees(),
                 &pubkeys,
@@ -462,7 +461,7 @@ fn process_partial_decryption<S: Store>(
             let decrypted_tx = DecryptionTransaction::new(
                 election_tx.id,
                 partial_tx.upstream_id,
-                0, // TODO: Use a real contest index
+                partial_tx.contest_index,
                 partial_tx.upstream_index,
                 trustee_indexs,
                 decrypted,
@@ -528,16 +527,21 @@ fn produce_partials<S: Store>(
 
     match mix_tx {
         Some(mix_tx) => {
-            for (upstream_index, ciphertext) in mix_tx.mixed_ciphertexts.iter().enumerate() {
-                let partial_decrypt = trustee.partial_decrypt(
-                    &mut rng,
-                    &secret_key,
-                    &x25519_public_keys,
-                    &commitments,
-                    &shares,
-                    &ciphertext,
-                    election_tx.id,
-                )?;
+            for (upstream_index, ciphertexts) in mix_tx.mixed_ciphertexts.iter().enumerate() {
+                let mut decrypt_shares = Vec::with_capacity(ciphertexts.len());
+                for ciphertext in ciphertexts {
+                    let partial_decrypt = trustee.partial_decrypt(
+                        &mut rng,
+                        &secret_key,
+                        &x25519_public_keys,
+                        &commitments,
+                        &shares,
+                        &ciphertext,
+                        election_tx.id,
+                    )?;
+                    decrypt_shares.push(partial_decrypt);
+                }
+
                 let partial_decrypt_tx = PartialDecryptionTransaction::new(
                     election_tx.id,
                     mix_tx.id,
@@ -545,7 +549,7 @@ fn produce_partials<S: Store>(
                     trustee.index,
                     contest_index,
                     public_key,
-                    partial_decrypt,
+                    decrypt_shares,
                 );
 
                 let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;
@@ -559,15 +563,19 @@ fn produce_partials<S: Store>(
                 let vote_tx: VoteTransaction = vote_tx.into();
 
                 for encrypted_vote in vote_tx.encrypted_votes {
-                    let partial_decrypt = trustee.partial_decrypt(
-                        &mut rng,
-                        &secret_key,
-                        &x25519_public_keys,
-                        &commitments,
-                        &shares,
-                        &encrypted_vote.ciphertext,
-                        election_tx.id,
-                    )?;
+                    let mut decrypt_shares = Vec::with_capacity(encrypted_vote.selections.len());
+                    for ciphertext in encrypted_vote.selections {
+                        let partial_decrypt = trustee.partial_decrypt(
+                            &mut rng,
+                            &secret_key,
+                            &x25519_public_keys,
+                            &commitments,
+                            &shares,
+                            &ciphertext,
+                            election_tx.id,
+                        )?;
+                        decrypt_shares.push(partial_decrypt);
+                    }
                     let partial_decrypt_tx = PartialDecryptionTransaction::new(
                         election_tx.id,
                         vote_tx.id,
@@ -575,7 +583,7 @@ fn produce_partials<S: Store>(
                         trustee.index,
                         encrypted_vote.contest_index,
                         public_key,
-                        partial_decrypt,
+                        decrypt_shares,
                     );
 
                     let partial_decrypt_tx = Signed::sign(&secret_key, partial_decrypt_tx)?;

@@ -2,6 +2,7 @@ use crate::*;
 use cryptid::elgamal::Ciphertext;
 use ed25519_dalek::PublicKey;
 use ed25519_dalek::SecretKey;
+use prost::Message;
 use rand::{CryptoRng, RngCore};
 use std::convert::TryInto;
 
@@ -33,7 +34,7 @@ pub struct VoteTransaction {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EncryptedVote {
     pub contest_index: u32,
-    pub ciphertext: Ciphertext,
+    pub selections: Vec<Ciphertext>,
 }
 
 impl VoteTransaction {
@@ -156,8 +157,15 @@ impl CryptoBallotTransaction for VoteTransaction {
 /// Encrypt a vote with the public key provided by the encryption_key transaction (EncryptionKeyTransaction.encryption_key)
 pub fn encrypt_vote<R: CryptoRng + RngCore>(
     encryption_key: &cryptid::elgamal::PublicKey,
-    vote: &[u8],
+    vote: Vec<Selection>,
     rng: &mut R,
-) -> Result<cryptid::elgamal::Ciphertext, Error> {
-    Ok(encryption_key.encrypt(rng, vote))
+) -> Result<Vec<cryptid::elgamal::Ciphertext>, Error> {
+    let mut results = Vec::with_capacity(vote.len());
+    for selection in vote {
+        let mut buf = Vec::with_capacity(selection.encoded_len());
+        selection.encode(&mut buf)?;
+        results.push(encryption_key.encrypt(rng, &buf))
+    }
+
+    Ok(results)
 }
