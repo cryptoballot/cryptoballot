@@ -19,6 +19,7 @@ fn end_to_end_election_no_mix() {
     };
 
     let contest = Contest {
+        id: "TESTCONTEST".to_string(),
         index: 0,
         contest_type: ContestType::Plurality,
         write_in: true,
@@ -442,6 +443,7 @@ fn end_to_end_election_with_mix() {
     };
 
     let contest = Contest {
+        id: "TESTCONTEST".to_string(),
         index: 0,
         contest_type: ContestType::Plurality,
         write_in: true,

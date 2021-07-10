@@ -198,6 +198,7 @@ mod tests {
         };
 
         let contest = Contest {
+            id: "TEST".to_string(),
             index: 0,
             contest_type: ContestType::Plurality,
             num_winners: 1,

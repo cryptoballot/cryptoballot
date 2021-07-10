@@ -16,6 +16,7 @@ pub struct Ballot {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Contest {
+    pub id: String,
     pub index: u32,
 
     pub contest_type: ContestType,
@@ -50,7 +51,10 @@ pub enum ContestType {
     Plurality,
     Score,
     Approval,
-    STV,
+    STVDroop,
+    STVHagenbach,
+    STVHare,
+    STVImperiali,
     InstantRunOff,
     Condorcet,
     Borda,
@@ -74,4 +78,10 @@ pub struct Selection {
 
     #[prost(string)]
     pub selection: String,
+}
+
+impl Into<(String, u64)> for Selection {
+    fn into(self) -> (String, u64) {
+        (self.selection, self.rank as u64)
+    }
 }
