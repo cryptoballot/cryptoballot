@@ -40,6 +40,7 @@ pub fn command_election_generate(uri: &str, secret_key: &SecretKey, post: bool) 
     };
 
     let contest = Contest {
+        id: "TESTCONTEST".to_string(),
         index: 0,
         contest_type: ContestType::Plurality,
         write_in: true,
