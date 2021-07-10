@@ -88,7 +88,7 @@ impl TallyResult {
                 let mut tally = DefaultApprovalTally::new(num_winners as usize);
 
                 for vote in votes {
-                    let vote: Vec<String> = vote.iter().map(|v| v.selection).collect();
+                    let vote: Vec<String> = vote.iter().map(|v| v.selection.clone()).collect();
                     tally.add_ref(&vote);
                 }
 
