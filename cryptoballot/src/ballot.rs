@@ -58,7 +58,7 @@ pub enum ContestType {
     /// and the candidate with the highest total is elected. It has been described by various other names including “evaluative voting”,
     /// “utilitarian voting”, and “the point system”.
     ///
-    /// For Score tally, `Selection.score` represents the number of points assigned to each candidate.
+    /// For Score tally, `Selection.score` represents the number of points assigned to each candidate. Zero is the worst score that can be asssigned to a candidate.
     Score,
 
     /// Approval voting is a single-winner electoral system where each voter may select (“approve”) any number of candidates.
@@ -176,7 +176,7 @@ pub struct Selection {
     /// Score has different meanings depending on the tally type:
     /// STV, Condorcet, Borda and Schulze: `score` means candidate rank, where a zero is the best rank that can be assigned to a candidate.
     /// Score: `score` is the points assinged to this candidate. Zero is the worst score that can be asssigned to a candidate.
-    /// Plurality, Approval, and Instant Runoff: `score` is meaningless and has no effect.
+    /// Plurality, Approval, and InstantRunoff: `score` is meaningless and has no effect.
     #[prost(uint32)]
     #[serde(default)]
     pub score: u32,
