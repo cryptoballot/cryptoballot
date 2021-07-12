@@ -1937,7 +1937,7 @@ checksum = "fde5a672a61f96552aa5ed9fd9c81c3fbdae4be9b1e205d6eaf17c83705adc0f"
 dependencies = [
  "futures",
  "pin-project-lite 0.2.6",
- "tokio 1.7.0",
+ "tokio 1.8.1",
 ]
 
 [[package]]
@@ -4300,9 +4300,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.7.0"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c79ba603c337335df6ba6dd6afc38c38a7d5e1b0c871678439ea973cd62a118e"
+checksum = "98c8b05dc14c75ea83d63dd391100353789f5f24b8b3866542a5e85c8be8e985"
 dependencies = [
  "autocfg 1.0.1",
  "pin-project-lite 0.2.6",
