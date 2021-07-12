@@ -32,6 +32,7 @@ hex-buffer-serde = "0.3.0"
 cryptid = { git = "https://github.com/eleanor-em/cryptid", branch = "0.9-preview" }
 prost = "0.7.0"
 tallystick = { version = "0.4.0", features = ["nightly", "serde"] }
+rust_decimal = { version = "1.14.3", features = ["serde-arbitrary-precision"] }
 
 [dependencies.rsa]
 version = "0.3.0" # Wait until upgrade to rand 0.8

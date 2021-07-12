@@ -200,3 +200,31 @@ pub enum ValidationError {
     #[error("cryptoballot: could not decode vote selection: {0}")]
     VoteDecodingError(#[from] prost::DecodeError),
 }
+
+/// SpoiledBallotError represent the various ways a ballot can be spoiled
+#[derive(Debug, Error, Serialize, Deserialize, Clone)]
+pub enum SpoiledBallotError {
+    #[error("cryptoballot: spoiled ballot: incorrect format (protobuf)")]
+    IncorrectProtobufFormat,
+
+    #[error("cryptoballot: spoiled ballot: no selections")]
+    NoSelections,
+
+    #[error("cryptoballot: spoiled ballot: too many selections")]
+    TooManySelections,
+
+    #[error("cryptoballot: spoiled ballot: duplicate candidate")]
+    DuplicateCandidate,
+
+    #[error("cryptoballot: spoiled ballot: invalid ranking")]
+    InvalidRanking,
+
+    #[error("cryptoballot: spoiled ballot: sum of candidate scores over limit")]
+    ScoreOverLimit,
+
+    #[error("cryptoballot: spoiled ballot: write-in not allowed")]
+    WriteInNotAllowed,
+
+    #[error("cryptoballot: spoiled ballot: candidate ID not found in this contest")]
+    CandidateNotFound,
+}

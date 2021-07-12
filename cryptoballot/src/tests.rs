@@ -268,7 +268,7 @@ fn end_to_end_election_no_mix() {
     // Create a vote transaction
     let selection = Selection {
         write_in: false,
-        rank: 0,
+        score: 0,
         selection: "Barak Obama".to_string(),
     };
 
@@ -696,7 +696,7 @@ fn end_to_end_election_with_mix() {
     // Create a vote transaction
     let selection = Selection {
         write_in: false,
-        rank: 0,
+        score: 0,
         selection: "Barak Obama".to_string(),
     };
 
@@ -740,7 +740,7 @@ fn end_to_end_election_with_mix() {
     // Create a 2nd vote transaction
     let selection_2 = Selection {
         write_in: false,
-        rank: 0,
+        score: 0,
         selection: "Santa".to_string(),
     };
 

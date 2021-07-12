@@ -32,7 +32,7 @@ pub fn command_vote_generate(
 
     let selection = Selection {
         write_in: true,
-        rank: 0,
+        score: 0,
         selection: secret_vote,
     };
 

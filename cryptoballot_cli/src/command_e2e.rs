@@ -48,7 +48,7 @@ pub fn command_e2e(matches: &clap::ArgMatches, uri: &str) {
 
             for selection in vote {
                 // TODO: Print if it's a write-in
-                println!("  {}:{}", selection.rank, selection.selection);
+                println!("  {}:{}", selection.score, selection.selection);
                 println!("");
             }
         }

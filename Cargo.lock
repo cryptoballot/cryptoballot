@@ -1028,6 +1028,7 @@ dependencies = [
  "rand_core 0.5.1",
  "rsa",
  "rsa-fdh",
+ "rust_decimal",
  "serde",
  "serde_cbor",
  "serde_json",
@@ -3600,13 +3601,14 @@ dependencies = [
 
 [[package]]
 name = "rust_decimal"
-version = "1.14.2"
+version = "1.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9787e62372fc0c5a0f3af64c392652db72d3ec1cc0cff1becc175d2c11e6fbcc"
+checksum = "01127cb8617e5e21bcf2e19b5eb48317735ca677f1d0a94833c21c331c446582"
 dependencies = [
  "arrayvec 0.5.2",
  "num-traits",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -4125,9 +4127,9 @@ dependencies = [
 
 [[package]]
 name = "tallystick"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2761be7d9b9e634ac8cb212a7707bef1b80c5045d681bb4d6f05dea7fb34b058"
+checksum = "0c08d445fb8772bf16bef8de6976a3e27954fb21089f9c428a024633750a86ba"
 dependencies = [
  "derive_more",
  "failure",
