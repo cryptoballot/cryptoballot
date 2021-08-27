@@ -55,6 +55,7 @@ pkg-config clang-7 lldb-7 lld-7 protobuf-compiler libprotobuf-dev
 
 # Clone the repository
 git clone git@github.com:cryptoballot/cryptoballot.git && cd cryptoballot
+git checkout 0.5-beta1
 
 # Install the server and command-line tools (go make some tea, this will take a while)
 cargo install --force --path=cryptoballot_server
